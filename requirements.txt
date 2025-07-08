@@ -3,6 +3,8 @@ Flask
 gunicorn
 Werkzeug
 dataclasses_json
-google-cloud-aiplatform
+google-genai
 google-cloud-logging
 python-dotenv
+google-cloud-storage
+google-cloud-iam

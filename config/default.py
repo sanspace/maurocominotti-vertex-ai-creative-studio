@@ -15,7 +15,7 @@
 
 import os
 from dataclasses import dataclass, field
-from vertexai.generative_models import HarmBlockThreshold
+from google.genai.types import HarmBlockThreshold
 
 from models.image_models import ImageModel
 
@@ -53,8 +53,9 @@ class Config:
     MODEL_GEMINI_MULTIMODAL = "gemini-2.0-flash"
     MODEL_IMAGEN2 = "imagegeneration@006"
     MODEL_IMAGEN_NANO = "imagegeneration@004"
-    MODEL_IMAGEN3_FAST = "imagen-3.0-fast-generate-002"
-    MODEL_IMAGEN3 = "imagen-3.0-generate-001"
+    MODEL_IMAGEN3_FAST = "imagen-3.0-fast-generate-001"
+    MODEL_IMAGEN3 = "imagen-3.0-generate-002"
+    MODEL_IMAGEN4 = "imagen-4.0-ultra-generate-preview-06-06"
     TEMPERATURE = 0.8
     TOP_P = 0.97
     TOP_K = 40
@@ -74,6 +75,7 @@ class Config:
     )
     display_image_models: list[ImageModel] = field(
         default_factory=lambda: [
+            {"display": "Imagen 4", "model_name": Config.MODEL_IMAGEN4},
             {"display": "Imagen 3 Fast", "model_name": Config.MODEL_IMAGEN3_FAST},
             {"display": "Imagen 3", "model_name": Config.MODEL_IMAGEN3},
         ]

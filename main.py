@@ -13,21 +13,19 @@
 # limitations under the License.
 """ Main Mesop App """
 import json
+import os
 import random
 from dataclasses import dataclass, field
-
+import datetime
 import mesop as me
-import vertexai
-from google.cloud.aiplatform import telemetry
-from vertexai.generative_models import (
-    GenerationConfig,
-    GenerativeModel,
-    HarmCategory,
-    Part,
-)
-from vertexai.preview.vision_models import ImageGenerationModel
+from google.cloud import storage
+from google.genai import Client
+from google.genai import types
+from google.genai.types import HarmCategory
 from models.image_models import ImageModel
 from config.default import Config
+from google.auth import credentials
+from google.cloud import iam_credentials_v1
 from prompts.critics import (
     MAGAZINE_EDITOR_PROMPT,
     REWRITER_PROMPT,
@@ -36,7 +34,60 @@ from svg_icon.svg_icon_component import svg_icon_component
 
 # Initialize Configuration
 cfg = Config()
-vertexai.init(project=cfg.PROJECT_ID, location=cfg.LOCATION)
+client = Client(
+    vertexai=True,
+    project=cfg.PROJECT_ID,
+    location=cfg.LOCATION
+)
+
+
+class IamSignerCredentials(credentials.Signing):
+    """
+    A custom credentials class that uses the IAM Credentials API to sign bytes.
+
+    This class implements the `google.auth.credentials.Signing` interface.
+    The Storage client library will automatically call the `sign_bytes` method when it
+    needs a signature.
+    """
+
+    def __init__(self, service_account_email: str):
+        self.service_account_email = service_account_email
+        self.iam_client = iam_credentials_v1.IAMCredentialsClient()
+        self._sa_path = f"projects/-/serviceAccounts/{self.service_account_email}"
+
+    @property
+    def signer_email(self) -> str:
+        """The email of the service account used for signing."""
+        return self.service_account_email
+
+    def sign_bytes(self, message: bytes) -> bytes:
+        """Signs a bytestring using the IAM Credentials API."""
+        print(
+            f"--> Custom signer: Requesting signature from IAM for SA '{self.service_account_email}'...")
+        try:
+            response = self.iam_client.sign_blob(
+                name=self._sa_path,
+                payload=message,
+            )
+            print("--> Custom signer: Signature received.")
+            return response.signed_blob
+        except Exception as e:
+            print(f"IAM PERMISSION DENIED: The principal running this code does not have "
+                  f"'roles/iam.serviceAccountTokenCreator' on the service account '{self.service_account_email}'.")
+            raise e  # Re-raise the exception to be caught by the caller
+
+    # Alias sign_bytes to sign to satisfy the Signer interface, which is
+    # required by the `signer` property.
+    sign = sign_bytes
+
+    @property
+    def signer(self):
+        """The object that can sign bytes."""
+        return self
+
+    def refresh(self, request):
+        """Refresh is not used by this credentials type."""
+        pass
 
 @dataclass
 @me.stateclass
@@ -47,7 +98,7 @@ class State:
     image_models: list[ImageModel] = field(default_factory=lambda: cfg.display_image_models.copy())
     image_output: list[str] = field(default_factory=list)
     image_commentary: str = ""
-    image_model_name: str = cfg.MODEL_IMAGEN3_FAST
+    image_model_name: str = cfg.MODEL_IMAGEN4
 
     # General UI state
     is_loading: bool = False
@@ -109,11 +160,58 @@ def on_select_image_count(e: me.SelectSelectionChangeEvent):
     setattr(state, e.key, e.value)
 
 
+def generate_presigned_url(gcs_uri: str, expiration_hours: int = 1) -> str:
+    """Generates a v4 presigned URL for a GCS object.
+
+    The user or service account running this code needs 'roles/storage.objectViewer'
+    permission on the bucket, or a custom role with 'storage.objects.get'.
+
+    Args:
+        gcs_uri: The GCS URI of the object (e.g., 'gs://bucket/object').
+        expiration_hours: The number of hours the URL will be valid for.
+
+    Returns:
+        A presigned URL, or the original GCS URI if an error occurs.
+    """
+    if not gcs_uri.startswith("gs://"):
+        return gcs_uri
+
+    # Get the service account email from an environment variable.
+    # This is the account that will be used to sign the URL. It must have 'roles/storage.objectViewer' on the bucket.
+    # The principal running this code (e.g., your user account) needs 'roles/iam.serviceAccountTokenCreator' on this SA.
+    SIGNING_SERVICE_ACCOUNT_EMAIL = os.environ.get("SIGNING_SA_EMAIL")
+    if not SIGNING_SERVICE_ACCOUNT_EMAIL:
+        return gcs_uri
+
+    try:
+        # 1. Create the custom credentials object for signing.
+        signing_credentials = IamSignerCredentials(
+            service_account_email=SIGNING_SERVICE_ACCOUNT_EMAIL)
+
+        # 2. Parse the GCS URI and create a blob object.
+        storage_client = storage.Client()
+        bucket_name, blob_name = gcs_uri.replace("gs://", "").split("/", 1)
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+
+        # 3. Generate the signed URL, passing the custom credentials.
+        # The storage library will call our signing_credentials.sign_bytes() method.
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(hours=expiration_hours),
+            method="GET",
+            credentials=signing_credentials,
+        )
+        return url
+    except Exception as e:
+        print(f"Error generating presigned URL for {gcs_uri}: {e}")
+        return gcs_uri
+
 def generate_images(input_txt: str):
     """Generate Images"""
     state = me.state(State)
 
-    # handle condition where someone hits "random" but doens't modify
+    # TODO: handle condition where someone hits "random" but doens't modify
     if not input_txt and state.image_prompt_placeholder:
         input_txt = state.image_prompt_placeholder
     state.image_output.clear()
@@ -128,23 +226,38 @@ def generate_images(input_txt: str):
     if state.image_negative_prompt_input:
         print(f"negative prompt: {state.image_negative_prompt_input}")
     print(f"model: {state.image_model_name}")
-    image_generation_model = ImageGenerationModel.from_pretrained(
-        state.image_model_name
-    )
-    response = image_generation_model.generate_images(
+
+    response = client.models.generate_images(
+        model=state.image_model_name,
         prompt=prompt,
-        add_watermark=True,
-        aspect_ratio=getattr(state, "image_aspect_ratio"),
-        number_of_images=int(state.imagen_image_count),
-        output_gcs_uri=f"gs://{cfg.IMAGE_CREATION_BUCKET}",
-        language="auto",
-        negative_prompt=state.image_negative_prompt_input,
+        config=types.GenerateImagesConfig(
+            add_watermark=True,
+            aspect_ratio=getattr(state, "image_aspect_ratio"),
+            number_of_images=int(state.imagen_image_count),
+            output_gcs_uri=f"gs://{cfg.IMAGE_CREATION_BUCKET}",
+            language=types.ImagePromptLanguage.auto,
+            include_rai_reason=True,
+            output_mime_type='image/jpeg',
+        ),
     )
-    for idx, img in enumerate(response):
-        print(
-            f"generated image: {idx} size: {len(img._as_base64_string())} at {img._gcs_uri}"
-        )
-        state.image_output.append(img._gcs_uri)
+
+    if not response.generated_images:
+      raise Exception("Could not generate any Image.")
+
+    for idx, generated_image in enumerate(response.generated_images):
+      if generated_image.image and generated_image.image.gcs_uri:
+        image_gcs_uri = generated_image.image.gcs_uri
+        print(f"Generated image: {idx} at {image_gcs_uri}")
+        presigned_url = generate_presigned_url(image_gcs_uri)
+        print(f"Generated presigned url: {presigned_url}")
+        state.image_output.append(presigned_url)
+
+      elif generated_image.rai_filtered_reason:
+        # This handles cases where an image was filtered for safety reasons.
+        reason = generated_image.rai_filtered_reason
+        print(f"Image {idx} was filtered. Reason: {reason}")
+        # TODO: Shall we append a placeholder or a message to the UI?
+        state.image_output.append(f"Image filtered due to: {reason}")
 
 
 def random_prompt_generator(e: me.ClickEvent):
@@ -202,36 +315,37 @@ def rewrite_prompt(original_prompt: str):
     Args:
         original_prompt (str): artists's original prompt
     """
-    # state = me.state(State)
-    with telemetry.tool_context_manager("creative-studio"):
-        rewriting_model = GenerativeModel(cfg.MODEL_GEMINI_MULTIMODAL)
     model_config = cfg.gemini_settings
-    generation_cfg = GenerationConfig(
+    safety_filters = [
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_HARASSMENT,
+        ),
+    ]
+    generation_cfg = types.GenerateContentConfig(
         temperature=model_config.generation["temperature"],
         max_output_tokens=model_config.generation["max_output_tokens"],
+        system_instruction=REWRITER_PROMPT.format(""),
+        response_logprobs=True,
+        logprobs=3,
+        safety_settings=safety_filters
     )
-    safety_filters = {
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: model_config.safety_settings[
-            "DANGEROUS_CONTENT"
-        ],
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: model_config.safety_settings[
-            "HATE_SPEECH"
-        ],
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: model_config.safety_settings[
-            "SEXUALLY_EXPLICIT"
-        ],
-        HarmCategory.HARM_CATEGORY_HARASSMENT: model_config.safety_settings[
-            "HARASSMENT"
-        ],
-    }
-    response = rewriting_model.generate_content(
-        REWRITER_PROMPT.format(original_prompt),
-        generation_config=generation_cfg,
-        safety_settings=safety_filters,
+    response = client.models.generate_content(
+        model=cfg.MODEL_GEMINI_MULTIMODAL,
+        contents=REWRITER_PROMPT.format(original_prompt),
+        config=generation_cfg,
     )
     print(f"asked to rewrite: '{original_prompt}")
     print(f"rewritten as: {response.text}")
-    return response.text
+    return response.text or ""
 
 
 def generate_compliment(generation_instruction: str):
@@ -239,41 +353,43 @@ def generate_compliment(generation_instruction: str):
     Outputs a Gemini generated comment about images
     """
     state = me.state(State)
-    with telemetry.tool_context_manager("creative-studio"):
-        generation_model = GenerativeModel(cfg.MODEL_GEMINI_MULTIMODAL)
-    model_config = cfg.gemini_settings
-    generation_cfg = GenerationConfig(
-        temperature=model_config.generation["temperature"],
-        max_output_tokens=model_config.generation["max_output_tokens"],
-    )
-    safety_filters = {
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: model_config.safety_settings[
-            "DANGEROUS_CONTENT"
-        ],
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: model_config.safety_settings[
-            "HATE_SPEECH"
-        ],
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: model_config.safety_settings[
-            "SEXUALLY_EXPLICIT"
-        ],
-        HarmCategory.HARM_CATEGORY_HARASSMENT: model_config.safety_settings[
-            "HARASSMENT"
-        ],
-    }
     prompt_parts = []
     for idx, img in enumerate(state.image_output):
-        # not bytes
-        # prompt_parts.append(Part.from_data(data=img, mime_type="image/png"))
-        # now gcs uri
         prompt_parts.append(f"""image {idx+1}""")
-        prompt_parts.append(Part.from_uri(uri=img, mime_type="image/png"))
+        prompt_parts.append(types.Part.from_uri(
+            file_uri=img, mime_type="image/png"))
     prompt_parts.append(MAGAZINE_EDITOR_PROMPT.format(generation_instruction))
-    response = generation_model.generate_content(
-        prompt_parts,
-        generation_config=generation_cfg,
-        safety_settings=safety_filters,
+
+    model_config = cfg.gemini_settings
+    safety_filters = [
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_HARASSMENT,
+        ),
+    ]
+    generation_cfg = types.GenerateContentConfig(
+        temperature=model_config.generation["temperature"],
+        max_output_tokens=model_config.generation["max_output_tokens"],
+        system_instruction=MAGAZINE_EDITOR_PROMPT.format(""),
+        response_logprobs=True,
+        logprobs=3,
+        safety_settings=safety_filters
     )
-    state.image_commentary = response.text
+    response = client.models.generate_content(
+        model=cfg.MODEL_GEMINI_MULTIMODAL,
+        contents=prompt_parts,
+        config=generation_cfg,
+    )
+
+    state.image_commentary = response.text or ""
 
 
 @me.page(
@@ -647,7 +763,7 @@ def app():
                         else:
                             if state.is_loading:
                                 me.text(
-                                    text="generating images!",
+                                    text="Generating images! 🚀",
                                     style=me.Style(
                                         display="grid",
                                         justify_content="center",

@@ -2,14 +2,14 @@
 
 GenMedia Creative Studio is an app that highlights the capabilities of Google Cloud Vertex AI generative AI creative APIs, including Imagen, the text-to-image model.
 
-Features Gemini for prompt rewriting as well as for a critic to provide a multimodal evaluation of the generated images. 
+Features Gemini for prompt rewriting as well as for a critic to provide a multimodal evaluation of the generated images.
 
 This app is built with [Mesop](https://mesop-dev.github.io/mesop/), a Python-based UI framework that enables you to rapidly build web apps like this demo and internal apps.
 
 ### **New!** Experiments
 
 We're releasing stand-alone applications in advance of integration into the main GenMedia Creative Studio. Please see the [experiments](/experiments/) folder for new, upcoming capbilities.
-* **Creative GenMedia Workflow** - combining product image, brand guidelines and brief to create prompts for generation of creative video content using Veo. 
+* **Creative GenMedia Workflow** - combining product image, brand guidelines and brief to create prompts for generation of creative video content using Veo.
 * **Veo** - a stand-alone Veo app
 * **MCP tools for Genmedia** - Model Context Protocol servers for genmedia services
 * **Babel** - Chirp 3: HD Voices
@@ -27,56 +27,86 @@ We're releasing stand-alone applications in advance of integration into the main
 
 Two environment variables are required to run this application:
 
-`PROJECT_ID`   
+`PROJECT_ID`
 Provide an environment variable for your Google Cloud Project ID
 
 ```
 export PROJECT_ID=$(gcloud config get project)
 ```
 
-`IMAGE_CREATION_BUCKET`  
-You'll need Google Cloud Storage bucket for the generative media. Note that this has to exist prior to running the application. 
+`IMAGE_CREATION_BUCKET`
+You'll need Google Cloud Storage bucket for the generative media. Note that this has to exist prior to running the application.
 
-If an existing Google Cloud Storage bucket is available, please provide its name without the `"gs://"` prefix.  
+If an existing Google Cloud Storage bucket is available, please provide its name without the `"gs://"` prefix.
 
 ```
 export IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia
-```  
+```
 
-Otherwise, follow the next steps to create a storage bucket.  
+Otherwise, follow the next steps to create a storage bucket.
 
-### Create Storage Bucket (Optional) 
+### Create Storage Bucket (Optional)
 
-Please run the following command to obtain new credentials.  
+Please run the following command to obtain new credentials.
 
 ```
-gcloud auth login  
-```  
+gcloud auth login
+or
+gcloud auth application-default login
+```
 
-If you have already logged in with a different account, run:  
+If you have already logged in with a different account, run:
 
 ```
-gcloud config set account $PROJECT_ID  
-```  
+gcloud config set account $PROJECT_ID
+```
 
-Create the storage bucket.  
+You may need to set the default quota project for your ADC Credentials
+```
+gcloud auth application-default set-quota-project $PROJECT_ID
+```
+
+Create the storage bucket and make the url images accessible to the frontend.
 
 ```
 gcloud storage buckets create gs://$IMAGE_CREATION_BUCKET --location=US --default-storage-class=STANDARD
+
+gcloud storage buckets add-iam-policy-binding gs://$IMAGE_CREATION_BUCKET \
+    --member=allUsers \
+    --role=roles/storage.objectViewer
 ```
 
-> **NOTE:** We have provided a `env_template` that you can use to in your development environment. Simply duplicate it, rename it to `.env` and replace `<YOUR_GCP_PROJECT_ID>` with your project ID.  
-
-Then run `source .env` to add those variables into your environment.  
-
-
-### Create Virtual Environment 
-
-Create and activate a virtual environment for your solution. 
+If you can't make the images accessible to anyone with the previous command, probably they won't appear on the UI.
+For this, you can configure our App to generate presigned url, and access them by setting up a separated service account.
 ```
-python3 -m venv venv 
+export SA_NAME=sa-genmedia-creative-studio
+
+gcloud iam service-accounts create $SA_NAME \
+  --display-name="Image Signing Service Account" \
+  --project=$PROJECT_ID
+
+gcloud storage buckets add-iam-policy-binding gs://$IMAGE_CREATION_BUCKET \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+# You can change the USER_EMAIL accordingly to your case
+export USER_EMAIL=$(gcloud config get account)
+gcloud iam service-accounts add-iam-policy-binding $SA_NAME@$PROJECT_ID.iam.gserviceaccount.com --member="user:$USER_EMAIL" --role="roles/iam.serviceAccountTokenCreator"
+```
+
+
+> **NOTE:** We have provided a `env_template` that you can use to in your development environment. Simply duplicate it, rename it to `.env` and replace `<YOUR_GCP_PROJECT_ID>` with your project ID.
+
+Then run `source .env` to add those variables into your environment.
+
+
+### Create Virtual Environment
+
+Create and activate a virtual environment for your solution.
+```
+python3 -m venv venv
 source venv/bin/activate
-```  
+```
 
 ### Install requirements
 
@@ -94,7 +124,7 @@ To run locally, use the `mesop` command and open the browser to the URL provided
 mesop main.py
 ```
 
-> **NOTE:** The mesop application may request you to allow it to accept incoming network connections. Please accept to avoid limiting the application's behavior.  
+> **NOTE:** The mesop application may request you to allow it to accept incoming network connections. Please accept to avoid limiting the application's behavior.
 
 
 ## Deploy to Cloud Run
