@@ -1,0 +1,102 @@
+<!--
+ Copyright 2025 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<div class="lg:container lg:mx-auto">
+  <div class="home-margin grid grid-cols-1">
+    <!-- Video Homepage -->
+    <img priority width="1272" height="513" ngSrc="assets/images/fun-templates-homepage.png" class="w-full rounded-xl" alt="Fun Templates Homepage">
+
+    <!-- Control Options -->
+    <div class="inline-flex justify-center items-center grid grid-cols-2 md:grid-cols-3 lg:flex gap-4 mt-10 place-items-center">
+      <div matTooltip="Select Black & White" class="cursor-pointer w-28 inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>contrast</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Black & White</div>
+      </div>
+      <div matTooltip="Select Stylized 3D" class="cursor-pointer w-24 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>view_in_ar</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Stylized 3D</div>
+      </div>
+      <div matTooltip="Select Black Ink Tattoo" class="cursor-pointer w-32 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon svgIcon="black-ink-icon"></mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Black Ink Tattoo</div>
+      </div>
+      <div matTooltip="Select Stylized Portraits" class="cursor-pointer w-32 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>photo_camera_front</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Stylized Portraits</div>
+      </div>
+      <div matTooltip="Select Cake Pops" class="cursor-pointer w-24 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>cake</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Cake Pops</div>
+      </div>
+      <div matTooltip="Select Corporate Memphis" class="cursor-pointer w-40 inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>apartment</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Corporate Memphis</div>
+      </div>
+      <div matTooltip="Select More Filters" class="cursor-pointer w-24 inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon svgIcon="more-filters-icon"></mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">More Filters</div>
+      </div>
+    </div>
+
+    <!-- Prompt Generator -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 mt-10 gap-4">
+      <!-- Prompt Section -->
+      <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
+          <div class="justify-center text-neutral-200 text-base font-bold leading-7">Prompt:</div>
+          <textarea id="promptId" class="self-stretch w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            placeholder="This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel."></textarea>
+          <div class="inline-flex justify-between items-center grid grid-cols-1 lg:flex gap-4">
+              <div class="flex justify-start items-center gap-4">
+                  <button mat-raised-button color="primary">
+                      <mat-icon>shuffle</mat-icon>
+                      Random
+                  </button>
+                  <button mat-raised-button color="primary">
+                      <mat-icon>drive_file_rename_outline</mat-icon>
+                      Rewrite
+                  </button>
+                  <button mat-raised-button class="!bg-white">
+                      <mat-icon svgIcon="gemini-spark-icon"></mat-icon>
+                      <span class="font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent">
+                        Generate
+                      </span>
+                  </button>
+              </div>
+              <button mat-stroked-button class="!text-white">Clear</button>
+          </div>
+      </div>
+      <!-- Magazin Editor Section -->
+      <div class="lg:col-span-1 flex flex-col justify-start items-start gap-4">
+        <div class="justify-center text-neutral-200 text-base font-bold leading-7" style="align-self: flex-end;">Magazin Editor</div>
+        <textarea id="magazinId" class="w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-xl text-neutral-200 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="I am here to help with your creative design!"></textarea>
+      </div>
+    </div>
+  </div>
+</div>

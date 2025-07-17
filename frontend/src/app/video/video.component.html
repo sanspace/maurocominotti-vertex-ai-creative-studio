@@ -1,0 +1,101 @@
+<!--
+ Copyright 2025 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<div class="lg:container lg:mx-auto">
+  <div class="home-margin grid grid-cols-1">
+    <!-- Video Homepage -->
+      <div class="video-container">
+        <video class="w-full rounded-xl" oncanplay="this.play()" onloadedmetadata="this.muted = true" muted playsinline loop autoplay>
+          <source src="assets/videos/generate-video-homepage-video.mp4" type="video/mp4">
+        </video>
+        <div class="top-[40%] absolute w-full text-center justify-center text-3xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent">
+          Generate a video
+        </div>
+      </div>
+
+    <!-- Control Options -->
+    <div class="inline-flex justify-center items-center grid grid-cols-2 md:grid-cols-3 lg:flex gap-4 mt-10 place-items-center">
+      <div matTooltip="Select Aspect Ratio" class="cursor-pointer w-16 inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>aspect_ratio</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">16:9</div>
+      </div>
+      <div matTooltip="Select Color & Tone" class="cursor-pointer w-28 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>palette</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Color & Tone</div>
+      </div>
+      <div matTooltip="Select Lighting" class="cursor-pointer w-20 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon svgIcon="lighting-icon"></mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Lighting</div>
+      </div>
+      <div matTooltip="Select Composition" class="cursor-pointer w-28 rounded-lg inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>movie_edit</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Composition</div>
+      </div>
+      <div matTooltip="Select Watermark" class="cursor-pointer w-28 inline-flex flex-col justify-start items-center">
+          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>branding_watermark</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base">Watermark</div>
+      </div>
+      <div matTooltip="Replay Last Execution" class="cursor-pointer w-8 h-8 bg-black rounded-3xl flex justify-center items-center gap-2.5 overflow-hidden my-auto">
+          <button matFab class="w-6 h-6 text-center justify-center text-white text-xl">
+            <mat-icon>replay</mat-icon>
+          </button>
+      </div>
+    </div>
+
+    <!-- Prompt Generator -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 mt-10 gap-4">
+      <!-- Prompt Section -->
+      <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
+          <div class="justify-center text-neutral-200 text-base font-bold leading-7">Prompt:</div>
+          <textarea id="promptId" class="self-stretch w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="A hiker during a late spring day in California’s Big Sur overlooking the ocean"></textarea>
+          <div class="inline-flex justify-between items-center grid grid-cols-1 lg:flex gap-4">
+              <div class="flex justify-start items-center gap-4">
+                  <button mat-raised-button color="primary">
+                      <mat-icon>shuffle</mat-icon>
+                      Random
+                  </button>
+                  <button mat-raised-button color="primary">
+                      <mat-icon>drive_file_rename_outline</mat-icon>
+                      Rewrite
+                  </button>
+                  <button mat-raised-button class="!bg-white">
+                      <mat-icon svgIcon="gemini-spark-icon"></mat-icon>
+                      <span class="font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent">
+                        Generate
+                      </span>
+                  </button>
+              </div>
+              <button mat-stroked-button class="!text-white">Clear</button>
+          </div>
+      </div>
+      <!-- Magazin Editor Section -->
+      <div class="lg:col-span-1 flex flex-col justify-start items-start gap-4">
+        <div class="justify-center text-neutral-200 text-base font-bold leading-7" style="align-self: flex-end;">Magazin Editor</div>
+        <textarea id="magazinId" class="w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-xl text-neutral-200 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="I am here to help with your creative design!"></textarea>
+      </div>
+    </div>
+  </div>
+</div>

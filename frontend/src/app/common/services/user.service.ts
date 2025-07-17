@@ -1,0 +1,95 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import {Injectable, PLATFORM_ID, inject} from '@angular/core';
+import {
+  Firestore,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+} from '@angular/fire/firestore';
+import {UserData} from '../models/user.model';
+import {environment} from '../../../environments/environment';
+import {HttpClient} from '@angular/common/http';
+import {Observable} from 'rxjs';
+import {user} from '@angular/fire/auth';
+import {isPlatformBrowser} from '@angular/common';
+
+const USER_COLLECTION = 'users';
+interface LooseObject {
+  [key: string]: any;
+}
+
+type UserStored = {
+  uid: string;
+  email: string;
+  photoURL: string;
+  displayName: string;
+  domain: string;
+  organizationName: string;
+  organizationKey: string;
+};
+
+const badgeURL = `${environment.backendURL}/`;
+
+@Injectable({
+  providedIn: 'root',
+})
+export class UserService {
+  private readonly firestore: Firestore = inject(Firestore);
+  private platformId = inject(PLATFORM_ID);
+
+  constructor(private http: HttpClient) {}
+
+  async get(uid: string): Promise<UserData> {
+    const userRef = doc(this.firestore, USER_COLLECTION, uid);
+    const userDoc = await getDoc(userRef);
+    return userDoc.data() as UserData;
+  }
+
+  async delete(uid: string) {
+    const userRef = doc(this.firestore, USER_COLLECTION, uid);
+    await deleteDoc(userRef);
+  }
+
+  getUserDetails() {
+    if (!isPlatformBrowser(this.platformId)) return '{}';
+
+    if (localStorage.getItem('USER_DETAILS') !== null) {
+      const userObj = localStorage.getItem('USER_DETAILS');
+      return JSON.parse(userObj || '{}');
+    } else {
+      const userDetails: LooseObject = {};
+      userDetails['name'] = '';
+      userDetails['email'] = '';
+      userDetails['photoURL'] = '';
+      userDetails['domain'] = '';
+      userDetails['role'] = '';
+      return userDetails;
+    }
+  }
+
+  getUserBadges(userEmail: string) {
+    return this.http.post<any>(badgeURL + 'badge-info', {email: userEmail});
+  }
+
+  updateBadgeInfo(reqObj: LooseObject) {
+    return this.http.post<any>(badgeURL + 'badge-confetti-status', reqObj);
+  }
+}

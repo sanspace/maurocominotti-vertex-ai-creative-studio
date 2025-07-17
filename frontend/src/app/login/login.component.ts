@@ -1,0 +1,119 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import {Component, NgZone} from '@angular/core';
+import {GoogleAuthProvider} from '@angular/fire/auth';
+import {Router} from '@angular/router';
+import {AuthService} from './../common/services/auth.service';
+import {UserData} from './../common/models/user.model';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {ToastMessageComponent} from './../common/components/toast-message/toast-message.component';
+
+const HOME_ROUTE = '/';
+
+interface LooseObject {
+  [key: string]: any;
+}
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.scss'],
+})
+export class LoginComponent {
+  private readonly provider: GoogleAuthProvider = new GoogleAuthProvider();
+
+  loader = false;
+  invalidLogin = false;
+  errorMessage = '';
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    public ngZone: NgZone,
+    private _snackBar: MatSnackBar,
+  ) {
+    this.provider.setCustomParameters({
+      prompt: 'select_account',
+    });
+  }
+
+  ngOnInit(): void {}
+
+  loginWithGoogle() {
+    this.loader = true;
+    this.invalidLogin = false;
+    this.errorMessage = '';
+
+    // This will use the Google Identity Services library to get an FIREBASE-compatible token.
+    this.authService.signInWithGoogleFirebase().subscribe({
+      next: (firebaseToken: string) => {
+        // The signInWithGoogleFirebase method already stored the token and minimal user details
+        // in localStorage. We just need to redirect to trigger the AuthGuard.
+        this.ngZone.run(() => {
+          this.loader = false;
+          void this.router.navigate([HOME_ROUTE]);
+        });
+      },
+      error: error => {
+        this.loader = false;
+        // Handle specific errors from the auth service
+        if (
+          error.message?.includes('timed out') ||
+          error.message?.includes('Access Denied')
+        ) {
+          this.handleLoginError(error.message);
+        } else {
+          this.handleLoginError(
+            'An unexpected error occurred during sign-in. Please try again.',
+          );
+        }
+        console.error('FIREBASE Login Process Error:', error);
+      },
+    });
+  }
+
+  private handleLoginError(message: string, postErrorAction?: () => void) {
+    this.loader = false;
+    this._snackBar.openFromComponent(ToastMessageComponent, {
+      panelClass: ['red-toast'],
+      verticalPosition: 'top',
+      horizontalPosition: 'right',
+      duration: 6000,
+      data: {text: message, icon: 'cross-in-circle-white'},
+    });
+    if (postErrorAction) {
+      postErrorAction();
+    }
+  }
+
+  redirect(user: UserData) {
+    const userDetails: LooseObject = {
+      name: user.displayName,
+      email: user.email,
+      photoURL: user.photoURL,
+      domain: user.domain,
+      uid: user.uid,
+      orgId: user.organizationKey,
+      orgName: user.organizationName,
+      // Role is set here based on UserData, which should get appRole from userService
+      role: user.appRole || 'Practice Lead', // Using appRole from UserData or fallback
+    };
+    localStorage.setItem('USER_DETAILS', JSON.stringify(userDetails));
+    this.loader = false;
+    void this.router.navigate([HOME_ROUTE]);
+  }
+}
