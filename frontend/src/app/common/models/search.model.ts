@@ -15,7 +15,7 @@
  */
 
 export type SearchRequest = {
-  term: string;
+  prompt: string;
   generationModel: string;
   aspectRatio: string;
   imageStyle: string;
@@ -54,3 +54,11 @@ export type PageMap = {
 export type ImagesData = {
   src: string;
 };
+
+export interface GallerySearchDto {
+  limit: number;
+  start_after?: string;
+  user_email?: string;
+  mime_type?: string;
+  model?: string;
+}

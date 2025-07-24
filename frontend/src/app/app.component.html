@@ -14,6 +14,8 @@
  limitations under the License.
 -->
 
+<mat-progress-bar class="!fixed top-0 left-0 !z-[50]" *ngIf="loadingService.isLoading$ | async"
+  mode="indeterminate"></mat-progress-bar>
 <app-header *ngIf="showHeader"></app-header>
   <div [ngClass]="showHeader?'content':'login'" [@routeAnimations]="outlet.isActivated ? outlet.activatedRoute : ''">
     <router-outlet #outlet="outlet"></router-outlet>

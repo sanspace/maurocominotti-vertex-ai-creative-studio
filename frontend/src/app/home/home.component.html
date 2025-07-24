@@ -128,7 +128,8 @@
       <!-- Prompt Section -->
       <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
           <div class="justify-center text-neutral-200 text-base font-bold leading-7">Prompt:</div>
-          <textarea id="promptId" [(ngModel)]="searchRequest.term" class="self-stretch w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          <textarea id="promptId" [(ngModel)]="searchRequest.prompt"
+            class="self-stretch w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             placeholder="Enter your prompt here..."></textarea>
           <div class="inline-flex justify-between items-center grid grid-cols-1 md:flex gap-4">
               <div class="flex justify-start items-center gap-4">

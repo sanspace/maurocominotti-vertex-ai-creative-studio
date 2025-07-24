@@ -22,6 +22,8 @@ import {AuthGuardService} from './common/services/auth.guard.service';
 import {FunTemplatesComponent} from './fun-templates/fun-templates.component';
 import {VideoComponent} from './video/video.component';
 import {ArenaComponent} from './arena/arena.component';
+import {MediaGalleryComponent} from './gallery/media-gallery/media-gallery.component';
+import {MediaDetailComponent} from './gallery/media-detail/media-detail.component';
 
 const routes: Routes = [
   {path: 'login', component: LoginComponent},
@@ -33,6 +35,23 @@ const routes: Routes = [
   },
   {path: 'video', component: VideoComponent, canActivate: [AuthGuardService]},
   {path: 'arena', component: ArenaComponent, canActivate: [AuthGuardService]},
+  // When a user goes to '/gallery', show the main feed.
+  {
+    path: 'gallery',
+    component: MediaGalleryComponent
+  },
+  // When a user goes to '/gallery/some-unique-id', show the detail page.
+  // The ':id' is a placeholder for the media item's ID.
+  {
+    path: 'gallery/:id',
+    component: MediaDetailComponent
+  },
+  // Optional: Redirect the base URL to the gallery
+  {
+    path: '',
+    redirectTo: '/gallery',
+    pathMatch: 'full'
+  },
 ];
 
 @NgModule({

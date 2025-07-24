@@ -12,15 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from src.config import (
+    logger_config,
+)  # Import the logging configuration first to ensure it's set up.
+from contextlib import asynccontextmanager
+import logging
 from os import getenv
+import sys
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from google.cloud import speech
 
-from src.controller.search import router as search_router
+from src.auth import firebase_client_service
+from src.images.imagen_controller import router as imagen_router
+from src.audios.audio_controller import router as audio_router
+from src.videos.video_controller import router as video_router
+from src.galleries.gallery_controller import router as gallery_router
+from src.multimodal.gemini_controller import router as gemini_router
 
-app = FastAPI()
+# Get the logger instance that Uvicorn is using
+logging.basicConfig(
+    level=logging.INFO,
+    stream=sys.stderr,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    encoding="utf-8",
+)
+logger = logging.getLogger(__name__)
 
 
 def configure_cors(app):
@@ -51,45 +69,49 @@ def configure_cors(app):
     )
 
 
-# Create a route to handle GET requests on root
-@app.get("/")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Code here runs on startup
+    logger.info("Application startup initializing")
+
+    # Startup logic
+    logger.info(
+        f"""Firebase App Name (if initialized): {
+          firebase_client_service.firebase_admin.get_app().name
+          if firebase_client_service.firebase_admin._apps
+          else 'Not Initialized'
+        }"""
+    )
+
+    yield
+
+    # Code here runs on shutdown
+    logger.info("Application shutdown terminating")
+    # Your shutdown logic here, e.g., closing database connections
+
+
+app = FastAPI(
+    lifespan=lifespan,
+    title="Creative Studio API",
+    description="""GenMedia Creative Studio is an app that highlights the capabilities
+    of Google Cloud Vertex AI generative AI creative APIs, including Imagen, Veo, Lyria, Chirp and more! 🚀""",
+)
+
+
+@app.get("/", tags=["Health Check"])
 async def root():
     return "You are calling Creative Studio Backend"
 
 
-# Create a route to handle GET requests on /version
-@app.get("/api/version")
+@app.get("/api/version", tags=["Health Check"])
 def version():
     return "v0.0.1"
 
 
-@app.post("/api/audio_chat")
-async def audio_chat(audio_file: UploadFile = File(...)):
-    client = speech.SpeechClient()
-    audio_content = await audio_file.read()
-    audio = speech.RecognitionAudio(content=audio_content)
-    config = speech.RecognitionConfig(
-        language_code="en-US",
-        sample_rate_hertz=48000,
-        model="default",
-        audio_channel_count=1,
-        enable_word_confidence=True,
-        enable_word_time_offsets=True,
-    )
-
-    operation = client.long_running_recognize(config=config, audio=audio)
-
-    print("Waiting for operation to complete...")
-    response = operation.result(timeout=90)
-
-    text = ""
-    for result in response.results:
-        print(f"Transcript: {result.alternatives[0].transcript}")
-        text = result.alternatives[0].transcript
-
-    return text, 200
-
-
 configure_cors(app)
 
-app.include_router(search_router)
+app.include_router(imagen_router)
+app.include_router(audio_router)
+app.include_router(video_router)
+app.include_router(gallery_router)
+app.include_router(gemini_router)

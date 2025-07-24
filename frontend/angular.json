@@ -44,7 +44,11 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/flickr-justified-gallery/dist/fjGallery.css",
+              "node_modules/lightgallery/css/lightgallery.css",
+              "node_modules/lightgallery/css/lg-thumbnail.css",
+              "node_modules/lightgallery/css/lg-zoom.css"
             ],
             "scripts": [],
             "server": "src/main.server.ts",
@@ -162,7 +166,11 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/flickr-justified-gallery/dist/fjGallery.css",
+              "node_modules/lightgallery/css/lightgallery.css",
+              "node_modules/lightgallery/css/lg-thumbnail.css",
+              "node_modules/lightgallery/css/lg-zoom.css"
             ],
             "scripts": []
           }

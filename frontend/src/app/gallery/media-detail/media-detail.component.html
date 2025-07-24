@@ -1,0 +1,109 @@
+<!-- Show a loading indicator until the media item is fetched -->
+<div *ngIf="isLoading" class="flex flex-col justify-center items-center h-screen text-white text-center">
+  <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
+  <p class="pt-8">Loading media details...</p>
+</div>
+
+<!-- Once the data is available, show the main content -->
+<div *ngIf="mediaItem" class="lg:container lg:mx-auto py-8 px-4">
+  <!-- Back Button -->
+  <button [routerLink]="['/gallery']" class="mb-8 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center">
+    &larr; Back to Gallery
+  </button>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <!-- Left Column: The Image/Video -->
+    <div class="md:col-span-2">
+      <!--
+        This container will be used by lightGallery.
+        The <a> tag provides the source for the lightbox view.
+      -->
+      <lightgallery [settings]="settings" [onInit]="initLightGallery">
+        <a [href]="mediaItem.presigned_urls?.[0]" class="block rounded-lg overflow-hidden shadow-lg">
+          <img [src]="mediaItem.presigned_urls?.[0]" [alt]="mediaItem.prompt" class="w-full h-auto object-cover">
+        </a>
+      </lightgallery>
+    </div>
+
+    <!-- Right Column: The Metadata -->
+    <div class="md:col-span-1 text-white">
+      <h2 class="text-3xl font-bold mb-4">Details</h2>
+      <div class="space-y-3">
+
+        <div>
+          <strong class="font-semibold">Prompt:</strong>
+          <p class="mt-1">{{ mediaItem.prompt || 'N/A' }}</p>
+        </div>
+
+        <div *ngIf="mediaItem.original_prompt">
+          <strong class="font-semibold">Original Prompt:</strong>
+          <p>{{ mediaItem.original_prompt }}</p>
+        </div>
+
+        <div *ngIf="mediaItem.rewritten_prompt">
+          <strong class="font-semibold">Rewritten Prompt:</strong>
+          <p>{{ mediaItem.rewritten_prompt }}</p>
+        </div>
+
+        <div>
+          <strong class="font-semibold">Model:</strong>
+          <p>{{ mediaItem.model || 'N/A' }}</p>
+        </div>
+
+        <div>
+          <strong class="font-semibold">Creator:</strong>
+          <p>{{ mediaItem.user_email || 'N/A' }}</p>
+        </div>
+
+        <div>
+          <strong class="font-semibold">Timestamp:</strong>
+          <p>{{ mediaItem.timestamp | date:'medium' }}</p>
+        </div>
+
+        <div>
+          <strong class="font-semibold">Mime Type:</strong>
+          <p>{{ mediaItem.mime_type || 'N/A' }}</p>
+        </div>
+
+        <div *ngIf="mediaItem.generation_time">
+          <strong class="font-semibold">Generation Time:</strong>
+          <p>{{ mediaItem.generation_time }} seconds</p>
+        </div>
+
+        <div *ngIf="mediaItem.error_message">
+          <strong class="font-semibold">Error Message:</strong>
+          <p>{{ mediaItem.error_message }}</p>
+        </div>
+
+        <div *ngIf="mediaItem.gcsuri">
+          <strong class="font-semibold">GCS URI:</strong>
+          <p>{{ mediaItem.gcsuri }}</p>
+        </div>
+
+        <div *ngIf="mediaItem.gcs_uris">
+          <strong class="font-semibold">GCS URIs:</strong>
+          <ul>
+            <li *ngFor="let uri of mediaItem.gcs_uris">{{ uri }}</li>
+          </ul>
+        </div>
+
+        <!-- <div *ngIf="mediaItem.source_images_gcs">
+          <strong class="font-semibold">Source Images GCS:</strong>
+          <ul>
+            <li *ngFor="let image of mediaItem.source_images_gcs">{{ image }}</li>
+          </ul>
+        </div> -->
+
+        <div *ngIf="mediaItem.negative_prompt">
+          <strong class="font-semibold">Negative Prompt:</strong>
+          <p>{{ mediaItem.negative_prompt }}</p>
+        </div>
+
+        <div *ngIf="mediaItem.comment">
+          <strong class="font-semibold">Comment:</strong>
+          <p>{{ mediaItem.comment }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -6,6 +6,69 @@
 Creative Studio is a set of templates that can be deployed out of the box into Cloud Run and work independently. Each one can be run independently connected to the user default google cloud auth credentials, and based on the complexity of each template, may require to deploy more or less resources into our Google Cloud Project.
 The architecture always follows the following structure: a folder for the frontend which consists in an Angular app, and a backend folder which consists of a FastAPI Python app.
 
+## 🚀 Backend Setup
+Before running the application, you must initialize the Google Cloud project with a Firestore database and the necessary indexes.
+
+### Step 1: Create the Firestore Database
+A Firestore database must be created for your project. This is a one-time operation.
+
+> **IMPORTANT!** The choice of location is permanent. Choose a location that is close to your users and other Google Cloud services (e.g., us-central1, europe-west1).
+
+Run the following gcloud command, replacing YOUR_LOCATION with your desired region:
+
+```bash
+# Replace YOUR_LOCATION with your desired region (e.g., us-central1)
+gcloud firestore databases create --location=YOUR_LOCATION
+```
+
+This will create a new Firestore database in Native Mode.
+
+### Step 2: Create Required Indexes
+Our application uses specific queries that require custom composite indexes to function correctly.
+
+```bash
+# Command for Index 1: user_email and timestamp
+# This index allows you to query for a specific user's media and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=user_email,order=ASCENDING \
+  --field-config=field-path=timestamp,order=DESCENDING \
+
+# Command for Index 2: mime_type and timestamp
+# This index allows you to filter all media by its type (e.g., image/png) and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=mime_type,order=ASCENDING \
+  --field-config=field-path=timestamp,order=DESCENDING \
+
+# Command for Index 3: model and timestamp
+# This index allows you to filter all media by the generation model used (e.g., imagen-4.0) and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=model,order=ASCENDING \
+  --field-config=field-path=timestamp,order=DESCENDING
+
+
+# After a while you can check with
+gcloud beta firestore indexes composite list
+```
+
+> **Note:** After running the command, index creation can take several minutes. You can monitor the status of your indexes in the Google Cloud Console under Firestore > Indexes. Your queries will fail until the index status is "Ready".
+
+### Step 3: Full-Text Search (The "Search Bar")
+
+This is the most important part: **Firestore is not a text search engine.**
+
+You cannot create an index that allows you to efficiently search for parts of a string within the `prompt` field (like a `LIKE` query in SQL). Queries on string fields in Firestore are mostly limited to exact matches.
+
+To implement a proper search bar, you must integrate a dedicated third-party search service. This is the standard and recommended approach.
+
+**OpenSearch:** This is a more powerful and customizable solution, but also more complex to manage. You would set up an Elasticsearch cluster and use a Cloud Function that triggers whenever a `MediaItem` is created or updated in Firestore. This function would then send the text fields (`prompt`, `critique`, etc.) to Elasticsearch for indexing.
+
+
 ## Deploying to CloudRun
 ## Create Image Repository if not created yet
 ```bash
@@ -30,7 +93,9 @@ The architecture always follows the following structure: a folder for the fronte
   export IMAGE_NAME="creative-studio-backend"
 
   # 3. Build the container image and push it to Artifact Registry
-  gcloud builds submit --tag "${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest" .
+  gcloud builds submit . \
+  --config cloudbuild.yaml \
+  --substitutions=_REGION="${REGION}",_REPO_NAME="${REPO_NAME}",_IMAGE_NAME="${IMAGE_NAME}"
 ```
 
 ## Deploy the Cloud Function
@@ -40,10 +105,11 @@ The architecture always follows the following structure: a folder for the fronte
   export PROJECT_ID=creative-studio-arena && \
   export REGION="us-central1" && \
   export REPO_NAME="creative-studio-repo" && \
-  export IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia && \
+  export GENMEDIA_BUCKET=$PROJECT_ID-genmedia && \
   export FUNCTION_NAME=creative-studio-api && \
   export FRONTEND_PROD_URL="https://your-frontend-app-url.com" && \
   export SIGNING_SA_EMAIL=sa-genmedia-creative-studio@$PROJECT_ID.iam.gserviceaccount.com && \
+  export IMAGE_NAME="creative-studio-backend" && \
 
   # 2. Deploy the function
   gcloud run deploy $FUNCTION_NAME \
@@ -53,32 +119,32 @@ The architecture always follows the following structure: a folder for the fronte
     --allow-unauthenticated \
     --no-invoker-iam-check \
     --memory="2Gi" \
-    --set-env-vars="ENVIRONMENT=development,FRONTEND_URL=${FRONTEND_PROD_URL},SIGNING_SA_EMAIL=${SIGNING_SA_EMAIL},IMAGE_CREATION_BUCKET=${IMAGE_CREATION_BUCKET}" \
+    --set-env-vars="ENVIRONMENT=development,FRONTEND_URL=${FRONTEND_PROD_URL},SIGNING_SA_EMAIL=${SIGNING_SA_EMAIL},GENMEDIA_BUCKET=${GENMEDIA_BUCKET}" \
     --timeout=300s # Set a reasonable timeout (e.g., 5 minutes)
 ```
-  
+
 ## Accessing images
 In order fot the pre-signed URLs to work, make sure the SIGNING_SA_EMAIL matches the default CloudRun Service Account assigned, and provide it with access to the bucket.
 Make sure your default Service Account MUST have the "Service Account Token Creator" Role and also the "Storage Object Viewer" IAM Role.
 ```
 export SA_NAME=your-default-cloudrun-sa && \
 
-gcloud storage buckets add-iam-policy-binding gs://$IMAGE_CREATION_BUCKET \
+gcloud storage buckets add-iam-policy-binding gs://$GENMEDIA_BUCKET \
   --member="serviceAccount:$SA_NAME" \
   --role="roles/storage.objectViewer"
 ```
 
 ## Setting up
 ### 1. Create virtualenv inside the backend folder and install dependencies
-Create a virtual environment on the root of the application, activate it and install the requirements
+Create a virtual environment with uv on the root of the application, activate it and install the requirements
 ```
-# check if you are already in the env
-pip -V
+# Check if you are already in the virtual env
+uv python find
 
-# if not then
-python3 -m venv .venv
+# If not then
+uv venv
 source .venv/bin/activate
-pip3 install -r requirements.txt
+uv sync --all-extras
 ```
 
 > **IMPORTANT!** VS Code may not recognize your env, in that case type "ctrl + shift + P", then select "Python: Select Interpreter" and then select "Enter interpreter path..." and then select your .venv python interpreter, in this case .backend/.venv/bin/python
@@ -98,26 +164,8 @@ gcloud config list
 ```
 
 ### 3. Add environment variables
-
-#### If you have Mac or Windows (or if you are using zsh console on Linux)
 ```
-. ./local.env
-```
-
-#### If you have Linux
-Open the file .venv/bin/activate and paste the env variables from `.local.env` after the PATH export, like this:
-```
-...
-
-_OLD_VIRTUAL_PATH="$PATH"
-PATH="$VIRTUAL_ENV/bin:$PATH"
-export PATH
-
-# Creative Studio env variables
-export ENVIRONMENT=development
-export FRONTEND_URL=http://localhost:4200
-
-...
+. local.env
 ```
 
 Check that the env variables has been taken into account, running:

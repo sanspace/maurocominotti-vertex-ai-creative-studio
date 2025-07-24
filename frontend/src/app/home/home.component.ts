@@ -66,11 +66,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoading = false;
   showDefaultDocuments = false;
   searchRequest: SearchRequest = {
-    term: 'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
+    prompt: 'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
     generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
     aspectRatio: '1:1',
     imageStyle: 'Modern',
-    numberOfImages: 2,
+    numberOfImages: 1,
   };
   private curX = 0;
   private curY = 0;
@@ -214,8 +214,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private processSearchResults(searchResponse: CombinedImageResults) {
-    this.imagenDocuments = (searchResponse.imagenResults || []).map(img => ({
+  private processSearchResults(searchResponse: GeneratedImage[]) {
+    this.imagenDocuments = (searchResponse || []).map(img => ({
       ...img,
       source: 'Imagen 4 Model',
     }));
@@ -231,19 +231,19 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   searchTerm({
-    term,
+    prompt,
     aspectRatio,
     model,
     imageStyle,
     numberOfImages,
   }: {
-    term?: string | undefined;
+      prompt?: string | undefined;
     aspectRatio?: string | undefined;
     model?: string | undefined;
     imageStyle?: string | undefined;
     numberOfImages?: number | undefined;
   }) {
-    if (!term) return;
+    if (!prompt) return;
 
     this.isLoading = true;
     this.imagenDocuments = [];
@@ -257,7 +257,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // this.geminiDocuments = [];
     // this.images = [];
 
-    this.searchRequest.term = term || this.searchRequest.term;
+    this.searchRequest.prompt = prompt || this.searchRequest.prompt;
     // this.searchRequest.aspectRatio =
     //   aspectRatio || this.selectedAspectRatio.value;
     // this.searchRequest.generationModel = model || this.selectedModel;
@@ -272,7 +272,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .search(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: CombinedImageResults) => {
+        next: (searchResponse: GeneratedImage[]) => {
           this.processSearchResults(searchResponse);
         },
         error: error => {

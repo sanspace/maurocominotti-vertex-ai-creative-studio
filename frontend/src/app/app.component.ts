@@ -22,6 +22,7 @@ import {
   Event as NavigationEvent,
 } from '@angular/router';
 import {trigger, transition, style, query, animate} from '@angular/animations';
+import {LoadingService} from './common/services/loading.service';
 
 @Component({
   selector: 'app-root',
@@ -58,7 +59,10 @@ export class AppComponent {
   title = 'creative-studio';
   showHeader = true;
 
-  constructor(private router: Router) {
+  constructor(
+    private router: Router,
+    public loadingService: LoadingService
+  ) {
     this.router.events.subscribe((event: NavigationEvent) => {
       if (event instanceof NavigationEnd) {
         if (

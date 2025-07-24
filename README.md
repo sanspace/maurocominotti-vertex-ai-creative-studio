@@ -33,13 +33,13 @@ Provide an environment variable for your Google Cloud Project ID
 export PROJECT_ID=$(gcloud config get project)
 ```
 
-`IMAGE_CREATION_BUCKET`
+`GENMEDIA_BUCKET`
 You'll need Google Cloud Storage bucket for the generative media. Note that this has to exist prior to running the application.
 
 If an existing Google Cloud Storage bucket is available, please provide its name without the `"gs://"` prefix.
 
 ```
-export IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia
+export GENMEDIA_BUCKET=$PROJECT_ID-genmedia
 ```
 
 Otherwise, follow the next steps to create a storage bucket.
@@ -70,9 +70,9 @@ gcloud auth application-default set-quota-project $PROJECT_ID
 Create the storage bucket and make the url images accessible to the frontend.
 
 ```
-gcloud storage buckets create gs://$IMAGE_CREATION_BUCKET --location=US --default-storage-class=STANDARD
+gcloud storage buckets create gs://$GENMEDIA_BUCKET --location=US --default-storage-class=STANDARD
 
-gcloud storage buckets add-iam-policy-binding gs://$IMAGE_CREATION_BUCKET \
+gcloud storage buckets add-iam-policy-binding gs://$GENMEDIA_BUCKET \
     --member=allUsers \
     --role=roles/storage.objectViewer
 ```
@@ -91,7 +91,7 @@ gcloud iam service-accounts create $SA_NAME \
   --display-name="Image Signing Service Account" \
   --project=$PROJECT_ID
 
-gcloud storage buckets add-iam-policy-binding gs://$IMAGE_CREATION_BUCKET \
+gcloud storage buckets add-iam-policy-binding gs://$GENMEDIA_BUCKET \
   --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/storage.objectViewer"
 
@@ -122,8 +122,8 @@ Then run `source .env` to add those variables into your environment.
 
 Create and activate a virtual environment for your solution.
 ```
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 ### Install requirements
@@ -163,13 +163,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SA_
 gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/storage.objectUser"
 ```
 
-Deploy with the service account and environment variables created above; `PROJECT_ID` and `IMAGE_CREATION_BUCKET`.
+Deploy with the service account and environment variables created above; `PROJECT_ID` and `GENMEDIA_BUCKET`.
 
 ```
 gcloud run deploy creative-studio --source . \
   --allow-unauthenticated --region us-central1 \
   --service-account $SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
-  --update-env-vars=IMAGE_CREATION_BUCKET=$IMAGE_CREATION_BUCKET,PROJECT_ID=$PROJECT_ID
+  --update-env-vars=GENMEDIA_BUCKET=$GENMEDIA_BUCKET,PROJECT_ID=$PROJECT_ID
 ```
 
 ## Code Styling & Commit Guidelines

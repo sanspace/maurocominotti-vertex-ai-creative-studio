@@ -21,12 +21,12 @@ import pytest
 from fastapi.testclient import TestClient
 from google.genai import types
 
-from src.controller.search import router
-from src.model.search import (
+from src.images.schema.imagen_result_model import (
+    CustomImagenResult,
     ImageGenerationResult,
-    CustomImageResult,
 )
-from src.service.search import ImagenSearchService
+from src.images.search_controller import router
+from src.images.search_service import ImagenSearchService
 
 # Create a test client for the FastAPI app
 client = TestClient(router)
@@ -137,7 +137,7 @@ class TestImagenSearchService:
         mock_client_class.assert_called_once()
 
         for result in results:
-            assert isinstance(result.image, CustomImageResult)
+            assert isinstance(result.image, CustomImagenResult)
             assert result.image.encoded_image == base64.b64encode(
                 b"mock_image_bytes"
             ).decode("utf-8")
