@@ -60,9 +60,9 @@ export class GalleryService {
     this.fetchImages().pipe(
       tap(response => {
         this.nextPageCursor = response.next_page_cursor;
-        const currentImages = this.imagesCache$.value;
-        const newImages = [...this.allFetchedImages, ...response.items];
-        this.imagesCache$.next(newImages);
+        // Accumulate images in our central cache and push the new list to subscribers
+        this.allFetchedImages = [...this.allFetchedImages, ...response.items];
+        this.imagesCache$.next(this.allFetchedImages);
 
         if (!this.nextPageCursor) {
           this.allImagesLoaded$.next(true);
@@ -95,7 +95,6 @@ export class GalleryService {
       body.start_after = this.nextPageCursor;
     }
     return this.http.post<PaginatedGalleryResponse>(galleryUrl, body).pipe(
-      tap(response => this.allFetchedImages = [...this.allFetchedImages, ...response.items]),
       shareReplay(1) // important to cache the http get response
     );
   }
