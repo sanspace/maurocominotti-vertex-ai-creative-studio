@@ -53,15 +53,6 @@
       </div>
     </div>
 
-    <!-- Video Homepage -->
-    <!-- <img priority width="2392" height="408" ngSrc="assets/images/model-arena-homepage.png" class="w-full rounded-xl mb-5"
-      alt="Model Arena Homepage"> -->
-
-    <!-- <div class="text-center mb-8">
-      <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">Media Gallery</h1>
-      <p class="mt-4 text-lg leading-8 text-gray-600">A showcase of generated images and videos.</p>
-    </div> -->
-
     <!-- A loading indicator that shows while data is being fetched -->
     <div *ngIf="isLoading && images.length === 0" class="text-center ng-star-inserted flex flex-col justify-center items-center mt-8">
       <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
@@ -69,13 +60,14 @@
     </div>
 
 
-    <div class="columns-2 md:columns-3 lg:columns-4 gap-4" *ngIf="(images?.length || 0)> 0">
-      <div *ngFor="let image of images; trackBy: trackByImage" class="mb-4 break-inside-avoid">
-        <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }">
-          <img class="h-auto max-w-full rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-               [src]="image?.presigned_urls?.[0]"
-               [alt]="image.prompt || 'Gallery image'">
-        </a>
+    <div class="flex flex-row gap-4" *ngIf="(columns?.length || 0) > 0">
+      <div *ngFor="let column of columns" class="flex flex-1 flex-col gap-4">
+        <div *ngFor="let image of column; trackBy: trackByImage">
+          <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }">
+            <img class="h-auto w-full rounded-lg cursor-pointer transition-opacity hover:opacity-80"
+              [src]="image?.presigned_urls?.[0]" [alt]="image.prompt || 'Gallery image'">
+            </a>
+        </div>
       </div>
     </div>
 

@@ -1,5 +1,6 @@
-import { Component, HostListener, OnDestroy } from '@angular/core';
-import { Subscription } from 'rxjs';
+import {Component, HostListener, OnDestroy, OnInit} from '@angular/core';
+import {Subscription, fromEvent} from 'rxjs';
+import {debounceTime} from 'rxjs/operators';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {MediaItem} from '../../common/models/media-item.model';
@@ -16,16 +17,16 @@ import {LoadingService} from '../../common/services/loading.service';
   templateUrl: './media-gallery.component.html',
   styleUrl: './media-gallery.component.scss',
 })
-export class MediaGalleryComponent implements OnDestroy {
+export class MediaGalleryComponent implements OnInit, OnDestroy {
   public images: MediaItem[] = [];
+  public columns: MediaItem[][] = [];
   allImagesLoaded = false;
   public isLoading = true;
   private imagesSubscription: Subscription | undefined;
   private allImagesLoadedSubscription: Subscription | undefined;
   private loadingSubscription: Subscription | undefined;
-  private scrollSubscription: Subscription | undefined;
-  private readonly NUM_COLUMNS = 4;
-
+  private resizeSubscription: Subscription | undefined;
+  private numColumns = 4;
   constructor(
     private galleryService: GalleryService,
     private sanitizer: DomSanitizer,
@@ -50,27 +51,29 @@ export class MediaGalleryComponent implements OnDestroy {
     });
 
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
-      console.log("[ngOnInit - imagesSubscription] this.images.length", images.length === 0)
-      if (images)
+      if (images) {
         this.images = images;
+        this.updateColumns();
+      }
 
-      if (!images || images.length === 0)
+      if (!images || images.length === 0) {
         this.galleryService.loadGallery(true);
+      }
     });
 
     this.allImagesLoadedSubscription = this.galleryService.allImagesLoaded.subscribe(loaded => {
       this.allImagesLoaded = loaded;
     });
 
-    // Reset and load the initial set of images
-    console.log("[ngOnInit] this.images.length", this.images.length === 0)
-    // this.galleryService.loadGallery(this.images.length === 0);
+    this.handleResize();
+    this.resizeSubscription = fromEvent(window, 'resize').pipe(debounceTime(200)).subscribe(() => this.handleResize());
   }
 
   ngOnDestroy(): void {
     this.imagesSubscription?.unsubscribe();
     this.loadingSubscription?.unsubscribe();
     this.allImagesLoadedSubscription?.unsubscribe();
+    this.resizeSubscription?.unsubscribe();
   }
 
   onScrollIndexChange(index: number): void {
@@ -88,6 +91,29 @@ export class MediaGalleryComponent implements OnDestroy {
     return image.id;
   }
 
+  private handleResize(): void {
+    const width = window.innerWidth;
+    let newNumColumns;
+    if (width < 768) { // md breakpoint
+      newNumColumns = 2;
+    } else if (width < 1024) { // lg breakpoint
+      newNumColumns = 3;
+    } else {
+      newNumColumns = 4;
+    }
+
+    if (newNumColumns !== this.numColumns) {
+      this.numColumns = newNumColumns;
+      this.updateColumns();
+    }
+  }
+
+  private updateColumns(): void {
+    this.columns = Array.from({length: this.numColumns}, () => []);
+    this.images.forEach((image, index) => {
+      this.columns[index % this.numColumns].push(image);
+    });
+  }
   /**
    * Listens for the main window's scroll event to trigger infinite loading.
    */
