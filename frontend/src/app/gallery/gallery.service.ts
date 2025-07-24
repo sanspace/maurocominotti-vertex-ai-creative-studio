@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, concat } from 'rxjs';
-import { tap, catchError, shareReplay } from 'rxjs/operators';
-import { MediaItem, PaginatedGalleryResponse } from '../common/models/media-item.model';
-import { environment } from '../../environments/environment';
+import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {BehaviorSubject, Observable, of} from 'rxjs';
+import {tap, catchError, shareReplay} from 'rxjs/operators';
+import {MediaItem, PaginatedGalleryResponse} from '../common/models/media-item.model';
+import {environment} from '../../environments/environment';
 import {GallerySearchDto} from '../common/models/search.model';
 import {LoadingService} from '../common/services/loading.service';
 
@@ -24,7 +24,7 @@ export class GalleryService {
   private allFetchedImages: MediaItem[] = [];
   private filters$ = new BehaviorSubject<GalleryFilters>({});
 
-  constructor(private http: HttpClient, private loadingService: LoadingService) {}
+  constructor(private http: HttpClient, private loadingService: LoadingService) { }
 
   get images$(): Observable<MediaItem[]> {
     return this.imagesCache$.asObservable();

@@ -4,13 +4,7 @@ import {debounceTime} from 'rxjs/operators';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {MediaItem} from '../../common/models/media-item.model';
-import { GalleryService } from '../gallery.service';
-import { ScrollDispatcher, ScrollingModule } from '@angular/cdk/scrolling';
-import { CommonModule } from '@angular/common';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { RouterModule } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
-import {LoadingService} from '../../common/services/loading.service';
+import {GalleryService} from '../gallery.service';
 
 @Component({
   selector: 'app-media-gallery',
@@ -41,9 +35,9 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
 
   private path = '../../assets/images';
 
-    private setPath(url: string): SafeResourceUrl {
-      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-    }
+  private setPath(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
 
   ngOnInit(): void {
     this.loadingSubscription = this.galleryService.isLoading$.subscribe(loading => {
@@ -74,17 +68,6 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     this.loadingSubscription?.unsubscribe();
     this.allImagesLoadedSubscription?.unsubscribe();
     this.resizeSubscription?.unsubscribe();
-  }
-
-  onScrollIndexChange(index: number): void {
-    if (this.isLoading || this.allImagesLoaded) {
-      return;
-    }
-    // Load more items when the user is 5 items away from the end.
-    const end = this.images.length - 5;
-    if (index >= end) {
-      this.galleryService.loadGallery();
-    }
   }
 
   public trackByImage(index: number, image: MediaItem): string {
@@ -128,7 +111,6 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     // We add a buffer (e.g., 200px) so the new content starts loading
     // just before the user hits the absolute bottom.
     if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 200) {
-      console.log('Scrolled to bottom, loading more images...');
       this.galleryService.loadGallery();
     }
   }

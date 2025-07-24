@@ -19,8 +19,10 @@
     <div class="video-container mb-8">
       <!-- Text for Tablet and beyond -->
       <div class="hidden md:flex justify-center items-center w-full h-full absolute flex-col">
-        <h1 class="text-center justify-center text-white text-2xl font-bold !m-0 !z-[50]">Creative Studio Media Gallery</h1>
-        <p class="mt-4 text-lg leading-8 text-white !z-[50]">A showcase of generated images, videos, audio and more ✨</p>
+        <h1 class="text-center justify-center text-white text-2xl font-bold !m-0 !z-[50]">Creative Studio Media Gallery
+        </h1>
+        <p class="mt-4 text-lg leading-8 text-white !z-[50]">A showcase of generated images, videos, audio and more ✨
+        </p>
       </div>
       <div class="gradient-bg hidden md:block !relative !w-full !h-full !z-[10]">
         <svg xmlns="http://www.w3.org/2000/svg">
@@ -45,16 +47,17 @@
       <!-- Text for mobile -->
       <div class="flex flex-col justify-center items-center w-full h-full md:hidden">
         <!-- As this svg uses a gradient, it needs to have a different fill id, therefore we have one for mobile and other for larger devices -->
-         <div class="flex">
-           <mat-icon svgIcon="mobile-white-gemini-spark-icon" class="!w-6 !h-6 mr-2 md:mr-[1rem]"></mat-icon>
-           <div class="text-center justify-center text-white title-font font-bold">Creative Studio Media Gallery</div>
-         </div>
+        <div class="flex">
+          <mat-icon svgIcon="mobile-white-gemini-spark-icon" class="!w-6 !h-6 mr-2 md:mr-[1rem]"></mat-icon>
+          <div class="text-center justify-center text-white title-font font-bold">Creative Studio Media Gallery</div>
+        </div>
         <p class="mt-4 text-white text-center md:text-lg md:leading-8">A showcase of generated images and videos.</p>
       </div>
     </div>
 
     <!-- A loading indicator that shows while data is being fetched -->
-    <div *ngIf="isLoading && images.length === 0" class="text-center ng-star-inserted flex flex-col justify-center items-center mt-8">
+    <div *ngIf="isLoading && images.length === 0"
+      class="text-center ng-star-inserted flex flex-col justify-center items-center mt-8">
       <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
       <p class="pt-5 text-white">Loading media...</p>
     </div>
@@ -66,7 +69,7 @@
           <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }">
             <img class="h-auto w-full rounded-lg cursor-pointer transition-opacity hover:opacity-80"
               [src]="image?.presigned_urls?.[0]" [alt]="image.prompt || 'Gallery image'">
-            </a>
+          </a>
         </div>
       </div>
     </div>

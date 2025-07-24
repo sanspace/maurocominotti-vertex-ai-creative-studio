@@ -1,18 +1,16 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Location } from '@angular/common';
-import { Subscription } from 'rxjs';
-
-import lightGallery from 'lightgallery';
-import { LightGallery } from 'lightgallery/lightgallery';
+import {Component, OnDestroy, OnInit} from '@angular/core';
+import {ActivatedRoute, Router} from '@angular/router';
+import {Location} from '@angular/common';
+import {Subscription} from 'rxjs';
+import {LightGallery} from 'lightgallery/lightgallery';
 import lgZoom from 'lightgallery/plugins/zoom';
 import {InitDetail} from 'lightgallery/lg-events';
 import lgThumbnail from 'lightgallery/plugins/thumbnail';
 import lgShare from 'lightgallery/plugins/share';
 import lgVideo from 'lightgallery/plugins/video';
 import {additionalShareOptions} from '../../utils/lightgallery-share-options';
-import { MediaItem } from '../../common/models/media-item.model';
-import { GalleryService } from '../gallery.service';
+import {MediaItem} from '../../common/models/media-item.model';
+import {GalleryService} from '../gallery.service';
 import {LoadingService} from '../../common/services/loading.service';
 
 @Component({
@@ -53,16 +51,16 @@ export class MediaDetailComponent implements OnInit, OnDestroy {
     console.log("mediaItem", this.mediaItem)
 
     if (this.mediaItem) {
-        // If we have the media item, we don't need to load it
-        this.loadingService.hide();
-        this.isLoading = false;
+      // If we have the media item, we don't need to load it
+      this.loadingService.hide();
+      this.isLoading = false;
     } else {
-        // If not, fetch the media item using the ID from the route params
-        this.fetchMediaItem();
+      // If not, fetch the media item using the ID from the route params
+      this.fetchMediaItem();
     }
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void { }
 
   fetchMediaItem() {
     this.routeSub = this.route.paramMap.subscribe(params => {
