@@ -100,6 +100,11 @@
           <p>{{ mediaItem.negative_prompt }}</p>
         </div>
 
+        <div>
+          <strong class="font-semibold">Add Watermark:</strong>
+          <p>{{ mediaItem?.add_watermark || 'N/A' }}</p>
+        </div>
+
         <div *ngIf="mediaItem.comment">
           <strong class="font-semibold">Comment:</strong>
           <p>{{ mediaItem.comment }}</p>

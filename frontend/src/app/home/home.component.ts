@@ -25,6 +25,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import {Router} from '@angular/router';
+import {MatChipInputEvent} from '@angular/material/chips';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {finalize} from 'rxjs/operators';
@@ -64,7 +65,13 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     numberOfImages: 1,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
+    composition: 'Closeup',
+    addWatermark: false,
+    negativePrompt: '',
   };
+
+  // --- Negative Prompt Chips ---
+  negativePhrases: string[] = [];
 
   // --- Dropdown Options ---
   generationModels = [
@@ -74,6 +81,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     },
     {value: 'imagen-3.0-generate-002', viewValue: 'Imagen 3'},
     {value: 'imagen-3.0-fast-generate-001', viewValue: 'Imagen 3 Fast'},
+    {value: 'imagen-3.0-generate-001', viewValue: 'Imagen 3 (001)'},
+    {value: 'imagegeneration@006', viewValue: 'ImageGen (006)'},
+    {value: 'imagegeneration@005', viewValue: 'ImageGen (005)'},
+    {value: 'imagegeneration@002', viewValue: 'ImageGen (002)'},
   ];
   selectedGenerationModel = this.generationModels[0].viewValue;
   aspectRatios = ['16:9', '1:1', '9:16', '4:3', '3:4'];
@@ -113,6 +124,24 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     'Toned',
   ];
   numberOfImagesOptions = [1, 2, 3, 4];
+  compositions = [
+    'Closeup',
+    'Knolling',
+    'Landscape photography',
+    'Photographed through window',
+    'Shallow depth of field',
+    'Shot from above',
+    'Shot from below',
+    'Surface detail',
+    'Wide angle',
+  ];
+  watermarkOptions = [
+    {value: true, viewValue: 'Yes'},
+    {value: false, viewValue: 'No'},
+  ];
+  selectedWatermark = this.watermarkOptions.find(
+    o => o.value === this.searchRequest.addWatermark,
+  )!.viewValue;
 
   // --- Private properties for animation and gallery ---
   private curX = 0;
@@ -298,9 +327,32 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchRequest.numberOfImages = num;
   }
 
+  selectComposition(composition: string): void {
+    this.searchRequest.composition = composition;
+  }
+
+  selectWatermark(option: {value: boolean; viewValue: string}): void {
+    this.searchRequest.addWatermark = option.value;
+    this.selectedWatermark = option.viewValue;
+  }
+
+  addNegativePhrase(event: MatChipInputEvent): void {
+    const value = (event.value || '').trim();
+    if (value) this.negativePhrases.push(value);
+
+    // Clear the input value
+    event.chipInput!.clear();
+  }
+
+  removeNegativePhrase(phrase: string): void {
+    const index = this.negativePhrases.indexOf(phrase);
+    if (index >= 0) this.negativePhrases.splice(index, 1);
+  }
+
   searchTerm() {
     if (!this.searchRequest.prompt) return;
 
+    this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
     this.isLoading = true;
     this.imagenDocuments = [];
     this.lightGalleryInstance?.destroy();

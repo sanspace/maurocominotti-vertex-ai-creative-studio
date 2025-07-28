@@ -114,6 +114,12 @@ class GeminiService:
         if image_request_dto.color_and_tone:
             prompt_parts.append(f"featuring {image_request_dto.color_and_tone.lower()} colors and tones")
 
+        # Conditionally add composition
+        if image_request_dto.composition:
+            prompt_parts.append(
+                f"featuring {image_request_dto.composition.lower()} composition"
+            )
+
         # Join all the available parts into a single, well-formatted string.
         # Example output: "A futuristic city, in a vintage style, with dramatic studio lighting"
         return ", ".join(prompt_parts)

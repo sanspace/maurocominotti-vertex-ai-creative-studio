@@ -10,6 +10,7 @@ user_service = UserService()
 
 # This scheme will require the client to send a token in the Authorization header.
 # It tells FastAPI how to find the token but doesn't validate it itself.
+# TODO: Change this to only require a JWT Token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
@@ -79,5 +80,3 @@ class RoleChecker:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have sufficient permissions to perform this action."
             )
-
-

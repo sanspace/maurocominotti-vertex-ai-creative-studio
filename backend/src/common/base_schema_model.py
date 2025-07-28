@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Literal, Union
-
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from enum import Enum
 
+
 class GenerationModelEnum(str, Enum):
     """Enum representing the available image generation models."""
+
     IMAGEN_4_ULTRA = "imagen-4.0-ultra-generate-preview-06-06"
     IMAGEN_3_001 = "imagen-3.0-generate-001"
     IMAGEN_3_FAST = "imagen-3.0-fast-generate-001"
@@ -28,16 +28,20 @@ class GenerationModelEnum(str, Enum):
     IMAGEGEN_005 = "imagegeneration@005"
     IMAGEGEN_002 = "imagegeneration@002"
 
+
 class AspectRatioEnum(str, Enum):
     """Enum representing the supported aspect ratios."""
+
     RATIO_1_1 = "1:1"
     RATIO_9_16 = "9:16"
     RATIO_16_9 = "16:9"
     RATIO_3_4 = "3:4"
     RATIO_4_3 = "4:3"
 
+
 class ImageStyleEnum(str, Enum):
     """Enum representing the supported image styles."""
+
     MODERN = "Modern"
     REALISTIC = "Realistic"
     VINTAGE = "Vintage"
@@ -47,8 +51,10 @@ class ImageStyleEnum(str, Enum):
     PHOTOREALISTIC = "Photorealistic"
     CINEMATIC = "Cinematic"
 
-class ColorAndTone(str, Enum):
+
+class ColorAndToneEnum(str, Enum):
     """Enum for color and tone styles."""
+
     BLACK_AND_WHITE = "Black & White"
     GOLDEN = "Golden"
     MONOCHROMATIC = "Monochromatic"
@@ -60,8 +66,10 @@ class ColorAndTone(str, Enum):
     COOL = "Cool"
     MONOCHROME = "Monochrome"
 
-class Lighting(str, Enum):
+
+class LightingEnum(str, Enum):
     """Enum for lighting styles."""
+
     BACKLIGHTING = "Backlighting"
     DRAMATIC_LIGHT = "Dramatic Light"
     GOLDEN_HOUR = "Golden Hour"
@@ -74,6 +82,21 @@ class Lighting(str, Enum):
     NATURAL = "Natural"
     DRAMATIC = "Dramatic"
     AMBIENT = "Ambient"
+
+
+class CompositionEnum(str, Enum):
+    """Enum for image composition styles."""
+
+    CLOSEUP = "Closeup"
+    KNOLLING = "Knolling"
+    LANDSCAPE_PHOTOGRAPHY = "Landscape photography"
+    THROUGH_WINDOW = "Photographed through window"
+    SHALLOW_DEPTH_OF_FIELD = "Shallow depth of field"
+    SHOT_FROM_ABOVE = "Shot from above"
+    SHOT_FROM_BELOW = "Shot from below"
+    SURFACE_DETAIL = "Surface detail"
+    WIDE_ANGLE = "Wide angle"
+
 
 class BaseSchema(BaseModel):
     model_config = ConfigDict(

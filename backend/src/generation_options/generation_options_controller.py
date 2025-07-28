@@ -13,9 +13,14 @@
 # limitations under the License.
 
 from fastapi import APIRouter
-from src.common.base_schema_model import AspectRatioEnum, GenerationModelEnum, ImageStyleEnum
+from src.common.base_schema_model import (
+    AspectRatioEnum,
+    CompositionEnum,
+    GenerationModelEnum,
+    ImageStyleEnum,
+)
 from src.generation_options.dto.generation_options_dto import GenerationOptionsResponse
-from src.images.dto.create_imagen_dto import Lighting, ColorAndTone
+from src.images.dto.create_imagen_dto import LightingEnum, ColorAndToneEnum
 
 router = APIRouter(
     prefix="/api/options",
@@ -32,7 +37,8 @@ async def get_image_generation_options():
         generation_models=[member.value for member in GenerationModelEnum],
         aspect_ratios=[member.value for member in AspectRatioEnum],
         image_styles=[member.value for member in ImageStyleEnum],
-        lightings=[member.value for member in Lighting],
-        colors_and_tones=[member.value for member in ColorAndTone],
-        numbers_of_images=[1, 2, 3, 4] # Or define an enum for this as well
+        lightings=[member.value for member in LightingEnum],
+        colors_and_tones=[member.value for member in ColorAndToneEnum],
+        composition=[member.value for member in CompositionEnum],
+        numbers_of_images=[1, 2, 3, 4],
     )

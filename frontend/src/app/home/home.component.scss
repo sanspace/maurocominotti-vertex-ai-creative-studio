@@ -33,6 +33,12 @@
   }
 }
 
+::ng-deep .mat-mdc-chip-action,
+::ng-deep .mat-mdc-chip-action-label {
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+}
+
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 375px) {
   .title-font {

@@ -33,13 +33,13 @@ router = APIRouter(
 
 
 @router.post("/generate-images")
-def generate_images(
+async def generate_images(
     image_request: CreateImagenDto,
     current_user: User = Depends(get_current_user),
 ) -> list[ImageGenerationResult]:
     try:
         service = ImagenService()
-        return service.generate_images(
+        return await service.generate_images(
             image_request_dto=image_request, user_email=current_user.email
         )
     except HTTPException as http_exception:
@@ -57,13 +57,13 @@ def generate_images(
 
 
 @router.post("/generate-images-from-prompt")
-def generate_images_from_prompt(
+async def generate_images_from_prompt(
     image_request: CreateImagenDto,
     current_user: User = Depends(get_current_user),
 ) -> list[ImageGenerationResult]:
     try:
         service = ImagenService()
-        return service.generate_images_from_prompt(
+        return await service.generate_images_from_prompt(
             image_request, current_user.email
         )
     except Exception as e:

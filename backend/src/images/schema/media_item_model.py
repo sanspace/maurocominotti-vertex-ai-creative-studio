@@ -1,4 +1,3 @@
-
 import datetime
 from typing import Dict, List, Optional
 import uuid
@@ -39,6 +38,7 @@ class MediaItem(BaseDocument):
     num_images: Optional[int] = None
     seed: Optional[int] = None
     critique: Optional[str] = None
+    add_watermark: Optional[bool] = None
 
     # Music specific
     audio_analysis: Optional[Dict] = None

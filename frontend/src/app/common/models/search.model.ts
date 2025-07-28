@@ -22,6 +22,9 @@ export type SearchRequest = {
   numberOfImages: number;
   lighting: string;
   colorAndTone: string;
+  composition: string;
+  addWatermark: boolean;
+  negativePrompt: string;
 };
 
 export type SearchResponse = {

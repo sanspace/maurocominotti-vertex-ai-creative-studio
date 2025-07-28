@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from fastapi import Query
 from pydantic import Field, field_validator
 from pydantic.alias_generators import to_camel
@@ -6,11 +6,12 @@ from google.genai import types
 
 from src.common.base_schema_model import (
     BaseSchema,
-    ColorAndTone,
+    ColorAndToneEnum,
     GenerationModelEnum,
     AspectRatioEnum,
     ImageStyleEnum,
-    Lighting,
+    LightingEnum,
+    CompositionEnum,
 )
 
 
@@ -43,10 +44,14 @@ class CreateImagenDto(BaseSchema):
     negative_prompt: str = Field(
         default="", description="Negative prompt for the image."
     )
-    color_and_tone: Optional[ColorAndTone] = Field(
-        default=None, description="The desired color and tone style for the image."
+    color_and_tone: Optional[ColorAndToneEnum] = Field(
+        default=None,
+        description="The desired color and tone style for the image.",
     )
-    lighting: Optional[Lighting] = Field(
+    lighting: Optional[LightingEnum] = Field(
+        default=None, description="The desired lighting style for the image."
+    )
+    composition: Optional[CompositionEnum] = Field(
         default=None, description="The desired lighting style for the image."
     )
     add_watermark: bool = Field(

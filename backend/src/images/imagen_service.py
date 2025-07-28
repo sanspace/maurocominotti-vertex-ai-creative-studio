@@ -57,7 +57,7 @@ class ImagenService:
         retry=retry_if_exception_type(Exception),  # Retry on all exceptions for robustness
         reraise=True,  # re-raise the last exception if all retries fail
     )
-    def generate_images(
+    async def generate_images(
         self, image_request_dto: CreateImagenDto, user_email: str
     ) -> list[ImageGenerationResult]:
         """Imagen image generation with Google GenAI client"""
@@ -74,20 +74,63 @@ class ImagenService:
 
         try:
             logger.info(f"models.image_models.generate_images: Requesting {image_request_dto.number_of_images} images for model {image_request_dto.generation_model} with output to {gcs_output_directory}")
-            images_imagen_response = client.models.generate_images(
-                model=image_request_dto.generation_model,
-                prompt=image_request_dto.prompt,
-                config=types.GenerateImagesConfig(
-                    number_of_images=image_request_dto.number_of_images,
-                    include_rai_reason=True,
-                    output_gcs_uri=gcs_output_directory,
-                    aspect_ratio=image_request_dto.aspect_ratio,
-                    negative_prompt=image_request_dto.negative_prompt,
-                ),
+            images_imagen_response: types.GenerateImagesResponse = (
+                types.GenerateImagesResponse()
             )
+            all_generated_images: List[types.GeneratedImage] = []
+
+            if (
+                image_request_dto.generation_model
+                == GenerationModelEnum.IMAGEN_4_ULTRA
+            ):
+                # --- IMAGEN 4 ULTRA: Parallel API Calls ---
+                logger.info(
+                    f"Initiating {image_request_dto.number_of_images} parallel requests for Imagen 4 Ultra."
+                )
+                tasks = []
+                for _ in range(image_request_dto.number_of_images):
+                    task = asyncio.to_thread(
+                        client.models.generate_images,
+                        model=image_request_dto.generation_model,
+                        prompt=image_request_dto.prompt,
+                        config=types.GenerateImagesConfig(
+                            number_of_images=1,
+                            output_gcs_uri=gcs_output_directory,
+                            aspect_ratio=image_request_dto.aspect_ratio,
+                            negative_prompt=image_request_dto.negative_prompt,
+                            add_watermark=image_request_dto.add_watermark,
+                        ),
+                    )
+                    tasks.append(task)
+
+                api_responses = await asyncio.gather(*tasks)
+
+                # Consolidate results from all parallel calls into one list
+                for response in api_responses:
+                    all_generated_images.extend(response.generated_images or [])
+            else:
+                # --- OTHER IMAGEN MODELS: Single Batch API Call ---
+                logger.info(
+                    f"Requesting {image_request_dto.number_of_images} images in a single batch for model {image_request_dto.generation_model}."
+                )
+                images_imagen_response = await asyncio.to_thread(
+                    client.models.generate_images,
+                    model=image_request_dto.generation_model,
+                    prompt=image_request_dto.prompt,
+                    config=types.GenerateImagesConfig(
+                        number_of_images=image_request_dto.number_of_images,
+                        output_gcs_uri=gcs_output_directory,
+                        aspect_ratio=image_request_dto.aspect_ratio,
+                        negative_prompt=image_request_dto.negative_prompt,
+                        add_watermark=image_request_dto.add_watermark,
+                    ),
+                )
+                all_generated_images = (
+                    images_imagen_response.generated_images or []
+                )
 
             response_imagen: list[ImageGenerationResult] = []
-            for generated_image in (images_imagen_response.generated_images or []):
+            for generated_image in all_generated_images:
                 if generated_image.image:
                     # Capture the permanent GCS URI before creating a presigned URL
                     original_gcs_uri = generated_image.image.gcs_uri or ""
@@ -126,6 +169,7 @@ class ImagenService:
                             aspect=image_request_dto.aspect_ratio,
                             negative_prompt=image_request_dto.negative_prompt,
                             num_images=1,  # This item represents a single image from the batch
+                            add_watermark=image_request_dto.add_watermark,
                         )
                         self.media_repo.save(media_to_save)
                         logger.info(
@@ -266,7 +310,7 @@ class ImagenService:
             )
         return response_gemini
 
-    def generate_images_from_prompt(
+    async def generate_images_from_prompt(
         self, image_request_dto: CreateImagenDto, user_email: str
     ) -> list[ImageGenerationResult]:
         """
@@ -277,7 +321,7 @@ class ImagenService:
         full_prompt = f"{input_txt}, {image_request_dto.prompt}"
         image_request_dto.prompt = full_prompt
 
-        return self.generate_images(image_request_dto, user_email)
+        return await self.generate_images(image_request_dto, user_email)
 
     def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
         """Generates a single image and returns the image bytes."""

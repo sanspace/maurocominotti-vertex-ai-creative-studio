@@ -70,7 +70,7 @@
 
     <!-- Control Options -->
     <div
-      class="inline-flex justify-center items-center grid grid-cols-2 md:grid-cols-3 lg:flex gap-4 mt-10 place-items-center">
+      class="inline-flex justify-center items-start grid grid-cols-2 md:grid-cols-3 lg:flex gap-4 mt-10 place-items-center">
       <div matTooltip="Select Aspect Ratio" class="cursor-pointer w-24 inline-flex flex-col justify-start items-center">
         <button mat-fab [matMenuTriggerFor]="aspectRatioMenu"
           class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
@@ -139,20 +139,55 @@
 
       <div matTooltip="Select Composition"
         class="cursor-pointer w-28 rounded-lg inline-flex flex-col justify-start items-center">
-        <button mat-fab
-          class="w-6 h-6 text-center justify-center text-stone-300 text-2xl"><mat-icon>movie_edit</mat-icon></button>
-        <div class="text-center justify-center text-neutral-200 text-base mt-2">Composition</div>
+        <button mat-fab [matMenuTriggerFor]="compositionMenu"
+          class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+          <mat-icon>movie_edit</mat-icon>
+        </button>
+        <div class="text-center justify-center text-neutral-200 text-base mt-2">{{ searchRequest.composition }}</div>
+        <mat-menu #compositionMenu="matMenu">
+          <button *ngFor="let comp of compositions" mat-menu-item (click)="selectComposition(comp)">
+            <span>{{ comp }}</span>
+          </button>
+        </mat-menu>
+        </div>
+
+        <div matTooltip="Select Negative Phrases" class="cursor-pointer w-36 inline-flex flex-col justify-start items-center">
+          <button mat-fab [matMenuTriggerFor]="negativePhrasesMenu"
+            class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+            <mat-icon>block</mat-icon>
+          </button>
+          <div class="text-center justify-center text-neutral-200 text-base mt-2">Negative Phrases ({{negativePhrases.length}})
+          </div>
+          <mat-menu #negativePhrasesMenu="matMenu" class="negative-phrases-menu">
+            <div class="p-2" (click)="$event.stopPropagation()">
+              <mat-form-field class="w-full">
+                <mat-label>Things to avoid...</mat-label>
+                <mat-chip-grid #chipGrid aria-label="Enter negative phrases">
+                  <mat-chip-row *ngFor="let phrase of negativePhrases" (removed)="removeNegativePhrase(phrase)"
+                    matTooltipPosition="below" class="negative-prompt-chips">
+                    {{phrase}}
+                    <button matChipRemove [matTooltip]="'Remove ' + phrase">
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  </mat-chip-row>
+                </mat-chip-grid>
+                <input placeholder="New phrase..." [matChipInputFor]="chipGrid"
+                  (matChipInputTokenEnd)="addNegativePhrase($event)" />
+              </mat-form-field>
+            </div>
+        </mat-menu>
       </div>
-      <div matTooltip="Select Negative Phrases"
-        class="cursor-pointer w-36 inline-flex flex-col justify-start items-center">
-        <button mat-fab
-          class="w-6 h-6 text-center justify-center text-stone-300 text-2xl"><mat-icon>block</mat-icon></button>
-        <div class="text-center justify-center text-neutral-200 text-base mt-2">Negative Phrases</div>
-      </div>
+
       <div matTooltip="Select Watermark" class="cursor-pointer w-28 inline-flex flex-col justify-start items-center">
-        <button mat-fab
-          class="w-6 h-6 text-center justify-center text-stone-300 text-2xl"><mat-icon>branding_watermark</mat-icon></button>
-        <div class="text-center justify-center text-neutral-200 text-base mt-2">Watermark</div>
+        <button mat-fab [matMenuTriggerFor]="watermarkMenu" class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
+          <mat-icon>branding_watermark</mat-icon>
+        </button>
+        <div class="text-center justify-center text-neutral-200 text-base mt-2">{{ selectedWatermark }}</div>
+        <mat-menu #watermarkMenu="matMenu">
+          <button *ngFor="let option of watermarkOptions" mat-menu-item (click)="selectWatermark(option)">
+            <span>{{ option.viewValue }}</span>
+          </button>
+        </mat-menu>
       </div>
       <div matTooltip="Replay Last Execution"
         class="cursor-pointer w-8 h-8 bg-black rounded-3xl flex justify-center items-center gap-2.5 overflow-hidden my-auto">
@@ -194,7 +229,7 @@
         </div>
         <textarea id="magazinId"
           class="w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-xl text-neutral-200 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          placeholder="This image has a great energy and captures the sophisticated, modern aesthetic..."></textarea>
+          placeholder="This image has a great energy and captures the sophisticated, modern aesthetic of the Cymbal brand perfectly."></textarea>
       </div>
     </div>
   </div>

@@ -22,4 +22,5 @@ class GenerationOptionsResponse(BaseModel):
     image_styles: List[str]
     lightings: List[str]
     colors_and_tones: List[str]
+    composition: List[str]
     numbers_of_images: List[int]

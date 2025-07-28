@@ -51,6 +51,7 @@ export interface MediaItem {
   num_images?: number;
   seed?: number;
   critique?: string;
+  add_watermark?: boolean;
 
   // Music specific
   audio_analysis?: Record<string, any>;
