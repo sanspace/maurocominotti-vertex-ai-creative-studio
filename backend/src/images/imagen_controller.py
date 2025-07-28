@@ -14,24 +14,34 @@
 
 from fastapi import APIRouter, HTTPException, status as Status
 
+from src.users.user_model import User
+from src.auth.auth_guard import RoleChecker, get_current_user
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
 from src.images.schema.imagen_result_model import ImageGenerationResult
 from src.images.imagen_service import ImagenService
+from fastapi import APIRouter, Depends
 
 router = APIRouter(
     prefix="/api/images",
     tags=["Google Imagen APIs"],
     responses={404: {"description": "Not found"}},
+    dependencies=[
+        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+    ],
 )
+
 
 @router.post("/generate-images")
 def generate_images(
     image_request: CreateImagenDto,
+    current_user: User = Depends(get_current_user),
 ) -> list[ImageGenerationResult]:
     try:
         service = ImagenService()
-        return service.generate_images(image_request)
+        return service.generate_images(
+            image_request_dto=image_request, user_email=current_user.email
+        )
     except HTTPException as http_exception:
         raise http_exception
     except ValueError as value_error:
@@ -47,10 +57,15 @@ def generate_images(
 
 
 @router.post("/generate-images-from-prompt")
-def generate_images_from_prompt(image_request: CreateImagenDto) -> list[ImageGenerationResult]:
+def generate_images_from_prompt(
+    image_request: CreateImagenDto,
+    current_user: User = Depends(get_current_user),
+) -> list[ImageGenerationResult]:
     try:
         service = ImagenService()
-        return service.generate_images_from_prompt(image_request)
+        return service.generate_images_from_prompt(
+            image_request, current_user.email
+        )
     except Exception as e:
         raise HTTPException(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
@@ -80,7 +95,9 @@ def generate_images_vto(prompt: str) -> ImageGenerationResult:
 
 
 @router.post("/recontextualize-product-in-scene")
-def recontextualize_product_in_scene(image_uris_list: list[str], prompt: str, sample_count: int) -> list[str]:
+def recontextualize_product_in_scene(
+    image_uris_list: list[str], prompt: str, sample_count: int
+) -> list[str]:
     try:
         service = ImagenService()
         return service.recontextualize_product_in_scene(image_uris_list, prompt, sample_count)

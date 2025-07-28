@@ -16,7 +16,7 @@
 
 import {Injectable, PLATFORM_ID, inject} from '@angular/core';
 import {Router} from '@angular/router';
-import {OrgUser, UserData} from '../models/user.model';
+import {UserData} from '../models/user.model';
 import {HttpClient, HttpHeaders, HttpErrorResponse} from '@angular/common/http';
 import {environment} from '../../../environments/environment';
 import {Auth, IdTokenResult} from '@angular/fire/auth';
@@ -80,57 +80,33 @@ export class AuthService {
    */
   signInWithGoogleFirebase(): Observable<string> {
     return from(signInWithPopup(this.auth, this.provider)).pipe(
-      switchMap((userCredentials: UserCredential) => {
-        // --- Extract the OAuth Access Token ---
-        const credential =
-          GoogleAuthProvider.credentialFromResult(userCredentials);
-        if (!credential?.accessToken) {
-          console.error(
-            'Could not retrieve OAuth Access Token from credential.',
-          );
-          // Throw an error that can be caught downstream
-          throw new Error('OAuth Access Token not found.');
+      // Step 1: Get the Firebase ID token from the successful sign-in.
+      switchMap((userCredential: UserCredential) => {
+        if (!userCredential.user) {
+          return throwError(() => new Error('Firebase user not found after sign-in.'));
         }
-
-        const firebaseUser = userCredentials.user;
-
-        return from(firebaseUser.getIdTokenResult()).pipe(
-          map((firebaseIdToken: IdTokenResult) => ({
-            firebaseUser,
-            firebaseIdToken,
-            userCredentials,
-          })),
-        );
+        return from(userCredential.user.getIdTokenResult());
       }),
-      switchMap(({firebaseUser, firebaseIdToken, userCredentials}) => {
-        const userEmail = firebaseUser.email?.toLowerCase();
+      // Step 2: Save the session and sync with the backend.
+      switchMap((idTokenResult: IdTokenResult) => {
+        const token = idTokenResult.token;
+        const expirationTime = Date.parse(idTokenResult.expirationTime);
 
-        this.firebaseTokenExpiry = Date.parse(firebaseIdToken.expirationTime);
-        this.firebaseIdToken = firebaseIdToken.token;
-
-        const session: FirebaseSession = {
-          token: this.firebaseIdToken,
-          expiry: this.firebaseTokenExpiry,
-        };
+        // Save session details to memory and local storage.
+        this.firebaseIdToken = token;
+        this.firebaseTokenExpiry = expirationTime;
+        const session: FirebaseSession = {token, expiry: expirationTime};
         localStorage.setItem(FIREBASE_SESSION_KEY, JSON.stringify(session));
 
-        const userDetails: UserData = {
-          uid: firebaseUser.uid,
-          email: userEmail!,
-          photoURL:
-            firebaseUser.photoURL ||
-            'assets/images/default-profile-picture.svg',
-          displayName: firebaseUser.displayName || userEmail!,
-          domain: '',
-          role: '',
-          appRole: '',
-          organizationName: '',
-          organizationKey: '',
-        };
-        localStorage.setItem(USER_DETAILS, JSON.stringify(userDetails));
-
-        return this.firebaseIdToken; // Pass the token along on success
+        // Call the backend to get or create the user profile.
+        return this.syncUserWithBackend$(token).pipe(
+          map(() => token) // Pass the token along for the final result.
+        );
       }),
+      catchError((error: any) => {
+        console.error('An error occurred during the sign-in process:', error);
+        return throwError(() => new Error('Sign-in failed. Please try again.'));
+      })
     );
   }
 
@@ -141,62 +117,42 @@ export class AuthService {
    * 3. If silent refresh fails, it emits an error, signaling a required re-login.
    */
   getValidFirebaseToken$(): Observable<string> {
-    const now = Date.now();
-    // Check cache first: if token exists and is not expiring in the next 60 seconds.
-    if (
-      this.firebaseIdToken &&
-      this.firebaseTokenExpiry &&
-      this.firebaseTokenExpiry > now + 60000
-    ) {
-      return of(this.firebaseIdToken);
+    const currentUser = this.auth.currentUser;
+    if (!currentUser) {
+      return throwError(() => new Error('No user is currently signed in.'));
     }
 
-    // If token is missing or expired, request a new one silently.
-    return this.refreshFirebaseTokenSilently$();
+    // The 'true' argument forces a refresh of the token from the Firebase backend.
+    return from(currentUser.getIdToken(true)).pipe(
+      tap((token: string) => {
+        // Update the in-memory cache and localStorage with the refreshed token info.
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const expiry = payload.exp * 1000;
+
+        this.firebaseIdToken = token;
+        this.firebaseTokenExpiry = expiry;
+
+        const session: FirebaseSession = {token, expiry};
+        localStorage.setItem(FIREBASE_SESSION_KEY, JSON.stringify(session));
+      })
+    );
   }
 
-  private refreshFirebaseTokenSilently$(): Observable<string> {
-    return new Observable<string>(observer => {
-      if (typeof google === 'undefined') {
-        return observer.error(
-          new Error('Google Identity Services script not loaded.'),
-        );
-      }
-
-      // --- Timeout for silent refresh ---
-      const refreshTimeout = setTimeout(() => {
-        observer.error(new Error('Silent token refresh timed out.'));
-      }, 10000); // 10-second timeout for silent refresh
-
-      google.accounts.id.initialize({
-        callback: (response: any) => {
-          const idToken = response.credential;
-          if (idToken) {
-            const payload = JSON.parse(atob(idToken.split('.')[1]));
-            const expiry = payload.exp * 1000;
-            clearTimeout(refreshTimeout); // Success!
-
-            this.firebaseIdToken = idToken;
-            this.firebaseTokenExpiry = expiry;
-
-            const session: FirebaseSession = {token: idToken, expiry: expiry};
-            localStorage.setItem(FIREBASE_SESSION_KEY, JSON.stringify(session));
-
-            observer.next(idToken);
-            observer.complete();
-          } else {
-            clearTimeout(refreshTimeout);
-            observer.error(
-              new Error('Silent refresh failed to return a credential.'),
-            );
-          }
-        },
-        auto_select: true, // This enables the silent token refresh behavior
-      });
-
-      // Trigger the prompt. The callback is no longer used for flow control.
-      google.accounts.id.prompt();
-    });
+  private syncUserWithBackend$(token: string): Observable<UserData> {
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+    return this.httpClient.get<UserData>(`${environment.backendURL}/users/me`, {headers}).pipe(
+      tap((userDetails: UserData) => {
+        console.log("userDetails", userDetails)
+        // The backend is the source of truth. Save the returned profile to local storage.
+        localStorage.setItem(USER_DETAILS, JSON.stringify(userDetails));
+        console.log('User profile successfully synced with backend.');
+      }),
+      catchError((error: HttpErrorResponse) => {
+        console.error('Failed to sync user with backend', error);
+        // This is a critical error, so we should propagate it.
+        return throwError(() => new Error('Could not synchronize user profile with the server.'));
+      })
+    );
   }
 
   async logout(route: string = LOGIN_ROUTE) {
@@ -269,6 +225,7 @@ export class AuthService {
     // const user_role = this.userService.getUserDetails().appRole;
     // return environment.SUPER_ADMIN === user_role;
 
+    // TODO: Now the role will come in the Firebase JWT
     const userDetails = this.userService.getUserDetails(); // Get user details from localStorage
     const userEmail = userDetails?.email?.toLowerCase();
     return this.allowedAdminEmails.includes(userEmail.toLowerCase());
@@ -357,31 +314,5 @@ export class AuthService {
     // refresh requires re-authentication or more complex flows not covered here.
     // For a simple deploy button click, getting a fresh token on sign-in might suffice.
     return this.currentOAuthAccessToken;
-  }
-
-  /**
-   * Fetches a boolean from the backend indicating if the email is allowed.
-   * @param email - The email to check.
-   */
-  fetchEmailIsAllowed(email: string): Observable<boolean> {
-    if (!isPlatformBrowser(this.platformId)) return of(false); // Default to false for SSR, client-side will handle actual fetch
-
-    if (!email) return of(false); // If email is not provided, consider it not allowed
-
-    interface WhitelistResponse {
-      is_whitelisted: boolean;
-    }
-
-    return this.httpClient
-      .get<WhitelistResponse>(
-        `${environment.CLOUD_FUNCTION_URL_WHITELIST}/login`,
-      )
-      .pipe(
-        map(response => !!response?.is_whitelisted), // Extract the boolean property and ensure it's a boolean
-        catchError(err => {
-          console.error(`Error checking if email '${email}' is allowed:`, err);
-          return of(false); // Default to false on error to be restrictive
-        }),
-      );
   }
 }

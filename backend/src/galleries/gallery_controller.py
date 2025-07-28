@@ -14,6 +14,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.auth.auth_guard import RoleChecker
 from src.galleries.dto.gallery_search_dto import GallerySearchDto, PaginatedGalleryResponse
 from src.galleries.dto.gallery_response_dto import GalleryItemResponse
 from src.galleries.gallery_service import GalleryService
@@ -23,6 +24,9 @@ router = APIRouter(
     prefix="/api/gallery",
     tags=["Creative Studio Media Gallery"],
     responses={404: {"description": "Not found"}},
+    dependencies=[
+        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+    ],
 )
 
 @router.post("", response_model=PaginatedGalleryResponse)

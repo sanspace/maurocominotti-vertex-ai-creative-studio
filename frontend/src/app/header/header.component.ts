@@ -20,8 +20,6 @@ import {MatIconRegistry} from '@angular/material/icon';
 import {Router} from '@angular/router';
 import {UserService} from '../common/services/user.service';
 import {AuthService} from '../common/services/auth.service';
-import {interval, Subscription} from 'rxjs';
-import {OrgUser} from '../common/models/user.model';
 import {environment} from '../../environments/environment';
 
 @Component({

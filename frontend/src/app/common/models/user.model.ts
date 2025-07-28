@@ -17,26 +17,14 @@
 import {DocumentData} from '@angular/fire/firestore';
 
 export interface UserData extends DocumentData {
-  uid: string;
+  id: string;
   email: string;
-  photoURL: string;
-  displayName: string;
-  domain: string;
-  role: string;
-  appRole: string;
-  organizationName: string;
-  organizationKey: string;
-}
-
-export interface OrgUser extends DocumentData {
-  userId: string;
-  email: string;
-  domain: string;
-  role?: string;
-  appRole?: string;
-  status: string;
-  organizationName?: string;
-  organizationKey?: string;
+  picture: string;
+  name: string;
+  roles: string[];
+  createdAt: string;
+  updatedAt: string;
+  last_login_at: string;
 }
 
 interface Selection {
@@ -44,24 +32,10 @@ interface Selection {
   viewValue: string;
 }
 
-export const APP_ROLES: Selection[] = [
+export const ROLES: Selection[] = [
   {value: 'user', viewValue: 'User'},
   {value: 'super_admin', viewValue: 'Super Admin'},
   {value: 'org_admin', viewValue: 'Org Admin'},
-];
-
-export const ROLES: Selection[] = [
-  {value: 'Practice Lead', viewValue: 'Practice Lead'},
-  {value: 'Practitioner', viewValue: 'Practitioner'},
-];
-
-export const DRP_PRACTICE_LEAD_ROLES: string[] = [
-  'Resource Manager',
-  'Partner SPOC',
-  'Google Admin',
-  'Google Super Admin',
-];
-export const DRP_PRACTITIONER_ROLES: string[] = [
-  'Partner User',
-  'Partner Individual',
+  {value: 'creator', viewValue: 'Content Creator'},
+  {value: 'viewer', viewValue: 'Content Viewer'},
 ];

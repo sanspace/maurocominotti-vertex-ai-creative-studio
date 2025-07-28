@@ -15,11 +15,17 @@ import time
 from typing import List
 from fastapi import APIRouter, HTTPException, status as Status
 from pydantic import BaseModel
+from fastapi import APIRouter, Depends
+
+from src.auth.auth_guard import RoleChecker
 
 router = APIRouter(
     prefix="/api/videos",
     tags=["Google Video APIs"],
     responses={404: {"description": "Not found"}},
+    dependencies=[
+        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+    ],
 )
 
 @router.get("/api/version")

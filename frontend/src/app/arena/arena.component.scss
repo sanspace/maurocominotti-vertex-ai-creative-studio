@@ -18,12 +18,26 @@
   margin: 2rem 1rem 10rem 1rem;
 }
 
+.video-container {
+  height: 15vh;
+  overflow: hidden;
+  position: relative;
+  border-radius: 1rem;
+
+  video {
+    margin-top: -15%;
+  }
+}
+
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 576px) {
 }
 
 // Medium devices (tablets, 768px and up)
 @media (min-width: 768px) {
+  .video-container {
+    height: 25vh;
+  }
 }
 
 // Large devices (desktops, 992px and up)
@@ -43,4 +57,9 @@
 
 // 4K Displays (Ultra HD) (Projectors or Higher Resolution Screens, 2160px and up)
 @media screen and (min-width: 2160px) {
+  .video-container {
+    video {
+      margin-top: -10%;
+    }
+  }
 }

@@ -17,8 +17,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 # Import the service and the necessary DTO for the request body
+from src.auth.auth_guard import RoleChecker
 from src.multimodal.gemini_service import GeminiService
 from src.images.dto.create_imagen_dto import CreateImagenDto
+from fastapi import APIRouter, Depends
 
 # Define simple Pydantic models for structured JSON responses
 class RewrittenPromptResponse(BaseModel):
@@ -33,6 +35,9 @@ router = APIRouter(
     prefix="/api/gemini",
     tags=["Gemini APIs"],
     responses={404: {"description": "Not found"}},
+    dependencies=[
+        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+    ],
 )
 
 

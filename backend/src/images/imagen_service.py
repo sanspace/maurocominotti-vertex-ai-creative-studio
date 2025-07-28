@@ -57,7 +57,9 @@ class ImagenService:
         retry=retry_if_exception_type(Exception),  # Retry on all exceptions for robustness
         reraise=True,  # re-raise the last exception if all retries fail
     )
-    def generate_images(self, image_request_dto: CreateImagenDto, user_email: str = "maurocominotti@google.com") -> list[ImageGenerationResult]:
+    def generate_images(
+        self, image_request_dto: CreateImagenDto, user_email: str
+    ) -> list[ImageGenerationResult]:
         """Imagen image generation with Google GenAI client"""
 
         client  = ImagenModelSetup.init(model_id=image_request_dto.generation_model)
@@ -86,43 +88,55 @@ class ImagenService:
 
             response_imagen: list[ImageGenerationResult] = []
             for generated_image in (images_imagen_response.generated_images or []):
-              if generated_image.image:
-                # Capture the permanent GCS URI before creating a presigned URL
-                original_gcs_uri = generated_image.image.gcs_uri or ""
+                if generated_image.image:
+                    # Capture the permanent GCS URI before creating a presigned URL
+                    original_gcs_uri = generated_image.image.gcs_uri or ""
 
-                response_imagen.append(
-                  ImageGenerationResult(
-                      enhanced_prompt=generated_image.enhanced_prompt or "",
-                      rai_filtered_reason=generated_image.rai_filtered_reason,
-                      image=CustomImagenResult(
-                          gcs_uri=self.iam_signer_credentials.generate_presigned_url(original_gcs_uri),
-                          encoded_image="",
-                          mime_type=generated_image.image.mime_type or "",
-                      ),
-                  )
-                )
-
-                # Create and save the MediaItem document
-                try:
-                    media_to_save = MediaItem(
-                        # id is generated automatically by the model
-                        user_email=user_email, # Assuming user_email is on your DTO
-                        timestamp=datetime.datetime.now(datetime.timezone.utc),
-                        prompt=generated_image.enhanced_prompt or image_request_dto.prompt,
-                        original_prompt=original_prompt,
-                        model=image_request_dto.generation_model,
-                        mime_type=generated_image.image.mime_type,
-                        gcs_uris=[original_gcs_uri], # Save the permanent URI
-                        aspect=image_request_dto.aspect_ratio,
-                        negative_prompt=image_request_dto.negative_prompt,
-                        num_images=1 # This item represents a single image from the batch
+                    response_imagen.append(
+                        ImageGenerationResult(
+                            enhanced_prompt=generated_image.enhanced_prompt
+                            or "",
+                            rai_filtered_reason=generated_image.rai_filtered_reason,
+                            image=CustomImagenResult(
+                                gcs_uri=self.iam_signer_credentials.generate_presigned_url(
+                                    original_gcs_uri
+                                ),
+                                encoded_image="",
+                                mime_type=generated_image.image.mime_type or "",
+                            ),
+                        )
                     )
-                    self.media_repo.save(media_to_save)
-                    logger.info(f"Successfully saved media item {media_to_save.id} to Firestore.")
-                except Exception as db_error:
-                    logger.error(f"Failed to save media item to Firestore: {db_error}")
-                    # Decide if you want to fail the whole request or just log the error
-                    # For now, we just log it and continue.
+
+                    # Create and save the MediaItem document
+                    try:
+                        media_to_save = MediaItem(
+                            # id is generated automatically by the model
+                            user_email=user_email,
+                            timestamp=datetime.datetime.now(
+                                datetime.timezone.utc
+                            ),
+                            prompt=generated_image.enhanced_prompt
+                            or image_request_dto.prompt,
+                            original_prompt=original_prompt,
+                            model=image_request_dto.generation_model,
+                            mime_type=generated_image.image.mime_type,
+                            gcs_uris=[
+                                original_gcs_uri
+                            ],  # Save the permanent URI
+                            aspect=image_request_dto.aspect_ratio,
+                            negative_prompt=image_request_dto.negative_prompt,
+                            num_images=1,  # This item represents a single image from the batch
+                        )
+                        self.media_repo.save(media_to_save)
+                        logger.info(
+                            f"Successfully saved media item {media_to_save.id} to Firestore."
+                        )
+                    except Exception as db_error:
+                        logger.error(
+                            f"Failed to save media item to Firestore: {db_error}"
+                        )
+                        # Decide if you want to fail the whole request or just log the error
+                        # For now, we just log it and continue.
 
             logger.info(f"Number of images created by Imagen: {len(response_imagen)}")
 
@@ -130,7 +144,6 @@ class ImagenService:
         except Exception as e:
             logger.error(f"models.image_models.generate_images: API call failed: {e}")
             raise
-
 
     async def _generate_with_gemini(
         self,
@@ -161,67 +174,71 @@ class ImagenService:
 
                 for candidate in (gemini_api_response.candidates or []):
                     if candidate.content and candidate.content.parts:
-                      for part in candidate.content.parts:
-                          if (
-                              part.inline_data is not None and
-                              part.inline_data.mime_type and
-                              part.inline_data.data
-                              and part.inline_data.mime_type.startswith("image/")
-                          ):
-                              encoded_image_bytes = base64.b64encode(
-                                  part.inline_data.data
-                              ).decode("utf-8")
-                              generated_text_for_prompt = ""
-                              for p_text in candidate.content.parts:
-                                  if p_text.text is not None:
-                                      generated_text_for_prompt += (
-                                          p_text.text + " "
-                                      )
+                        for part in candidate.content.parts:
+                            if (
+                                part.inline_data is not None
+                                and part.inline_data.mime_type
+                                and part.inline_data.data
+                                and part.inline_data.mime_type.startswith(
+                                    "image/"
+                                )
+                            ):
+                                encoded_image_bytes = base64.b64encode(
+                                    part.inline_data.data
+                                ).decode("utf-8")
+                                generated_text_for_prompt = ""
+                                for p_text in candidate.content.parts:
+                                    if p_text.text is not None:
+                                        generated_text_for_prompt += (
+                                            p_text.text + " "
+                                        )
 
-                              finish_reason_str = (
-                                  candidate.finish_reason.name
-                                  if candidate.finish_reason
-                                  else None
-                              )
-                              if (
-                                  gemini_api_response.prompt_feedback
-                                  and gemini_api_response.prompt_feedback.block_reason
-                              ):
-                                  block_reason = (
-                                      gemini_api_response.prompt_feedback.block_reason
-                                  )
-                                  block_reason_message = (
-                                      gemini_api_response.prompt_feedback.block_reason_message
-                                  )
-                                  finish_reason_str = block_reason_message or (
-                                      block_reason.name
-                                      if block_reason
-                                      else "Blocked"
-                                  )
+                                finish_reason_str = (
+                                    candidate.finish_reason.name
+                                    if candidate.finish_reason
+                                    else None
+                                )
+                                if (
+                                    gemini_api_response.prompt_feedback
+                                    and gemini_api_response.prompt_feedback.block_reason
+                                ):
+                                    block_reason = (
+                                        gemini_api_response.prompt_feedback.block_reason
+                                    )
+                                    block_reason_message = (
+                                        gemini_api_response.prompt_feedback.block_reason_message
+                                    )
+                                    finish_reason_str = (
+                                        block_reason_message
+                                        or (
+                                            block_reason.name
+                                            if block_reason
+                                            else "Blocked"
+                                        )
+                                    )
 
-                              response_gemini.append(
-                                  ImageGenerationResult(
-                                      enhanced_prompt=generated_text_for_prompt.strip()
-                                      or gemini_prompt_text,
-                                      rai_filtered_reason=finish_reason_str,
-                                      image=CustomImagenResult(
-                                          gcs_uri=None,
-                                          encoded_image=encoded_image_bytes,
-                                          mime_type=part.inline_data.mime_type,
-                                      ),
-                                  )
-                              )
-                          elif part.text is not None:
-                              print(
-                                  f"Gemini Text Output (not an image part): {part.text}"
-                              )
+                                response_gemini.append(
+                                    ImageGenerationResult(
+                                        enhanced_prompt=generated_text_for_prompt.strip()
+                                        or gemini_prompt_text,
+                                        rai_filtered_reason=finish_reason_str,
+                                        image=CustomImagenResult(
+                                            gcs_uri=None,
+                                            encoded_image=encoded_image_bytes,
+                                            mime_type=part.inline_data.mime_type,
+                                        ),
+                                    )
+                                )
+                            elif part.text is not None:
+                                print(
+                                    f"Gemini Text Output (not an image part): {part.text}"
+                                )
 
             print(f"Number of images created by Gemini: {len(response_gemini)}")
             return response_gemini
         except Exception as e:
             print(f"Error during Gemini generation: {e}")
             return []
-
 
     async def generate_images_from_gemini(self, image_request_dto: CreateImagenDto) -> list[ImageGenerationResult]:
         client  = ImagenModelSetup.init(model_id=image_request_dto.generation_model)
@@ -249,8 +266,9 @@ class ImagenService:
             )
         return response_gemini
 
-
-    def generate_images_from_prompt(self, image_request_dto: CreateImagenDto) -> list[ImageGenerationResult]:
+    def generate_images_from_prompt(
+        self, image_request_dto: CreateImagenDto, user_email: str
+    ) -> list[ImageGenerationResult]:
         """
         Generates images based on the input prompt and parameters.
         Returns a list of image URIs. Does not directly modify PageState.
@@ -259,8 +277,7 @@ class ImagenService:
         full_prompt = f"{input_txt}, {image_request_dto.prompt}"
         image_request_dto.prompt = full_prompt
 
-        return self.generate_images(image_request_dto)
-
+        return self.generate_images(image_request_dto, user_email)
 
     def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
         """Generates a single image and returns the image bytes."""
@@ -291,7 +308,6 @@ class ImagenService:
                   )
         else:
             raise ValueError("Image generation failed or returned no data.")
-
 
     def recontextualize_product_in_scene(self, image_uris_list: list[str], prompt: str, sample_count: int) -> list[str]:
         """Recontextualizes a product in a scene and returns a list of GCS URIs."""
@@ -331,7 +347,6 @@ class ImagenService:
                 gcs_uris.append(gcs_uri)
 
         return gcs_uris
-
 
     @retry(
         wait=wait_exponential(
@@ -377,18 +392,21 @@ class ImagenService:
 
             response_imagen = []
             for generated_image in (images_imagen_response.generated_images or []):
-              if generated_image.image:
-                response_imagen.append(
-                  ImageGenerationResult(
-                      enhanced_prompt=generated_image.enhanced_prompt or "",
-                      rai_filtered_reason=generated_image.rai_filtered_reason,
-                      image=CustomImagenResult(
-                          gcs_uri=self.iam_signer_credentials.generate_presigned_url(generated_image.image.gcs_uri),
-                          encoded_image="",
-                          mime_type=generated_image.image.mime_type or "",
-                      ),
-                  )
-                )
+                if generated_image.image:
+                    response_imagen.append(
+                        ImageGenerationResult(
+                            enhanced_prompt=generated_image.enhanced_prompt
+                            or "",
+                            rai_filtered_reason=generated_image.rai_filtered_reason,
+                            image=CustomImagenResult(
+                                gcs_uri=self.iam_signer_credentials.generate_presigned_url(
+                                    generated_image.image.gcs_uri
+                                ),
+                                encoded_image="",
+                                mime_type=generated_image.image.mime_type or "",
+                            ),
+                        )
+                    )
 
             logger.info(f"Number of images created by Imagen: {len(response_imagen)}")
             return response_imagen

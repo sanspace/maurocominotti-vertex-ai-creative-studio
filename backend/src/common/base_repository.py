@@ -1,12 +1,18 @@
+import datetime
 from typing import Generic, TypeVar, Optional, List
 import uuid
 from pydantic import BaseModel, Field
 from google.cloud import firestore
 from src.auth import firebase_client_service
 
-# Define a Pydantic model that guarantees the 'id' field exists.
 class BaseDocument(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    createdAt: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
+    updatedAt: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
 
 # Use this new base document as the bound for your generic type.
 T = TypeVar("T", bound=BaseDocument)
@@ -29,7 +35,14 @@ class BaseRepository(Generic[T]):
         return self.model.model_validate(doc.to_dict())
 
     def save(self, item: T) -> str:
-        """Saves a Pydantic model document to Firestore."""
+        """
+        Saves a Pydantic model document to Firestore, automatically
+        updating the 'updatedAt' timestamp.
+        """
+        # Before saving, update the timestamp.
+        # This ensures it's always current on every write operation.
+        item.updatedAt = datetime.datetime.now(datetime.timezone.utc)
+
         doc_ref = self.collection_ref.document(item.id)
         # Use .model_dump() for Pydantic v2
         doc_ref.set(item.model_dump(exclude_none=True))

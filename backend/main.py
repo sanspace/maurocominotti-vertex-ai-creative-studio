@@ -30,6 +30,10 @@ from src.audios.audio_controller import router as audio_router
 from src.videos.video_controller import router as video_router
 from src.galleries.gallery_controller import router as gallery_router
 from src.multimodal.gemini_controller import router as gemini_router
+from src.users.user_controller import router as user_router
+from src.generation_options.generation_options_controller import (
+    router as generation_options_router,
+)
 
 # Get the logger instance that Uvicorn is using
 logging.basicConfig(
@@ -115,3 +119,5 @@ app.include_router(audio_router)
 app.include_router(video_router)
 app.include_router(gallery_router)
 app.include_router(gemini_router)
+app.include_router(user_router)
+app.include_router(generation_options_router)

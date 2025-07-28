@@ -35,44 +35,43 @@ export class AuthInterceptor implements HttpInterceptor {
     request: HttpRequest<unknown>,
     next: HttpHandler,
   ): Observable<HttpEvent<unknown>> {
-    return next.handle(request);
+    const apiUrlsToSecure = [environment.backendURL].filter(url => !!url); // Filter out any undefined/empty URLs to prevent errors
 
-    // const apiUrlsToSecure = [
-    //   environment.backendURL,
-    //   environment.DOMAIN, // If this is a base URL for backend services
-    //   environment.CLOUD_FUNCTION_URL_WHITELIST,
-    // ].filter(url => !!url); // Filter out any undefined/empty URLs to prevent errors
+    const shouldAttachToken = apiUrlsToSecure.some(apiUrl =>
+      request.url.startsWith(apiUrl),
+    );
 
-    // const shouldAttachToken = apiUrlsToSecure.some(apiUrl => request.url.startsWith(apiUrl));
+    if (!shouldAttachToken) return next.handle(request);
 
-    // if (!shouldAttachToken) {
-    //   return next.handle(request);
-    // }
+    // Asynchronously get a valid token. This will use the cache or trigger a silent refresh.
+    return this.authService.getValidFirebaseToken$().pipe(
+      switchMap(token => {
+        // Token was retrieved successfully. Clone the request and add the auth header.
+        const authorizedRequest = request.clone({
+          setHeaders: {Authorization: `Bearer ${token}`},
+        });
+        return next.handle(authorizedRequest);
+      }),
+      catchError(error => {
+        // If the error is NOT an HttpErrorResponse, it's a token refresh failure
+        // from our AuthService. In this case, the session is invalid, and we should log out.
+        if (!(error instanceof HttpErrorResponse)) {
+          console.error(
+            'AuthInterceptor: Session expired and could not be refreshed. Logging out.',
+            error,
+          );
+          this.authService.logout();
+          // Return a new error indicating a session failure.
+          return throwError(
+            () => new Error('Session expired. Please log in again.'),
+          );
+        }
 
-    // // Asynchronously get a valid token. This will use the cache or trigger a silent refresh.
-    // return this.authService.getValidFirebaseToken$().pipe(
-    //   switchMap(token => {
-    //     // Token was retrieved successfully. Clone the request and add the auth header.
-    //     const authorizedRequest = request.clone({
-    //       setHeaders: { Authorization: `Bearer ${token}` }
-    //     });
-    //     return next.handle(authorizedRequest);
-    //   }),
-    //   catchError(error => {
-    //     // If the error is NOT an HttpErrorResponse, it's a token refresh failure
-    //     // from our AuthService. In this case, the session is invalid, and we should log out.
-    //     if (!(error instanceof HttpErrorResponse)) {
-    //       console.error('AuthInterceptor: Session expired and could not be refreshed. Logging out.', error);
-    //       this.authService.logout();
-    //       // Return a new error indicating a session failure.
-    //       return throwError(() => new Error('Session expired. Please log in again.'));
-    //     }
-
-    //     // Otherwise, it's a backend API error (e.g., 404, 500). We should NOT log out.
-    //     // We just re-throw the original HttpErrorResponse so the calling service
-    //     // (e.g., UserService) can handle it and display an appropriate error message.
-    //     return throwError(() => error);
-    //   })
-    // );
+        // Otherwise, it's a backend API error (e.g., 404, 500). We should NOT log out.
+        // We just re-throw the original HttpErrorResponse so the calling service
+        // (e.g., UserService) can handle it and display an appropriate error message.
+        return throwError(() => error);
+      }),
+    );
   }
 }

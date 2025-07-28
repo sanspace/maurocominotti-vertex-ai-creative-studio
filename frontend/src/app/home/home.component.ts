@@ -42,36 +42,79 @@ import lgShare from 'lightgallery/plugins/share';
 import {Subscription} from 'rxjs';
 import {additionalShareOptions} from '../utils/lightgallery-share-options';
 
-export interface TemplateCard {
-  id: string;
-  title: string;
-  description: string;
-  media: {type: 'image' | 'video'; src: string; alt: string};
-  isComingSoon?: boolean;
-  getCodeAction: () => void;
-  customAction?: {
-    label: string;
-    action: () => void;
-  };
-}
-
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
 export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
-  templateCards: TemplateCard[] = [];
+  // --- Component State ---
   imagenDocuments: GeneratedImage[] = [];
   isLoading = false;
   showDefaultDocuments = false;
+
+  // --- Search Request Object ---
+  // This object holds the current state of all user selections.
   searchRequest: SearchRequest = {
-    prompt: 'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
+    prompt:
+      'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
     generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
     aspectRatio: '1:1',
     imageStyle: 'Modern',
     numberOfImages: 1,
+    lighting: 'Cinematic',
+    colorAndTone: 'Vibrant',
   };
+
+  // --- Dropdown Options ---
+  generationModels = [
+    {
+      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      viewValue: 'Imagen 4 Ultra',
+    },
+    {value: 'imagen-3.0-generate-002', viewValue: 'Imagen 3'},
+    {value: 'imagen-3.0-fast-generate-001', viewValue: 'Imagen 3 Fast'},
+  ];
+  selectedGenerationModel = this.generationModels[0].viewValue;
+  aspectRatios = ['16:9', '1:1', '9:16', '4:3', '3:4'];
+  imageStyles = [
+    'Photorealistic',
+    'Cinematic',
+    'Modern',
+    'Realistic',
+    'Vintage',
+    'Monochrome',
+    'Fantasy',
+    'Sketch',
+  ];
+  lightings = [
+    'Cinematic',
+    'Studio',
+    'Natural',
+    'Dramatic',
+    'Ambient',
+    'Backlighting',
+    'Dramatic Light',
+    'Golden Hour',
+    'Exposure',
+    'Low Lighting',
+    'Multiexposure',
+    'Studio Light',
+  ];
+  colorsAndTones = [
+    'Vibrant',
+    'Muted',
+    'Warm',
+    'Cool',
+    'Monochrome',
+    'Black & White',
+    'Golden',
+    'Pastel',
+    'Toned',
+  ];
+  numberOfImagesOptions = [1, 2, 3, 4];
+
+  // --- Private properties for animation and gallery ---
   private curX = 0;
   private curY = 0;
   private tgX = 0;
@@ -230,43 +273,37 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  searchTerm({
-    prompt,
-    aspectRatio,
-    model,
-    imageStyle,
-    numberOfImages,
-  }: {
-      prompt?: string | undefined;
-    aspectRatio?: string | undefined;
-    model?: string | undefined;
-    imageStyle?: string | undefined;
-    numberOfImages?: number | undefined;
-  }) {
-    if (!prompt) return;
+  selectModel(model: {value: string; viewValue: string}): void {
+    this.searchRequest.generationModel = model.value;
+    this.selectedGenerationModel = model.viewValue;
+  }
+
+  selectAspectRatio(ratio: string): void {
+    this.searchRequest.aspectRatio = ratio;
+  }
+
+  selectImageStyle(style: string): void {
+    this.searchRequest.imageStyle = style;
+  }
+
+  selectLighting(lighting: string): void {
+    this.searchRequest.lighting = lighting;
+  }
+
+  selectColor(color: string): void {
+    this.searchRequest.colorAndTone = color;
+  }
+
+  selectNumberOfImages(num: number): void {
+    this.searchRequest.numberOfImages = num;
+  }
+
+  searchTerm() {
+    if (!this.searchRequest.prompt) return;
 
     this.isLoading = true;
     this.imagenDocuments = [];
     this.lightGalleryInstance?.destroy();
-
-    // this.showDefaultDocuments = false;
-    // this.userService.showLoading();
-    // this.searchResult = [];
-    // this.summary = '';
-    // this.imagenDocuments = [];
-    // this.geminiDocuments = [];
-    // this.images = [];
-
-    this.searchRequest.prompt = prompt || this.searchRequest.prompt;
-    // this.searchRequest.aspectRatio =
-    //   aspectRatio || this.selectedAspectRatio.value;
-    // this.searchRequest.generationModel = model || this.selectedModel;
-    // this.searchRequest.imageStyle = imageStyle || this.selectedImageStyle;
-    // this.searchRequest.numberOfImages = numberOfImages || this.numberOfResults;
-
-    // const newSearchRequest = this.searchRequest;
-    // console.log('Search request:', newSearchRequest);
-    // this.currentSearchTerm = newSearchRequest.term;
 
     this.service
       .search(this.searchRequest)

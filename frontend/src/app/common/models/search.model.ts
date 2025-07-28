@@ -20,6 +20,8 @@ export type SearchRequest = {
   aspectRatio: string;
   imageStyle: string;
   numberOfImages: number;
+  lighting: string;
+  colorAndTone: string;
 };
 
 export type SearchResponse = {

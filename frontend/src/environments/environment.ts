@@ -31,6 +31,5 @@ export const environment = {
   CLOUD_FUNCTION_URL: '',
   FEEDBACK_FORM_URL: '',
   PROD_URL: '',
-  CLOUD_FUNCTION_URL_WHITELIST: '',
   backendURL: 'http://localhost:8080/api',
 };

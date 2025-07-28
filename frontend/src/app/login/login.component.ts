@@ -101,18 +101,7 @@ export class LoginComponent {
   }
 
   redirect(user: UserData) {
-    const userDetails: LooseObject = {
-      name: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL,
-      domain: user.domain,
-      uid: user.uid,
-      orgId: user.organizationKey,
-      orgName: user.organizationName,
-      // Role is set here based on UserData, which should get appRole from userService
-      role: user.appRole || 'Practice Lead', // Using appRole from UserData or fallback
-    };
-    localStorage.setItem('USER_DETAILS', JSON.stringify(userDetails));
+    localStorage.setItem('USER_DETAILS', JSON.stringify(user));
     this.loader = false;
     void this.router.navigate([HOME_ROUTE]);
   }

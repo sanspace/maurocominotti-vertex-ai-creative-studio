@@ -44,6 +44,8 @@ class ImageStyleEnum(str, Enum):
     MONOCHROME = "Monochrome"
     FANTASY = "Fantasy"
     SKETCH = "Sketch"
+    PHOTOREALISTIC = "Photorealistic"
+    CINEMATIC = "Cinematic"
 
 class ColorAndTone(str, Enum):
     """Enum for color and tone styles."""
@@ -53,6 +55,10 @@ class ColorAndTone(str, Enum):
     MUTED = "Muted"
     PASTEL = "Pastel"
     TONED = "Toned"
+    VIBRANT = "Vibrant"
+    WARM = "Warm"
+    COOL = "Cool"
+    MONOCHROME = "Monochrome"
 
 class Lighting(str, Enum):
     """Enum for lighting styles."""
@@ -63,6 +69,11 @@ class Lighting(str, Enum):
     LOW_LIGHTING = "Low Lighting"
     MULTIEXPOSURE = "Multiexposure"
     STUDIO_LIGHT = "Studio Light"
+    CINEMATIC = "Cinematic"
+    STUDIO = "Studio"
+    NATURAL = "Natural"
+    DRAMATIC = "Dramatic"
+    AMBIENT = "Ambient"
 
 class BaseSchema(BaseModel):
     model_config = ConfigDict(
