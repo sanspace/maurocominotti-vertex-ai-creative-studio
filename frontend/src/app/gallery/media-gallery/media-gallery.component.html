@@ -63,6 +63,44 @@
       <p class="pt-5 text-white">Loading media...</p>
     </div>
 
+    <div *ngIf="!isLoading"
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 justify-evenly align-center p-4 rounded-lg mt-4">
+      <!-- Email Filter -->
+      <mat-form-field>
+        <mat-label>User Email</mat-label>
+        <input matInput [(ngModel)]="userEmailFilter" placeholder="Filter by email">
+      </mat-form-field>
+    
+      <!-- Media Type Filter -->
+      <mat-form-field>
+        <mat-label>Media Type</mat-label>
+        <mat-select [(ngModel)]="mediaTypeFilter">
+          <mat-option>None</mat-option>
+          <mat-option value="image/png">Image</mat-option>
+          <mat-option value="video/mp4">Video</mat-option>
+          <mat-option value="audio/mpeg">Audio</mat-option>
+        </mat-select>
+      </mat-form-field>
+    
+      <!-- Generation Model Filter -->
+      <mat-form-field>
+        <mat-label>Generation Model</mat-label>
+        <mat-select [(ngModel)]="generationModelFilter">
+          <mat-option>None</mat-option>
+          <mat-option *ngFor="let model of generationModels" [value]="model.value">
+            {{ model.viewValue }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    
+      <button mat-raised-button class="!bg-white !h-12 !px-6" (click)="searchTerm()">
+        <mat-icon svgIcon="gemini-spark-icon"></mat-icon>
+        <span
+          class="!text-lg font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent">
+          Search
+        </span>
+      </button>
+    </div>
 
     <div class="flex flex-row gap-4" *ngIf="(columns?.length || 0) > 0">
       <div *ngFor="let column of columns" class="flex flex-1 flex-col gap-4">

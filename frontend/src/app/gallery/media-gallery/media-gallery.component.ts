@@ -21,6 +21,21 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   private loadingSubscription: Subscription | undefined;
   private resizeSubscription: Subscription | undefined;
   private numColumns = 4;
+  public userEmailFilter: string = '';
+  public mediaTypeFilter: string = '';
+  public generationModelFilter: string = '';
+  public generationModels = [
+    {
+      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      viewValue: 'Imagen 4 Ultra',
+    },
+    {value: 'imagen-3.0-generate-002', viewValue: 'Imagen 3'},
+    {value: 'imagen-3.0-fast-generate-001', viewValue: 'Imagen 3 Fast'},
+    {value: 'imagen-3.0-generate-001', viewValue: 'Imagen 3 (001)'},
+    {value: 'imagegeneration@006', viewValue: 'ImageGen (006)'},
+    {value: 'imagegeneration@005', viewValue: 'ImageGen (005)'},
+    {value: 'imagegeneration@002', viewValue: 'ImageGen (002)'},
+  ];
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
   constructor(
@@ -28,10 +43,15 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
   ) {
-    this.matIconRegistry.addSvgIcon(
-      'mobile-white-gemini-spark-icon',
-      this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
-    );
+    this.matIconRegistry
+      .addSvgIcon(
+        'mobile-white-gemini-spark-icon',
+        this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
+      )
+      .addSvgIcon(
+        'gemini-spark-icon',
+        this.setPath(`${this.path}/gemini-spark-icon.svg`),
+      );
   }
 
   private path = '../../assets/images';
@@ -166,6 +186,21 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
       this.columns[index % this.numColumns].push(image);
     });
   }
+
+  public searchTerm(): void {
+    const filters: {[key: string]: string} = {};
+    if (this.userEmailFilter) {
+      filters['user_email'] = this.userEmailFilter;
+    }
+    if (this.mediaTypeFilter) {
+      filters['mime_type'] = this.mediaTypeFilter;
+    }
+    if (this.generationModelFilter) {
+      filters['model'] = this.generationModelFilter;
+    }
+    this.galleryService.setFilters(filters);
+  }
+
   /**
    * Listens for the main window's scroll event to trigger infinite loading.
    */
