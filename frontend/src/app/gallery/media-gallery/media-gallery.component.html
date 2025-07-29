@@ -67,10 +67,18 @@
     <div class="flex flex-row gap-4" *ngIf="(columns?.length || 0) > 0">
       <div *ngFor="let column of columns" class="flex flex-1 flex-col gap-4">
         <div *ngFor="let image of column; trackBy: trackByImage" class="relative group rounded-lg overflow-hidden shadow-lg"
-          (mouseenter)="stopAutoSlide(image.id)" (mouseleave)="startAutoSlide(image)">
-          <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }">
-            <img class="h-auto w-full cursor-pointer transition-opacity duration-300 group-hover:opacity-80"
-              [src]="getCurrentImageUrl(image)" [alt]="image.prompt || 'Gallery image'">
+        (mouseenter)="stopAutoSlide(image.id)" (mouseleave)="startAutoSlide(image)">
+          <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }" class="transition-opacity duration-500 block">
+            <ng-container *ngIf="image.presigned_urls">
+              <img *ngFor="let url of image.presigned_urls; let i = index"
+                class="h-auto w-full cursor-pointer absolute top-0 left-0 transition-opacity duration-500 group-hover:opacity-80"
+                [src]="url" [alt]="image.prompt || 'Gallery image'"
+                [class.active]="(currentImageIndices[image.id] || 0) === i"
+                [style.opacity]="(currentImageIndices[image.id] || 0) === i ? 1 : 0">
+            </ng-container>
+
+            <!-- A "spacer" image: It's invisible but defines the height of the container -->
+            <img [src]="image.presigned_urls?.[0]" class="w-full h-auto invisible" [alt]="image.prompt || 'Gallery image'">
           </a>
 
           <!-- Carousel Controls: Only show if there's more than one image -->

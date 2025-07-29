@@ -17,8 +17,10 @@ class MediaRepository(BaseRepository[MediaItem]):
         """
         Performs a generic, paginated query on the media_library collection.
         """
-        # Start with the base query and order by timestamp for consistent pagination
-        query = self.collection_ref.order_by("timestamp", direction=firestore.Query.DESCENDING)
+        # Start with the base query and order by created_at for consistent pagination
+        query = self.collection_ref.order_by(
+            "created_at", direction=firestore.Query.DESCENDING
+        )
 
         # Apply optional filters
         if search_dto.user_email:

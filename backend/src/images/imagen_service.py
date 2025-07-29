@@ -136,6 +136,11 @@ class ImagenService:
                 for img in valid_generated_images
                 if img.image and img.image.gcs_uri
             ]
+            mime_type: str = (
+                valid_generated_images[0].image.mime_type or "image/png"
+                if valid_generated_images[0].image
+                else "image/png"
+            )
 
             # 2. Create and run tasks to generate all presigned URLs in parallel
             presigned_url_tasks = [
@@ -152,9 +157,9 @@ class ImagenService:
             )
             media_post_to_save = MediaItem(
                 **dto_data,  # Unpack all other matching fields from the DTO
+                mime_type=mime_type,
                 user_email=user_email,
                 model=request_dto.generation_model,
-                timestamp=datetime.datetime.now(datetime.timezone.utc),
                 generation_time=generation_time,
                 prompt=rewritten_prompt,
                 original_prompt=original_prompt,

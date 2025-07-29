@@ -20,7 +20,8 @@
 export interface MediaItem {
   id: string;
   user_email?: string;
-  timestamp?: string; // ISO 8601 date string
+  created_at?: string; // ISO 8601 date string
+  updated_at?: string; // ISO 8601 date string
 
   // Common fields across media types
   prompt?: string;

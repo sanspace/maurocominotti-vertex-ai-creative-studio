@@ -7,10 +7,10 @@ from src.auth import firebase_client_service
 
 class BaseDocument(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    createdAt: datetime.datetime = Field(
+    created_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
-    updatedAt: datetime.datetime = Field(
+    updated_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
 
@@ -41,7 +41,7 @@ class BaseRepository(Generic[T]):
         """
         # Before saving, update the timestamp.
         # This ensures it's always current on every write operation.
-        item.updatedAt = datetime.datetime.now(datetime.timezone.utc)
+        item.updated_at = datetime.datetime.now(datetime.timezone.utc)
 
         doc_ref = self.collection_ref.document(item.id)
         # Use .model_dump() for Pydantic v2

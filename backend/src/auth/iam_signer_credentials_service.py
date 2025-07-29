@@ -75,7 +75,6 @@ class IamSignerCredentials(credentials.Signing):
             print(f"Error generating presigned URL for {gcs_uri}: {e}")
             return gcs_uri
 
-
     @property
     def signer_email(self) -> str:
         """The email of the service account used for signing."""
@@ -83,14 +82,11 @@ class IamSignerCredentials(credentials.Signing):
 
     def sign_bytes(self, message: bytes) -> bytes:
         """Signs a bytestring using the IAM Credentials API."""
-        print(
-            f"--> Custom signer: Requesting signature from IAM for SA '{self.service_account_email}'...")
         try:
             response = self.iam_client.sign_blob(
                 name=self._sa_path,
                 payload=message,
             )
-            print("--> Custom signer: Signature received.")
             return response.signed_blob
         except Exception as e:
             print(f"IAM PERMISSION DENIED: The principal running this code does not have "

@@ -47,9 +47,9 @@
         </div>
 
         <div>
-          <strong class="font-semibold">Timestamp:</strong>
-          <p>{{ mediaItem.timestamp | date:'medium' }}</p>
-        </div>
+          <strong class="font-semibold">Created at:</strong>
+          <p>{{ mediaItem.created_at | date:'medium' }}</p>
+        </div> 
 
         <div>
           <strong class="font-semibold">Mime Type:</strong>
@@ -84,7 +84,7 @@
             <li *ngFor="let image of mediaItem.source_images_gcs">{{ image }}</li>
           </ul>
         </div>
-        
+
         <!-- Image Specific -->
         <div *ngIf="mediaItem.modifiers?.length">
           <strong class="font-semibold">Modifiers:</strong>
@@ -92,68 +92,68 @@
             <li *ngFor="let modifier of mediaItem.modifiers">{{ modifier }}</li>
           </ul>
         </div>
-        
+
         <div *ngIf="mediaItem.num_images">
           <strong class="font-semibold">Number of Images:</strong>
           <p>{{ mediaItem.num_images }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.aspect_ratio">
           <strong class="font-semibold">Aspect Ratio:</strong>
           <p>{{ mediaItem.aspect_ratio }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.image_style">
           <strong class="font-semibold">Image Style:</strong>
           <p>{{ mediaItem.image_style }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.lighting">
           <strong class="font-semibold">Lighting:</strong>
           <p>{{ mediaItem.lighting }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.color_and_tone">
           <strong class="font-semibold">Color and Tone:</strong>
           <p>{{ mediaItem.color_and_tone }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.composition">
           <strong class="font-semibold">Composition:</strong>
           <p>{{ mediaItem.composition }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.seed">
           <strong class="font-semibold">Seed:</strong>
           <p>{{ mediaItem.seed }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.critique">
           <strong class="font-semibold">Critique:</strong>
           <p>{{ mediaItem.critique }}</p>
         </div>
-        
+
         <!-- Video Specific -->
         <div *ngIf="mediaItem.aspect">
           <strong class="font-semibold">Aspect Ratio:</strong>
           <p>{{ mediaItem.aspect }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.duration">
           <strong class="font-semibold">Duration:</strong>
           <p>{{ mediaItem.duration }} seconds</p>
         </div>
-        
+
         <div *ngIf="mediaItem.reference_image">
           <strong class="font-semibold">Reference Image:</strong>
           <p>{{ mediaItem.reference_image }}</p>
         </div>
-        
+
         <div *ngIf="mediaItem.last_reference_image">
           <strong class="font-semibold">Last Reference Image:</strong>
           <p>{{ mediaItem.last_reference_image }}</p>
         </div>
-        
+
         <!-- <div *ngIf="mediaItem.enhanced_prompt_used !== undefined">
                                           <strong class="font-semibold">Enhanced Prompt Used:</strong>
                                           <p>{{ mediaItem.enhanced_prompt_used }}</p>

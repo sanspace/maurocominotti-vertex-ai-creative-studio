@@ -13,15 +13,16 @@ from src.common.base_repository import BaseDocument
 class MediaItem(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""
 
-    user_email: Optional[str] = None
-    timestamp: Optional[datetime.datetime] = None
+    # Indexes that shouldn't and mustn't be empty
+    # created_at is an index but is autopopulated by BaseDocument
+    user_email: str
+    mime_type: str
+    model: str
 
     # Common fields across media types
     prompt: Optional[str] = None
     original_prompt: Optional[str] = None
     rewritten_prompt: Optional[str] = None
-    model: Optional[str] = None
-    mime_type: Optional[str] = None
     generation_time: Optional[float] = None
     error_message: Optional[str] = None
 
