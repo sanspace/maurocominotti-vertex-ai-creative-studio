@@ -117,25 +117,37 @@ export class AuthService {
    * 3. If silent refresh fails, it emits an error, signaling a required re-login.
    */
   getValidFirebaseToken$(): Observable<string> {
-    const currentUser = this.auth.currentUser;
-    if (!currentUser) {
-      return throwError(() => new Error('No user is currently signed in.'));
+    // First, check our own session info which is loaded from localStorage.
+    // This is synchronous and tells us if we have a valid, non-expired token.
+    if (!this.isLoggedIn()) {
+      return throwError(
+        () => new Error('User session is not valid or has expired.'),
+      );
     }
 
-    // The 'true' argument forces a refresh of the token from the Firebase backend.
-    return from(currentUser.getIdToken(true)).pipe(
-      tap((token: string) => {
-        // Update the in-memory cache and localStorage with the refreshed token info.
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const expiry = payload.exp * 1000;
+    // If we have a valid session, check if the Firebase Auth instance is ready.
+    const currentUser = this.auth.currentUser;
+    if (currentUser) {
+      // Ideal case: Auth is ready, so we can force a token refresh to ensure it's fresh.
+      return from(currentUser.getIdToken(true)).pipe(
+        tap((token: string) => {
+          // Update the in-memory cache and localStorage with the refreshed token info.
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const expiry = payload.exp * 1000;
 
-        this.firebaseIdToken = token;
-        this.firebaseTokenExpiry = expiry;
+          this.firebaseIdToken = token;
+          this.firebaseTokenExpiry = expiry;
 
-        const session: FirebaseSession = {token, expiry};
-        localStorage.setItem(FIREBASE_SESSION_KEY, JSON.stringify(session));
-      })
-    );
+          const session: FirebaseSession = {token, expiry};
+          localStorage.setItem(FIREBASE_SESSION_KEY, JSON.stringify(session));
+        }),
+      );
+    }
+
+    // Fallback case: The Firebase Auth instance is not yet initialized, but we
+    // have a valid token from localStorage. We can use this for the current
+    // request. The next request will likely hit the ideal case above.
+    return of(this.firebaseIdToken!);
   }
 
   private syncUserWithBackend$(token: string): Observable<UserData> {

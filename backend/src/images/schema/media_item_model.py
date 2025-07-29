@@ -1,7 +1,13 @@
 import datetime
 from typing import Dict, List, Optional
-import uuid
 from pydantic import Field
+from src.common.base_schema_model import (
+    AspectRatioEnum,
+    ColorAndToneEnum,
+    CompositionEnum,
+    ImageStyleEnum,
+    LightingEnum,
+)
 from src.common.base_repository import BaseDocument
 
 class MediaItem(BaseDocument):
@@ -21,7 +27,7 @@ class MediaItem(BaseDocument):
 
     # URI fields
     gcsuri: Optional[str] = None
-    gcs_uris: List[str] = Field(default_factory=list) # ✅ Use default_factory for lists
+    gcs_uris: List[str] = Field(default_factory=list)
     source_images_gcs: List[str] = Field(default_factory=list)
 
     # Video specific
@@ -34,8 +40,13 @@ class MediaItem(BaseDocument):
 
     # Image specific
     modifiers: List[str] = Field(default_factory=list)
-    negative_prompt: Optional[str] = None
     num_images: Optional[int] = None
+    aspect_ratio: Optional[AspectRatioEnum] = None
+    image_style: Optional[ImageStyleEnum] = None
+    lighting: Optional[LightingEnum] = None
+    color_and_tone: Optional[ColorAndToneEnum] = None
+    composition: Optional[CompositionEnum] = None
+    negative_prompt: Optional[str] = None
     seed: Optional[int] = None
     critique: Optional[str] = None
     add_watermark: Optional[bool] = None

@@ -1,12 +1,9 @@
-<!-- Show a loading indicator until the media item is fetched -->
 <div *ngIf="isLoading" class="flex flex-col justify-center items-center h-screen text-white text-center">
   <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
   <p class="pt-8">Loading media details...</p>
 </div>
 
-<!-- Once the data is available, show the main content -->
 <div *ngIf="mediaItem" class="lg:container lg:mx-auto py-8 px-4">
-  <!-- Back Button -->
   <button [routerLink]="['/gallery']"
     class="mb-8 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center">
     &larr; Back to Gallery
@@ -15,15 +12,8 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
     <!-- Left Column: The Image/Video -->
     <div class="md:col-span-2">
-      <!--
-        This container will be used by lightGallery.
-        The <a> tag provides the source for the lightbox view.
-      -->
-      <lightgallery [settings]="settings" [onInit]="initLightGallery">
-        <a [href]="mediaItem.presigned_urls?.[0]" class="block rounded-lg overflow-hidden shadow-lg">
-          <img [src]="mediaItem.presigned_urls?.[0]" [alt]="mediaItem.prompt" class="w-full h-auto object-cover">
-        </a>
-      </lightgallery>
+      <!-- This container will be used by lightGallery to render the inline carousel -->
+      <div #lightGalleryCarousel class="inline-gallery-container"></div>
     </div>
 
     <!-- Right Column: The Metadata -->
@@ -88,11 +78,85 @@
           </ul>
         </div>
 
-        <!-- <div *ngIf="mediaItem.source_images_gcs">
+        <div *ngIf="mediaItem.source_images_gcs?.length">
           <strong class="font-semibold">Source Images GCS:</strong>
           <ul>
             <li *ngFor="let image of mediaItem.source_images_gcs">{{ image }}</li>
           </ul>
+        </div>
+        
+        <!-- Image Specific -->
+        <div *ngIf="mediaItem.modifiers?.length">
+          <strong class="font-semibold">Modifiers:</strong>
+          <ul>
+            <li *ngFor="let modifier of mediaItem.modifiers">{{ modifier }}</li>
+          </ul>
+        </div>
+        
+        <div *ngIf="mediaItem.num_images">
+          <strong class="font-semibold">Number of Images:</strong>
+          <p>{{ mediaItem.num_images }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.aspect_ratio">
+          <strong class="font-semibold">Aspect Ratio:</strong>
+          <p>{{ mediaItem.aspect_ratio }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.image_style">
+          <strong class="font-semibold">Image Style:</strong>
+          <p>{{ mediaItem.image_style }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.lighting">
+          <strong class="font-semibold">Lighting:</strong>
+          <p>{{ mediaItem.lighting }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.color_and_tone">
+          <strong class="font-semibold">Color and Tone:</strong>
+          <p>{{ mediaItem.color_and_tone }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.composition">
+          <strong class="font-semibold">Composition:</strong>
+          <p>{{ mediaItem.composition }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.seed">
+          <strong class="font-semibold">Seed:</strong>
+          <p>{{ mediaItem.seed }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.critique">
+          <strong class="font-semibold">Critique:</strong>
+          <p>{{ mediaItem.critique }}</p>
+        </div>
+        
+        <!-- Video Specific -->
+        <div *ngIf="mediaItem.aspect">
+          <strong class="font-semibold">Aspect Ratio:</strong>
+          <p>{{ mediaItem.aspect }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.duration">
+          <strong class="font-semibold">Duration:</strong>
+          <p>{{ mediaItem.duration }} seconds</p>
+        </div>
+        
+        <div *ngIf="mediaItem.reference_image">
+          <strong class="font-semibold">Reference Image:</strong>
+          <p>{{ mediaItem.reference_image }}</p>
+        </div>
+        
+        <div *ngIf="mediaItem.last_reference_image">
+          <strong class="font-semibold">Last Reference Image:</strong>
+          <p>{{ mediaItem.last_reference_image }}</p>
+        </div>
+        
+        <!-- <div *ngIf="mediaItem.enhanced_prompt_used !== undefined">
+                                          <strong class="font-semibold">Enhanced Prompt Used:</strong>
+                                          <p>{{ mediaItem.enhanced_prompt_used }}</p>
         </div> -->
 
         <div *ngIf="mediaItem.negative_prompt">
@@ -102,13 +166,25 @@
 
         <div>
           <strong class="font-semibold">Add Watermark:</strong>
-          <p>{{ mediaItem?.add_watermark || 'N/A' }}</p>
+          <p>{{ mediaItem.add_watermark ?? 'N/A' }}</p>
         </div>
 
         <div *ngIf="mediaItem.comment">
           <strong class="font-semibold">Comment:</strong>
           <p>{{ mediaItem.comment }}</p>
         </div>
+<!-- Music Specific -->
+<div *ngIf="mediaItem.audio_analysis">
+  <b class="font-semibold">Audio Analysis:</b>
+  <pre class="bg-gray-800 p-2 rounded-md overflow-x-auto">{{ mediaItem.audio_analysis | json }}</pre>
+</div>
+
+<!-- Debugging -->
+<div *ngIf="mediaItem.raw_data">
+  <b class="font-semibold">Raw Data:</b>
+  <pre class="bg-gray-800 p-2 rounded-md overflow-x-auto">{{ mediaItem.raw_data | json }}</pre>
+</div>
+
       </div>
     </div>
   </div>

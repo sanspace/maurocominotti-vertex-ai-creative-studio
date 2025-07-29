@@ -16,6 +16,7 @@
 
 type Image = {
   gcsUri?: string;
+  presignedUrl?: string;
   imageBytes?: ArrayBuffer;
   encodedImage?: string;
   mimeType?: string;

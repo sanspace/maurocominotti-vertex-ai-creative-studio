@@ -40,7 +40,7 @@ async def generate_images(
     try:
         service = ImagenService()
         return await service.generate_images(
-            image_request_dto=image_request, user_email=current_user.email
+            request_dto=image_request, user_email=current_user.email
         )
     except HTTPException as http_exception:
         raise http_exception

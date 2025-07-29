@@ -35,10 +35,10 @@ export interface MediaItem {
   gcsuri?: string;
   gcs_uris: string[];
   source_images_gcs: string[];
-  presigned_urls?: string[]; // This seems to be added on the backend
+  presigned_urls?: string[];
 
   // Video specific
-  aspect?: string;
+  aspect?: string; // Note: 'aspect' is used for video, 'aspect_ratio' for image
   duration?: number;
   reference_image?: string;
   last_reference_image?: string;
@@ -47,8 +47,13 @@ export interface MediaItem {
 
   // Image specific
   modifiers: string[];
-  negative_prompt?: string;
   num_images?: number;
+  aspect_ratio?: string;
+  image_style?: string;
+  lighting?: string;
+  color_and_tone?: string;
+  composition?: string;
+  negative_prompt?: string;
   seed?: number;
   critique?: string;
   add_watermark?: boolean;

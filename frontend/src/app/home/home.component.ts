@@ -246,14 +246,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (galleryElement) {
       const dynamicElements = this.imagenDocuments.map((doc, index) => ({
-        src: doc?.image?.gcsUri || '',
-        thumb: doc?.image?.gcsUri || '',
+        src: doc?.image?.presignedUrl || '',
+        thumb: doc?.image?.presignedUrl || '',
         subHtml: `<div class="lightGallery-captions"><h4>Image ${index + 1}</h4><p>Generated with ${doc.source || 'Imagen 4 Model'}</p></div>`,
         // Add data-src attribute for sharing image url
         // TODO: We should create a creative studio url for that particular image
-        'data-src': doc?.image?.gcsUri || '',
-        facebookShareUrl: doc?.image?.gcsUri || '',
-        twitterShareUrl: doc?.image?.gcsUri || '',
+        'data-src': doc?.image?.presignedUrl || '',
+        facebookShareUrl: doc?.image?.presignedUrl || '',
+        twitterShareUrl: doc?.image?.presignedUrl || '',
         tweetText: 'Try Google Creative Studio now!!',
         pinterestText: 'Try Google Creative Studio now!!',
       }));

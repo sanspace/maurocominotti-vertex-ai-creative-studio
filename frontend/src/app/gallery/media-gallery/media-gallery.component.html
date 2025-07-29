@@ -66,11 +66,41 @@
 
     <div class="flex flex-row gap-4" *ngIf="(columns?.length || 0) > 0">
       <div *ngFor="let column of columns" class="flex flex-1 flex-col gap-4">
-        <div *ngFor="let image of column; trackBy: trackByImage">
+        <div *ngFor="let image of column; trackBy: trackByImage" class="relative group rounded-lg overflow-hidden shadow-lg"
+          (mouseenter)="stopAutoSlide(image.id)" (mouseleave)="startAutoSlide(image)">
           <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }">
-            <img class="h-auto w-full rounded-lg cursor-pointer transition-opacity hover:opacity-80"
-              [src]="image?.presigned_urls?.[0]" [alt]="image.prompt || 'Gallery image'">
+            <img class="h-auto w-full cursor-pointer transition-opacity duration-300 group-hover:opacity-80"
+              [src]="getCurrentImageUrl(image)" [alt]="image.prompt || 'Gallery image'">
           </a>
+
+          <!-- Carousel Controls: Only show if there's more than one image -->
+          <ng-container *ngIf="image.presigned_urls && image.presigned_urls.length > 1">
+            <!-- Previous Button -->
+            <button (click)="prevImage(image.id, image.presigned_urls.length, $event)"
+              class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <!-- Next Button -->
+            <button (click)="nextImage(image.id, image.presigned_urls.length, $event)"
+              class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <!-- Dots Indicator -->
+            <div
+              class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              <span *ngFor="let url of image.presigned_urls; let i = index" class="block h-2 w-2 rounded-full"
+                [class.bg-white]="(currentImageIndices[image.id] || 0) === i"
+                [class.bg-gray-400]="(currentImageIndices[image.id] || 0) !== i"></span>
+            </div>
+          </ng-container>
         </div>
       </div>
     </div>

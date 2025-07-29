@@ -16,6 +16,7 @@
 import asyncio
 import datetime
 import logging
+import time
 from typing import List
 from google.genai import types, Client
 from tenacity import (
@@ -58,135 +59,132 @@ class ImagenService:
         reraise=True,  # re-raise the last exception if all retries fail
     )
     async def generate_images(
-        self, image_request_dto: CreateImagenDto, user_email: str
+        self, request_dto: CreateImagenDto, user_email: str
     ) -> list[ImageGenerationResult]:
-        """Imagen image generation with Google GenAI client"""
-
-        client  = ImagenModelSetup.init(model_id=image_request_dto.generation_model)
-        cfg = ConfigService() # Instantiate Default config to access IMAGE_BUCKET
-
-        # Define a GCS path for outputting generated images
-        # gcs_output_directory = f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_GENERATED_SUBFOLDER}"
+        """
+        Generates a batch of images and saves them as a single MediaItem document.
+        """
+        client = ImagenModelSetup.init(model_id=request_dto.generation_model)
+        cfg = ConfigService()
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
-        original_prompt = image_request_dto.prompt
-        image_request_dto.prompt = self.gemini_service.rewrite_for_image(image_request_dto)
+        original_prompt = request_dto.prompt
+        rewritten_prompt = self.gemini_service.rewrite_for_image(request_dto)
+        request_dto.prompt = rewritten_prompt
+
+        all_generated_images: List[types.GeneratedImage] = []
 
         try:
-            logger.info(f"models.image_models.generate_images: Requesting {image_request_dto.number_of_images} images for model {image_request_dto.generation_model} with output to {gcs_output_directory}")
-            images_imagen_response: types.GenerateImagesResponse = (
-                types.GenerateImagesResponse()
-            )
-            all_generated_images: List[types.GeneratedImage] = []
+            start_time = time.monotonic()
 
             if (
-                image_request_dto.generation_model
+                request_dto.generation_model
                 == GenerationModelEnum.IMAGEN_4_ULTRA
             ):
                 # --- IMAGEN 4 ULTRA: Parallel API Calls ---
-                logger.info(
-                    f"Initiating {image_request_dto.number_of_images} parallel requests for Imagen 4 Ultra."
-                )
-                tasks = []
-                for _ in range(image_request_dto.number_of_images):
-                    task = asyncio.to_thread(
+                tasks = [
+                    asyncio.to_thread(
                         client.models.generate_images,
-                        model=image_request_dto.generation_model,
-                        prompt=image_request_dto.prompt,
+                        model=request_dto.generation_model,
+                        prompt=request_dto.prompt,
                         config=types.GenerateImagesConfig(
                             number_of_images=1,
                             output_gcs_uri=gcs_output_directory,
-                            aspect_ratio=image_request_dto.aspect_ratio,
-                            negative_prompt=image_request_dto.negative_prompt,
-                            add_watermark=image_request_dto.add_watermark,
+                            aspect_ratio=request_dto.aspect_ratio,
+                            negative_prompt=request_dto.negative_prompt,
+                            add_watermark=request_dto.add_watermark,
                         ),
                     )
-                    tasks.append(task)
-
+                    for _ in range(request_dto.number_of_images)
+                ]
                 api_responses = await asyncio.gather(*tasks)
-
-                # Consolidate results from all parallel calls into one list
                 for response in api_responses:
                     all_generated_images.extend(response.generated_images or [])
             else:
                 # --- OTHER IMAGEN MODELS: Single Batch API Call ---
-                logger.info(
-                    f"Requesting {image_request_dto.number_of_images} images in a single batch for model {image_request_dto.generation_model}."
-                )
                 images_imagen_response = await asyncio.to_thread(
                     client.models.generate_images,
-                    model=image_request_dto.generation_model,
-                    prompt=image_request_dto.prompt,
+                    model=request_dto.generation_model,
+                    prompt=request_dto.prompt,
                     config=types.GenerateImagesConfig(
-                        number_of_images=image_request_dto.number_of_images,
+                        number_of_images=request_dto.number_of_images,
                         output_gcs_uri=gcs_output_directory,
-                        aspect_ratio=image_request_dto.aspect_ratio,
-                        negative_prompt=image_request_dto.negative_prompt,
-                        add_watermark=image_request_dto.add_watermark,
+                        aspect_ratio=request_dto.aspect_ratio,
+                        negative_prompt=request_dto.negative_prompt,
+                        add_watermark=request_dto.add_watermark,
                     ),
                 )
                 all_generated_images = (
                     images_imagen_response.generated_images or []
                 )
 
-            response_imagen: list[ImageGenerationResult] = []
-            for generated_image in all_generated_images:
-                if generated_image.image:
-                    # Capture the permanent GCS URI before creating a presigned URL
-                    original_gcs_uri = generated_image.image.gcs_uri or ""
+            if not all_generated_images:
+                return []
 
+            end_time = time.monotonic()
+            generation_time = end_time - start_time
+
+            # --- UNIFIED PROCESSING AND SAVING ---
+            # Create the list of permanent GCS URIs and the response for the frontend
+            valid_generated_images = [
+                img
+                for img in all_generated_images
+                if img.image and img.image.gcs_uri
+            ]
+            permanent_gcs_uris = [
+                img.image.gcs_uri
+                for img in valid_generated_images
+                if img.image and img.image.gcs_uri
+            ]
+
+            # 2. Create and run tasks to generate all presigned URLs in parallel
+            presigned_url_tasks = [
+                asyncio.to_thread(
+                    self.iam_signer_credentials.generate_presigned_url, uri
+                )
+                for uri in permanent_gcs_uris
+            ]
+            presigned_urls = await asyncio.gather(*presigned_url_tasks)
+
+            # Create and save a SINGLE MediaItem for the entire batch
+            dto_data = request_dto.model_dump(
+                exclude={"number_of_images", "prompt"}
+            )
+            media_post_to_save = MediaItem(
+                **dto_data,  # Unpack all other matching fields from the DTO
+                user_email=user_email,
+                model=request_dto.generation_model,
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                generation_time=generation_time,
+                prompt=rewritten_prompt,
+                original_prompt=original_prompt,
+                gcs_uris=permanent_gcs_uris,
+                num_images=len(permanent_gcs_uris),
+            )
+            self.media_repo.save(media_post_to_save)
+
+            response_imagen: list[ImageGenerationResult] = []
+            for gen_image, presigned_url in zip(
+                valid_generated_images, presigned_urls
+            ):
+                if gen_image.image:
                     response_imagen.append(
                         ImageGenerationResult(
-                            enhanced_prompt=generated_image.enhanced_prompt
-                            or "",
-                            rai_filtered_reason=generated_image.rai_filtered_reason,
+                            enhanced_prompt=gen_image.enhanced_prompt or "",
+                            rai_filtered_reason=gen_image.rai_filtered_reason,
                             image=CustomImagenResult(
-                                gcs_uri=self.iam_signer_credentials.generate_presigned_url(
-                                    original_gcs_uri
-                                ),
+                                gcs_uri=gen_image.image.gcs_uri,
+                                presigned_url=presigned_url,
                                 encoded_image="",
-                                mime_type=generated_image.image.mime_type or "",
+                                mime_type=gen_image.image.mime_type or "",
                             ),
                         )
                     )
 
-                    # Create and save the MediaItem document
-                    try:
-                        media_to_save = MediaItem(
-                            # id is generated automatically by the model
-                            user_email=user_email,
-                            timestamp=datetime.datetime.now(
-                                datetime.timezone.utc
-                            ),
-                            prompt=generated_image.enhanced_prompt
-                            or image_request_dto.prompt,
-                            original_prompt=original_prompt,
-                            model=image_request_dto.generation_model,
-                            mime_type=generated_image.image.mime_type,
-                            gcs_uris=[
-                                original_gcs_uri
-                            ],  # Save the permanent URI
-                            aspect=image_request_dto.aspect_ratio,
-                            negative_prompt=image_request_dto.negative_prompt,
-                            num_images=1,  # This item represents a single image from the batch
-                            add_watermark=image_request_dto.add_watermark,
-                        )
-                        self.media_repo.save(media_to_save)
-                        logger.info(
-                            f"Successfully saved media item {media_to_save.id} to Firestore."
-                        )
-                    except Exception as db_error:
-                        logger.error(
-                            f"Failed to save media item to Firestore: {db_error}"
-                        )
-                        # Decide if you want to fail the whole request or just log the error
-                        # For now, we just log it and continue.
-
-            logger.info(f"Number of images created by Imagen: {len(response_imagen)}")
-
             return response_imagen
+
         except Exception as e:
-            logger.error(f"models.image_models.generate_images: API call failed: {e}")
+            logger.error(f"Image generation API call failed: {e}")
             raise
 
     async def _generate_with_gemini(
@@ -270,6 +268,7 @@ class ImagenService:
                                             gcs_uri=None,
                                             encoded_image=encoded_image_bytes,
                                             mime_type=part.inline_data.mime_type,
+                                            presigned_url="",
                                         ),
                                     )
                                 )
@@ -284,18 +283,20 @@ class ImagenService:
             print(f"Error during Gemini generation: {e}")
             return []
 
-    async def generate_images_from_gemini(self, image_request_dto: CreateImagenDto) -> list[ImageGenerationResult]:
-        client  = ImagenModelSetup.init(model_id=image_request_dto.generation_model)
+    async def generate_images_from_gemini(
+        self, request_dto: CreateImagenDto
+    ) -> list[ImageGenerationResult]:
+        client = ImagenModelSetup.init(model_id=request_dto.generation_model)
         gemini_coroutine = self._generate_with_gemini(
             client=client,
-            term=image_request_dto.prompt,
-            number_of_images=image_request_dto.number_of_images,
-            image_style=image_request_dto.image_style,
+            term=request_dto.prompt,
+            number_of_images=request_dto.number_of_images,
+            image_style=request_dto.image_style,
         )
         results = await asyncio.gather(gemini_coroutine, return_exceptions=True)
 
         response_gemini: List[ImageGenerationResult] = []
-        gemini_result_index = image_request_dto.number_of_images
+        gemini_result_index = request_dto.number_of_images
         if gemini_result_index < len(results):
             gemini_task_result = results[gemini_result_index]
             if isinstance(gemini_task_result, Exception):
@@ -311,17 +312,17 @@ class ImagenService:
         return response_gemini
 
     async def generate_images_from_prompt(
-        self, image_request_dto: CreateImagenDto, user_email: str
+        self, request_dto: CreateImagenDto, user_email: str
     ) -> list[ImageGenerationResult]:
         """
         Generates images based on the input prompt and parameters.
         Returns a list of image URIs. Does not directly modify PageState.
         """
         input_txt = ""
-        full_prompt = f"{input_txt}, {image_request_dto.prompt}"
-        image_request_dto.prompt = full_prompt
+        full_prompt = f"{input_txt}, {request_dto.prompt}"
+        request_dto.prompt = full_prompt
 
-        return await self.generate_images(image_request_dto, user_email)
+        return await self.generate_images(request_dto, user_email)
 
     def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
         """Generates a single image and returns the image bytes."""
@@ -342,14 +343,15 @@ class ImagenService:
             generated_image = response.generated_images[0].image
             image_bytes = response.generated_images[0].image.image_bytes
             return ImageGenerationResult(
-                      enhanced_prompt=enhanced_prompt or "",
-                      rai_filtered_reason=rai_filtered_reason,
-                      image=CustomImagenResult(
-                          gcs_uri=generated_image.gcs_uri or "",
-                          encoded_image=base64.b64encode(image_bytes).decode("utf-8"),
-                          mime_type=generated_image.mime_type or "",
-                      ),
-                  )
+                enhanced_prompt=enhanced_prompt or "",
+                rai_filtered_reason=rai_filtered_reason,
+                image=CustomImagenResult(
+                    gcs_uri=generated_image.gcs_uri or "",
+                    encoded_image=base64.b64encode(image_bytes).decode("utf-8"),
+                    mime_type=generated_image.mime_type or "",
+                    presigned_url="",
+                ),
+            )
         else:
             raise ValueError("Image generation failed or returned no data.")
 
@@ -400,37 +402,43 @@ class ImagenService:
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
-    def edit_image(self, image_request_dto: EditImagenDto) -> list[ImageGenerationResult]:
+    def edit_image(
+        self, request_dto: EditImagenDto
+    ) -> list[ImageGenerationResult]:
         """Edits an image using the Google GenAI client."""
-        client = ImagenModelSetup.init(model_id=image_request_dto.generation_model)
+        client = ImagenModelSetup.init(model_id=request_dto.generation_model)
         cfg = ConfigService()
         gcs_output_directory = f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_EDITED_SUBFOLDER}"
 
         raw_ref_image = types.RawReferenceImage(
             reference_id=1,
-            reference_image=types.Image(image_bytes=image_request_dto.user_image,)
+            reference_image=types.Image(
+                image_bytes=request_dto.user_image,
+            ),
         )
 
         mask_ref_image = types.MaskReferenceImage(
             reference_id=2,
             config=types.MaskReferenceConfig(
-                mask_mode=image_request_dto.mask_mode,
+                mask_mode=request_dto.mask_mode,
                 mask_dilation=0,
             ),
         )
 
         try:
-            logger.info(f"models.image_models.edit_image: Requesting {image_request_dto.number_of_images} edited images for model {image_request_dto.generation_model} with output to {gcs_output_directory}")
+            logger.info(
+                f"models.image_models.edit_image: Requesting {request_dto.number_of_images} edited images for model {request_dto.generation_model} with output to {gcs_output_directory}"
+            )
             images_imagen_response = client.models.edit_image(
-                model=image_request_dto.generation_model,
-                prompt=image_request_dto.prompt,
-                reference_images=[raw_ref_image, mask_ref_image],    # type: ignore
+                model=request_dto.generation_model,
+                prompt=request_dto.prompt,
+                reference_images=[raw_ref_image, mask_ref_image],  # type: ignore
                 config=types.EditImageConfig(
-                    edit_mode=image_request_dto.edit_mode,
-                    number_of_images=image_request_dto.number_of_images,
+                    edit_mode=request_dto.edit_mode,
+                    number_of_images=request_dto.number_of_images,
                     include_rai_reason=True,
                     output_gcs_uri=gcs_output_directory,
-                    output_mime_type='image/jpeg',
+                    output_mime_type="image/jpeg",
                 ),
             )
 
@@ -443,7 +451,8 @@ class ImagenService:
                             or "",
                             rai_filtered_reason=generated_image.rai_filtered_reason,
                             image=CustomImagenResult(
-                                gcs_uri=self.iam_signer_credentials.generate_presigned_url(
+                                gcs_uri=generated_image.image.gcs_uri,
+                                presigned_url=self.iam_signer_credentials.generate_presigned_url(
                                     generated_image.image.gcs_uri
                                 ),
                                 encoded_image="",

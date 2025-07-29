@@ -21,16 +21,17 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   private loadingSubscription: Subscription | undefined;
   private resizeSubscription: Subscription | undefined;
   private numColumns = 4;
+  private autoSlideIntervals: {[id: string]: any} = {};
+  public currentImageIndices: {[id: string]: number} = {};
   constructor(
     private galleryService: GalleryService,
     private sanitizer: DomSanitizer,
-    public matIconRegistry: MatIconRegistry
+    public matIconRegistry: MatIconRegistry,
   ) {
-    this.matIconRegistry
-      .addSvgIcon(
-        'mobile-white-gemini-spark-icon',
-        this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
-      );
+    this.matIconRegistry.addSvgIcon(
+      'mobile-white-gemini-spark-icon',
+      this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
+    );
   }
 
   private path = '../../assets/images';
@@ -40,13 +41,23 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.loadingSubscription = this.galleryService.isLoading$.subscribe(loading => {
-      this.isLoading = loading;
-    });
+    this.loadingSubscription = this.galleryService.isLoading$.subscribe(
+      loading => {
+        this.isLoading = loading;
+      },
+    );
 
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
       if (images) {
         this.images = images;
+        this.images.forEach(image => {
+          if (this.currentImageIndices[image.id] === undefined) {
+            this.currentImageIndices[image.id] = 0;
+          }
+          if (!this.autoSlideIntervals[image.id]) {
+            this.startAutoSlide(image);
+          }
+        });
         this.updateColumns();
       }
 
@@ -55,12 +66,15 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.allImagesLoadedSubscription = this.galleryService.allImagesLoaded.subscribe(loaded => {
-      this.allImagesLoaded = loaded;
-    });
+    this.allImagesLoadedSubscription =
+      this.galleryService.allImagesLoaded.subscribe(loaded => {
+        this.allImagesLoaded = loaded;
+      });
 
     this.handleResize();
-    this.resizeSubscription = fromEvent(window, 'resize').pipe(debounceTime(200)).subscribe(() => this.handleResize());
+    this.resizeSubscription = fromEvent(window, 'resize')
+      .pipe(debounceTime(200))
+      .subscribe(() => this.handleResize());
   }
 
   ngOnDestroy(): void {
@@ -68,18 +82,73 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     this.loadingSubscription?.unsubscribe();
     this.allImagesLoadedSubscription?.unsubscribe();
     this.resizeSubscription?.unsubscribe();
+    Object.values(this.autoSlideIntervals).forEach(clearInterval);
   }
 
   public trackByImage(index: number, image: MediaItem): string {
     return image.id;
   }
 
+  public getCurrentImageUrl(image: MediaItem): string {
+    const index = this.currentImageIndices[image.id] || 0;
+    return image.presigned_urls?.[index] || '';
+  }
+
+  public nextImage(
+    imageId: string,
+    urlsLength: number,
+    event?: MouseEvent,
+  ): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.stopAutoSlide(imageId);
+    }
+    const currentIndex = this.currentImageIndices[imageId] || 0;
+    this.currentImageIndices[imageId] = (currentIndex + 1) % urlsLength;
+  }
+
+  public prevImage(
+    imageId: string,
+    urlsLength: number,
+    event?: MouseEvent,
+  ): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.stopAutoSlide(imageId);
+    }
+    const currentIndex = this.currentImageIndices[imageId] || 0;
+    this.currentImageIndices[imageId] =
+      (currentIndex - 1 + urlsLength) % urlsLength;
+  }
+
+  public startAutoSlide(image: MediaItem): void {
+    if (image.presigned_urls && image.presigned_urls.length > 1) {
+      if (this.autoSlideIntervals[image.id]) {
+        return;
+      }
+      this.autoSlideIntervals[image.id] = setInterval(() => {
+        this.nextImage(image.id, image.presigned_urls!.length);
+      }, 3000);
+    }
+  }
+
+  public stopAutoSlide(imageId: string): void {
+    if (this.autoSlideIntervals[imageId]) {
+      clearInterval(this.autoSlideIntervals[imageId]);
+      delete this.autoSlideIntervals[imageId];
+    }
+  }
+
   private handleResize(): void {
     const width = window.innerWidth;
     let newNumColumns;
-    if (width < 768) { // md breakpoint
+    if (width < 768) {
+      // md breakpoint
       newNumColumns = 2;
-    } else if (width < 1024) { // lg breakpoint
+    } else if (width < 1024) {
+      // lg breakpoint
       newNumColumns = 3;
     } else {
       newNumColumns = 4;
@@ -110,7 +179,10 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     // Check if the user has scrolled to near the bottom of the page
     // We add a buffer (e.g., 200px) so the new content starts loading
     // just before the user hits the absolute bottom.
-    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 200) {
+    if (
+      window.innerHeight + window.scrollY >=
+      document.documentElement.scrollHeight - 200
+    ) {
       this.galleryService.loadGallery();
     }
   }
