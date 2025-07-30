@@ -2,7 +2,10 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {tap, catchError, shareReplay} from 'rxjs/operators';
-import {MediaItem, PaginatedGalleryResponse} from '../common/models/media-item.model';
+import {
+  MediaItem,
+  PaginatedGalleryResponse,
+} from '../common/models/media-item.model';
 import {environment} from '../../environments/environment';
 import {GallerySearchDto} from '../common/models/search.model';
 import {LoadingService} from '../common/services/loading.service';
@@ -14,7 +17,7 @@ export interface GalleryFilters {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class GalleryService {
   private imagesCache$ = new BehaviorSubject<MediaItem[]>([]);
@@ -24,7 +27,10 @@ export class GalleryService {
   private allFetchedImages: MediaItem[] = [];
   private filters$ = new BehaviorSubject<GalleryFilters>({});
 
-  constructor(private http: HttpClient, private loadingService: LoadingService) { }
+  constructor(
+    private http: HttpClient,
+    private loadingService: LoadingService,
+  ) {}
 
   get images$(): Observable<MediaItem[]> {
     return this.imagesCache$.asObservable();
@@ -57,27 +63,29 @@ export class GalleryService {
       return;
     }
 
-    this.fetchImages().pipe(
-      tap(response => {
-        this.nextPageCursor = response.next_page_cursor;
-        // Accumulate images in our central cache and push the new list to subscribers
-        this.allFetchedImages = [...this.allFetchedImages, ...response.items];
-        this.imagesCache$.next(this.allFetchedImages);
+    this.fetchImages()
+      .pipe(
+        tap(response => {
+          this.nextPageCursor = response.next_page_cursor;
+          // Accumulate images in our central cache and push the new list to subscribers
+          this.allFetchedImages = [...this.allFetchedImages, ...response.items];
+          this.imagesCache$.next(this.allFetchedImages);
 
-        if (!this.nextPageCursor) {
-          this.allImagesLoaded$.next(true);
-        }
-        this.isLoading$.next(false);
-        this.loadingService.hide();
-      }),
-      catchError(err => {
-        console.error('Failed to fetch gallery images', err);
-        this.isLoading$.next(false);
-        this.loadingService.hide();
-        this.allImagesLoaded$.next(true); // prevent loading more
-        return of([]); // Return an empty array observable to prevent breaking the stream
-      })
-    ).subscribe();
+          if (!this.nextPageCursor) {
+            this.allImagesLoaded$.next(true);
+          }
+          this.isLoading$.next(false);
+          this.loadingService.hide();
+        }),
+        catchError(err => {
+          console.error('Failed to fetch gallery images', err);
+          this.isLoading$.next(false);
+          this.loadingService.hide();
+          this.allImagesLoaded$.next(true); // prevent loading more
+          return of([]); // Return an empty array observable to prevent breaking the stream
+        }),
+      )
+      .subscribe();
   }
 
   private fetchImages(): Observable<PaginatedGalleryResponse> {
@@ -95,7 +103,7 @@ export class GalleryService {
       body.start_after = this.nextPageCursor;
     }
     return this.http.post<PaginatedGalleryResponse>(galleryUrl, body).pipe(
-      shareReplay(1) // important to cache the http get response
+      shareReplay(1), // important to cache the http get response
     );
   }
 

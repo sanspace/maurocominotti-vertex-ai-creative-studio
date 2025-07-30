@@ -18,10 +18,11 @@ import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
 import {environment} from '../../../environments/environment';
 import {map} from 'rxjs/operators';
-import {SearchRequest} from '../../common/models/search.model';
-import {CombinedImageResults, GeneratedImage} from '../../common/models/generated-image.model';
-
-const searchURL = `${environment.backendURL}/images/generate-images`;
+import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
+import {
+  GeneratedImage,
+  GeneratedVideo,
+} from '../../common/models/generated-image.model';
 
 @Injectable({
   providedIn: 'root',
@@ -29,9 +30,17 @@ const searchURL = `${environment.backendURL}/images/generate-images`;
 export class SearchService {
   constructor(private http: HttpClient) {}
 
-  search(searchRequest: SearchRequest) {
+  search(searchRequest: ImagenRequest) {
+    const searchURL = `${environment.backendURL}/images/generate-images`;
     return this.http
       .post(searchURL, searchRequest)
       .pipe(map(response => response as GeneratedImage[]));
+  }
+
+  searchVeo(searchRequest: VeoRequest) {
+    const searchURL = `${environment.backendURL}/videos/generate-videos`;
+    return this.http
+      .post(searchURL, searchRequest)
+      .pipe(map(response => response as []));
   }
 }

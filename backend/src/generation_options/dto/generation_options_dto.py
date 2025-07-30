@@ -19,7 +19,7 @@ class GenerationOptionsResponse(BaseModel):
     """Defines the shape of the data for frontend dropdown options."""
     generation_models: List[str]
     aspect_ratios: List[str]
-    image_styles: List[str]
+    styles: List[str]
     lightings: List[str]
     colors_and_tones: List[str]
     composition: List[str]

@@ -1,14 +1,13 @@
-
 from typing import Optional
 
 from google import genai
 
-from src.common.schema.base_model_setup import BaseModelSetup
+from src.common.schema.base_model_setup import GenAIModelSetup
 from src.config.config_service import ConfigService
 from google.genai import Client
 
 
-class GeminiModelSetup(BaseModelSetup):
+class GeminiModelSetup(GenAIModelSetup):
     """Initializes and configures the client for Gemini models."""
 
     @staticmethod

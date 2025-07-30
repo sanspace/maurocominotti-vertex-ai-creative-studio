@@ -5,7 +5,7 @@ from src.common.base_schema_model import (
     AspectRatioEnum,
     ColorAndToneEnum,
     CompositionEnum,
-    ImageStyleEnum,
+    StyleEnum,
     LightingEnum,
 )
 from src.common.base_repository import BaseDocument
@@ -26,13 +26,22 @@ class MediaItem(BaseDocument):
     generation_time: Optional[float] = None
     error_message: Optional[str] = None
 
+    # Common fields across imagen and video types
+    aspect_ratio: AspectRatioEnum
+    num_media: Optional[int] = None
+    style: Optional[StyleEnum] = None
+    lighting: Optional[LightingEnum] = None
+    color_and_tone: Optional[ColorAndToneEnum] = None
+    composition: Optional[CompositionEnum] = None
+    negative_prompt: Optional[str] = None
+    add_watermark: Optional[bool] = None
+
     # URI fields
     gcsuri: Optional[str] = None
     gcs_uris: List[str] = Field(default_factory=list)
     source_images_gcs: List[str] = Field(default_factory=list)
 
     # Video specific
-    aspect: Optional[str] = None
     duration: Optional[float] = None
     reference_image: Optional[str] = None
     last_reference_image: Optional[str] = None
@@ -41,16 +50,8 @@ class MediaItem(BaseDocument):
 
     # Image specific
     modifiers: List[str] = Field(default_factory=list)
-    num_images: Optional[int] = None
-    aspect_ratio: Optional[AspectRatioEnum] = None
-    image_style: Optional[ImageStyleEnum] = None
-    lighting: Optional[LightingEnum] = None
-    color_and_tone: Optional[ColorAndToneEnum] = None
-    composition: Optional[CompositionEnum] = None
-    negative_prompt: Optional[str] = None
     seed: Optional[int] = None
     critique: Optional[str] = None
-    add_watermark: Optional[bool] = None
 
     # Music specific
     audio_analysis: Optional[Dict] = None

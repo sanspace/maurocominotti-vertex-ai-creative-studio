@@ -21,14 +21,13 @@ from src.config.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
 
-class BaseModelSetup:
+
+class GenAIModelSetup:
     """
     A base class to handle the initialization of a shared Google GenAI client.
     This uses a singleton pattern to ensure the client is only created once.
     """
     _client: Optional[Client] = None
-
-
 
     @classmethod
     def get_client(cls) -> Client:
@@ -53,3 +52,10 @@ class BaseModelSetup:
                 logger.error(f"Failed to initialize GenAI client: {e}")
                 raise
         return cls._client
+
+    @staticmethod
+    def init() -> Client:
+        """
+        Returns the shared client instance.
+        """
+        return GenAIModelSetup.get_client()

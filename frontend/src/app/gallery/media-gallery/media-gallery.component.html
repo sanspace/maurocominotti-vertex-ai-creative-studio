@@ -18,18 +18,35 @@
   <div class="home-margin grid grid-cols-1">
     <div class="video-container mb-8">
       <!-- Text for Tablet and beyond -->
-      <div class="hidden md:flex justify-center items-center w-full h-full absolute flex-col">
-        <h1 class="text-center justify-center text-white text-2xl font-bold !m-0 !z-[50]">Creative Studio Media Gallery
+      <div
+        class="hidden md:flex justify-center items-center w-full h-full absolute flex-col"
+      >
+        <h1
+          class="text-center justify-center text-white text-2xl font-bold !m-0 !z-[50]"
+        >
+          Creative Studio Media Gallery
         </h1>
-        <p class="mt-4 text-lg leading-8 text-white !z-[50]">A showcase of generated images, videos, audio and more ✨
+        <p class="mt-4 text-lg leading-8 text-white !z-[50]">
+          A showcase of generated images, videos, audio and more ✨
         </p>
       </div>
-      <div class="gradient-bg hidden md:block !relative !w-full !h-full !z-[10]">
+      <div
+        class="gradient-bg hidden md:block !relative !w-full !h-full !z-[10]"
+      >
         <svg xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="goo">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
-              <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" result="goo" />
+              <feGaussianBlur
+                in="SourceGraphic"
+                stdDeviation="10"
+                result="blur"
+              />
+              <feColorMatrix
+                in="blur"
+                mode="matrix"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8"
+                result="goo"
+              />
               <feBlend in="SourceGraphic" in2="goo" />
             </filter>
           </defs>
@@ -45,58 +62,102 @@
       </div>
 
       <!-- Text for mobile -->
-      <div class="flex flex-col justify-center items-center w-full h-full md:hidden">
+      <div
+        class="flex flex-col justify-center items-center w-full h-full md:hidden"
+      >
         <!-- As this svg uses a gradient, it needs to have a different fill id, therefore we have one for mobile and other for larger devices -->
         <div class="flex">
-          <mat-icon svgIcon="mobile-white-gemini-spark-icon" class="!w-6 !h-6 mr-2 md:mr-[1rem]"></mat-icon>
-          <div class="text-center justify-center text-white title-font font-bold">Creative Studio Media Gallery</div>
+          <mat-icon
+            svgIcon="mobile-white-gemini-spark-icon"
+            class="!w-6 !h-6 mr-2 md:mr-[1rem]"
+          ></mat-icon>
+          <div
+            class="text-center justify-center text-white title-font font-bold"
+          >
+            Creative Studio Media Gallery
+          </div>
         </div>
-        <p class="mt-4 text-white text-center md:text-lg md:leading-8">A showcase of generated images, videos, audio and more ✨
+        <p class="mt-4 text-white text-center md:text-lg md:leading-8">
+          A showcase of generated images, videos, audio and more ✨
         </p>
       </div>
     </div>
 
     <!-- A loading indicator that shows while data is being fetched -->
-    <div *ngIf="isLoading && images.length === 0"
-      class="text-center ng-star-inserted flex flex-col justify-center items-center mt-8">
-      <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
+    <div
+      *ngIf="isLoading && images.length === 0"
+      class="text-center ng-star-inserted flex flex-col justify-center items-center mt-8"
+    >
+      <mat-progress-spinner
+        color="primary"
+        mode="indeterminate"
+      ></mat-progress-spinner>
       <p class="pt-5 text-white">Loading media...</p>
     </div>
 
-    <div *ngIf="!isLoading"
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 justify-evenly align-center p-4 rounded-lg mt-4">
+    <div
+      *ngIf="!isLoading"
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 justify-evenly align-center p-4 rounded-lg mt-4"
+    >
       <!-- Email Filter -->
-      <mat-form-field>
-        <mat-label>User Email</mat-label>
-        <input matInput [(ngModel)]="userEmailFilter" placeholder="Filter by email">
-      </mat-form-field>
-    
+      <div class="flex flex-col">
+        <mat-form-field class="w-full">
+          <mat-label>User Email</mat-label>
+          <input
+            matInput
+            [(ngModel)]="userEmailFilter"
+            placeholder="Filter by email"
+            [disabled]="showOnlyMyMedia"
+          />
+        </mat-form-field>
+        <mat-checkbox
+          [(ngModel)]="showOnlyMyMedia"
+          (change)="onShowOnlyMyMediaChange($event)"
+          class="!text-white -mt-2"
+        >
+          Show only my media
+        </mat-checkbox>
+      </div>
+
       <!-- Media Type Filter -->
-      <mat-form-field>
-        <mat-label>Media Type</mat-label>
-        <mat-select [(ngModel)]="mediaTypeFilter">
-          <mat-option>None</mat-option>
-          <mat-option value="image/png">Image</mat-option>
-          <mat-option value="video/mp4">Video</mat-option>
-          <mat-option value="audio/mpeg">Audio</mat-option>
-        </mat-select>
-      </mat-form-field>
-    
+      <div class="flex flex-col">
+        <mat-form-field class="w-full h-auto">
+          <mat-label>Media Type</mat-label>
+          <mat-select [(ngModel)]="mediaTypeFilter">
+            <mat-option>None</mat-option>
+            <mat-option value="image/png">Image</mat-option>
+            <mat-option value="video/mp4">Video</mat-option>
+            <mat-option value="audio/mpeg">Audio</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
       <!-- Generation Model Filter -->
-      <mat-form-field>
-        <mat-label>Generation Model</mat-label>
-        <mat-select [(ngModel)]="generationModelFilter">
-          <mat-option>None</mat-option>
-          <mat-option *ngFor="let model of generationModels" [value]="model.value">
-            {{ model.viewValue }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    
-      <button mat-raised-button class="!bg-white !h-12 !px-6" (click)="searchTerm()">
+      <div class="flex flex-col">
+        <mat-form-field class="w-full h-auto">
+          <mat-label>Generation Model</mat-label>
+          <mat-select [(ngModel)]="generationModelFilter">
+            <mat-option>None</mat-option>
+            <mat-option
+              *ngFor="let model of generationModels"
+              [value]="model.value"
+            >
+              {{ model.viewValue }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Search Button -->
+      <button
+        mat-raised-button
+        class="!bg-white !h-12 !px-6"
+        (click)="searchTerm()"
+      >
         <mat-icon svgIcon="gemini-spark-icon"></mat-icon>
         <span
-          class="!text-lg font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent">
+          class="!text-lg font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent"
+        >
           Search
         </span>
       </button>
@@ -104,64 +165,147 @@
 
     <div class="flex flex-row gap-4" *ngIf="(columns?.length || 0) > 0">
       <div *ngFor="let column of columns" class="flex flex-1 flex-col gap-4">
-        <div *ngFor="let image of column; trackBy: trackByImage" class="relative group rounded-lg overflow-hidden shadow-lg"
-        (mouseenter)="stopAutoSlide(image.id)" (mouseleave)="startAutoSlide(image)">
-          <a [routerLink]="['/gallery', image.id]" [state]="{ mediaItem: image }" class="transition-opacity duration-500 block">
-            <ng-container *ngIf="image.presigned_urls">
-              <img *ngFor="let url of image.presigned_urls; let i = index"
-                class="h-auto w-full cursor-pointer absolute top-0 left-0 transition-opacity duration-500 group-hover:opacity-80"
-                [src]="url" [alt]="image.prompt || 'Gallery image'"
-                [class.active]="(currentImageIndices[image.id] || 0) === i"
-                [style.opacity]="(currentImageIndices[image.id] || 0) === i ? 1 : 0">
+        <div
+          *ngFor="let media of column; trackBy: trackByImage"
+          class="relative group rounded-lg overflow-hidden shadow-lg"
+          (mouseenter)="stopAutoSlide(media.id)"
+          (mouseleave)="startAutoSlide(media)"
+        >
+          <a
+            [routerLink]="['/gallery', media.id]"
+            [state]="{mediaItem: media}"
+            class="transition-opacity duration-500 block"
+          >
+            <ng-container *ngIf="media.mime_type === 'image/png'">
+              <img
+                *ngFor="let url of media.presigned_urls; let i = index"
+                class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500 group-hover:opacity-80"
+                [src]="url"
+                [alt]="media.prompt || 'Gallery image'"
+                [class.active]="(currentImageIndices[media.id] || 0) === i"
+                [style.opacity]="
+                  (currentImageIndices[media.id] || 0) === i ? 1 : 0
+                "
+              />
+              <!-- A "spacer" div that defines the aspect ratio of the container -->
+              <div
+                class="w-full"
+                [style.aspect-ratio]="(media.aspect_ratio || '1/1').replace(':', ' / ')"
+              ></div>
             </ng-container>
+            <ng-container *ngIf="media.mime_type === 'video/mp4'">
+              <video
+                *ngFor="let url of media.presigned_urls; let i = index"
+                class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500 group-hover:opacity-80"
+                [class.active]="(currentImageIndices[media.id] || 0) === i"
+                [style.opacity]="
+                  (currentImageIndices[media.id] || 0) === i ? 1 : 0
+                "
+                oncanplay="this.play()"
+                onloadedmetadata="this.muted = true"
+                muted
+                playsinline
+                loop
+                autoplay
+              >
+                <source [src]="url" [type]="media.mime_type" />
+              </video>
+              <!-- A "spacer" div that defines the aspect ratio of the container -->
+              <div
+                class="w-full"
+                [style.aspect-ratio]="(media.aspect_ratio || '16:9').replace(':', ' / ')"
+              ></div>
+            </ng-container>
+            <ng-container *ngIf="media.mime_type === 'audio/mpeg'">
 
-            <!-- A "spacer" image: It's invisible but defines the height of the container -->
-            <img [src]="image.presigned_urls?.[0]" class="w-full h-auto invisible" [alt]="image.prompt || 'Gallery image'">
+            </ng-container>
           </a>
 
           <!-- Carousel Controls: Only show if there's more than one image -->
-          <ng-container *ngIf="image.presigned_urls && image.presigned_urls.length > 1">
+          <ng-container
+            *ngIf="media.presigned_urls && media.presigned_urls.length > 1"
+          >
             <!-- Previous Button -->
-            <button (click)="prevImage(image.id, image.presigned_urls.length, $event)"
-              class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            <button
+              (click)="prevImage(media.id, media.presigned_urls.length, $event)"
+              class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
 
             <!-- Next Button -->
-            <button (click)="nextImage(image.id, image.presigned_urls.length, $event)"
-              class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            <button
+              (click)="nextImage(media.id, media.presigned_urls.length, $event)"
+              class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
 
             <!-- Dots Indicator -->
             <div
-              class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              <span *ngFor="let url of image.presigned_urls; let i = index" class="block h-2 w-2 rounded-full"
-                [class.bg-white]="(currentImageIndices[image.id] || 0) === i"
-                [class.bg-gray-400]="(currentImageIndices[image.id] || 0) !== i"></span>
+              class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            >
+              <span
+                *ngFor="let url of media.presigned_urls; let i = index"
+                class="block h-2 w-2 rounded-full"
+                [class.bg-white]="(currentImageIndices[media.id] || 0) === i"
+                [class.bg-gray-400]="(currentImageIndices[media.id] || 0) !== i"
+              ></span>
             </div>
           </ng-container>
         </div>
       </div>
     </div>
 
-    <div *ngIf="isLoading && images.length > 0" class="flex justify-center items-center py-8">
-      <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
+    <div
+      *ngIf="isLoading && images.length > 0"
+      class="flex justify-center items-center py-8"
+    >
+      <mat-progress-spinner
+        color="primary"
+        mode="indeterminate"
+        [diameter]="50"
+      ></mat-progress-spinner>
     </div>
 
-    <div *ngIf="!isLoading && allImagesLoaded && images.length > 0" class="text-center text-white py-8">
+    <div
+      *ngIf="!isLoading && allImagesLoaded && images.length > 0"
+      class="text-center text-white py-8"
+    >
       <p>You've reached the end of the gallery</p>
     </div>
 
-    <div *ngIf="!isLoading && images.length === 0" class="text-center text-white">
+    <div
+      *ngIf="!isLoading && images.length === 0"
+      class="text-center text-white"
+    >
       <p>No media items found</p>
     </div>
-
   </div>
 </div>

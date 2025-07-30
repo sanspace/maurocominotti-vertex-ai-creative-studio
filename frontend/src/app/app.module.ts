@@ -112,7 +112,7 @@ import {MatProgressBarModule} from '@angular/material/progress-bar';
     FormsModule,
     LightgalleryModule,
     ScrollingModule,
-    MatProgressBarModule
+    MatProgressBarModule,
   ],
   providers: [
     provideClientHydration(),

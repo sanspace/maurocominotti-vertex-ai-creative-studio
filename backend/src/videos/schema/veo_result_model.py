@@ -1,15 +1,15 @@
-from typing import Optional
+from typing import  Optional
 
 from src.common.base_schema_model import BaseSchema
 
-class CustomImagenResult(BaseSchema):
+class CustomVeoResult(BaseSchema):
     gcs_uri: Optional[str]
     mime_type: str
-    encoded_image: str
+    encoded_video: str
     presigned_url: str
 
 
-class ImageGenerationResult(BaseSchema):
+class VeoGenerationResult(BaseSchema):
     enhanced_prompt: str
     rai_filtered_reason: Optional[str]
-    image: CustomImagenResult
+    video: CustomVeoResult

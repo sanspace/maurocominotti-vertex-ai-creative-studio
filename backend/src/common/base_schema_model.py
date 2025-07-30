@@ -18,8 +18,9 @@ from enum import Enum
 
 
 class GenerationModelEnum(str, Enum):
-    """Enum representing the available image generation models."""
+    """Enum representing the available Imagen generation models."""
 
+    # Image-Specific Models
     IMAGEN_4_ULTRA = "imagen-4.0-ultra-generate-preview-06-06"
     IMAGEN_3_001 = "imagen-3.0-generate-001"
     IMAGEN_3_FAST = "imagen-3.0-fast-generate-001"
@@ -28,18 +29,26 @@ class GenerationModelEnum(str, Enum):
     IMAGEGEN_005 = "imagegeneration@005"
     IMAGEGEN_002 = "imagegeneration@002"
 
+    # Video-Specific Models
+    VEO_3_FAST = "veo-3.0-fast-generate-preview"
+    VEO_3_QUALITY = "veo-3.0-generate-preview"
+    VEO_2_FAST = "veo-2.0-generate-001"
+    VEO_2_QUALITY = "veo-2.0-fast-generate-001"
 
 class AspectRatioEnum(str, Enum):
     """Enum representing the supported aspect ratios."""
 
-    RATIO_1_1 = "1:1"
+    # Common Ratios
     RATIO_9_16 = "9:16"
     RATIO_16_9 = "16:9"
+
+    # Image-Specific Ratios
+    RATIO_1_1 = "1:1"
     RATIO_3_4 = "3:4"
     RATIO_4_3 = "4:3"
 
 
-class ImageStyleEnum(str, Enum):
+class StyleEnum(str, Enum):
     """Enum representing the supported image styles."""
 
     MODERN = "Modern"

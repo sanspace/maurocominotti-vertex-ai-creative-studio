@@ -4,7 +4,9 @@ import {debounceTime} from 'rxjs/operators';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {MediaItem} from '../../common/models/media-item.model';
+import {MatCheckboxChange} from '@angular/material/checkbox';
 import {GalleryService} from '../gallery.service';
+import {UserService} from '../../common/services/user.service';
 
 @Component({
   selector: 'app-media-gallery',
@@ -21,9 +23,10 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   private loadingSubscription: Subscription | undefined;
   private resizeSubscription: Subscription | undefined;
   private numColumns = 4;
-  public userEmailFilter: string = '';
-  public mediaTypeFilter: string = '';
-  public generationModelFilter: string = '';
+  public userEmailFilter = '';
+  public mediaTypeFilter = '';
+  public generationModelFilter = '';
+  public showOnlyMyMedia = false;
   public generationModels = [
     {
       value: 'imagen-4.0-ultra-generate-preview-06-06',
@@ -42,6 +45,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     private galleryService: GalleryService,
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
+    private userService: UserService,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -141,6 +145,13 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     const currentIndex = this.currentImageIndices[imageId] || 0;
     this.currentImageIndices[imageId] =
       (currentIndex - 1 + urlsLength) % urlsLength;
+  }
+
+  public onShowOnlyMyMediaChange(event: MatCheckboxChange): void {
+    if (event.checked) {
+      const userDetails = this.userService.getUserDetails();
+      if (userDetails?.email) this.userEmailFilter = userDetails.email;
+    } else this.userEmailFilter = '';
   }
 
   public startAutoSlide(image: MediaItem): void {

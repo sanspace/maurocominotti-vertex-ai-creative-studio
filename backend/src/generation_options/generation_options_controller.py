@@ -17,7 +17,7 @@ from src.common.base_schema_model import (
     AspectRatioEnum,
     CompositionEnum,
     GenerationModelEnum,
-    ImageStyleEnum,
+    StyleEnum,
 )
 from src.generation_options.dto.generation_options_dto import GenerationOptionsResponse
 from src.images.dto.create_imagen_dto import LightingEnum, ColorAndToneEnum
@@ -36,7 +36,7 @@ async def get_image_generation_options():
     return GenerationOptionsResponse(
         generation_models=[member.value for member in GenerationModelEnum],
         aspect_ratios=[member.value for member in AspectRatioEnum],
-        image_styles=[member.value for member in ImageStyleEnum],
+        styles=[member.value for member in StyleEnum],
         lightings=[member.value for member in LightingEnum],
         colors_and_tones=[member.value for member in ColorAndToneEnum],
         composition=[member.value for member in CompositionEnum],

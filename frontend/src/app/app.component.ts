@@ -61,7 +61,7 @@ export class AppComponent {
 
   constructor(
     private router: Router,
-    public loadingService: LoadingService
+    public loadingService: LoadingService,
   ) {
     this.router.events.subscribe((event: NavigationEvent) => {
       if (event instanceof NavigationEnd) {

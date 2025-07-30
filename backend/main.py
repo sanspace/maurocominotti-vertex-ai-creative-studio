@@ -27,7 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.auth import firebase_client_service
 from src.images.imagen_controller import router as imagen_router
 from src.audios.audio_controller import router as audio_router
-from src.videos.video_controller import router as video_router
+from src.videos.veo_controller import router as video_router
 from src.galleries.gallery_controller import router as gallery_router
 from src.multimodal.gemini_controller import router as gemini_router
 from src.users.user_controller import router as user_router

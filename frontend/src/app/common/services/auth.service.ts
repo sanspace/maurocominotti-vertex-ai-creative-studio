@@ -83,7 +83,9 @@ export class AuthService {
       // Step 1: Get the Firebase ID token from the successful sign-in.
       switchMap((userCredential: UserCredential) => {
         if (!userCredential.user) {
-          return throwError(() => new Error('Firebase user not found after sign-in.'));
+          return throwError(
+            () => new Error('Firebase user not found after sign-in.'),
+          );
         }
         return from(userCredential.user.getIdTokenResult());
       }),
@@ -100,13 +102,13 @@ export class AuthService {
 
         // Call the backend to get or create the user profile.
         return this.syncUserWithBackend$(token).pipe(
-          map(() => token) // Pass the token along for the final result.
+          map(() => token), // Pass the token along for the final result.
         );
       }),
       catchError((error: any) => {
         console.error('An error occurred during the sign-in process:', error);
         return throwError(() => new Error('Sign-in failed. Please try again.'));
-      })
+      }),
     );
   }
 
@@ -152,19 +154,24 @@ export class AuthService {
 
   private syncUserWithBackend$(token: string): Observable<UserData> {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
-    return this.httpClient.get<UserData>(`${environment.backendURL}/users/me`, {headers}).pipe(
-      tap((userDetails: UserData) => {
-        console.log("userDetails", userDetails)
-        // The backend is the source of truth. Save the returned profile to local storage.
-        localStorage.setItem(USER_DETAILS, JSON.stringify(userDetails));
-        console.log('User profile successfully synced with backend.');
-      }),
-      catchError((error: HttpErrorResponse) => {
-        console.error('Failed to sync user with backend', error);
-        // This is a critical error, so we should propagate it.
-        return throwError(() => new Error('Could not synchronize user profile with the server.'));
-      })
-    );
+    return this.httpClient
+      .get<UserData>(`${environment.backendURL}/users/me`, {headers})
+      .pipe(
+        tap((userDetails: UserData) => {
+          console.log('userDetails', userDetails);
+          // The backend is the source of truth. Save the returned profile to local storage.
+          localStorage.setItem(USER_DETAILS, JSON.stringify(userDetails));
+          console.log('User profile successfully synced with backend.');
+        }),
+        catchError((error: HttpErrorResponse) => {
+          console.error('Failed to sync user with backend', error);
+          // This is a critical error, so we should propagate it.
+          return throwError(
+            () =>
+              new Error('Could not synchronize user profile with the server.'),
+          );
+        }),
+      );
   }
 
   async logout(route: string = LOGIN_ROUTE) {

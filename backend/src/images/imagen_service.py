@@ -25,6 +25,7 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+from src.common.schema.base_model_setup import GenAIModelSetup
 from src.common.base_schema_model import GenerationModelEnum
 from src.images.schema.media_item_model import MediaItem
 from src.images.repository.media_item_repository import MediaRepository
@@ -32,7 +33,6 @@ from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
 from src.images.schema.imagen_result_model import CustomImagenResult, ImageGenerationResult
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.images.schema.imagen_model_setup import ImagenModelSetup
 from src.common.storage_service import store_to_gcs
 from src.config.config_service import ConfigService
 import uuid
@@ -64,7 +64,7 @@ class ImagenService:
         """
         Generates a batch of images and saves them as a single MediaItem document.
         """
-        client = ImagenModelSetup.init(model_id=request_dto.generation_model)
+        client = GenAIModelSetup.init()
         cfg = ConfigService()
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
@@ -164,7 +164,8 @@ class ImagenService:
                 prompt=rewritten_prompt,
                 original_prompt=original_prompt,
                 gcs_uris=permanent_gcs_uris,
-                num_images=len(permanent_gcs_uris),
+                aspect_ratio=request_dto.aspect_ratio,
+                num_media=len(permanent_gcs_uris),
             )
             self.media_repo.save(media_post_to_save)
 
@@ -197,14 +198,12 @@ class ImagenService:
         client: Client,
         term: str,
         number_of_images: int,
-        image_style: str,
+        style: str,
     ) -> List[ImageGenerationResult]:
         response_gemini: List[ImageGenerationResult] = []
         try:
-            gemini_prompt_text = f"Create an image with a style '{image_style}' based on this user prompt: {term}"
-            print(
-                f"Calling Gemini model for '{term}' with style '{image_style}'"
-            )
+            gemini_prompt_text = f"Create an image with a style '{style}' based on this user prompt: {term}"
+            print(f"Calling Gemini model for '{term}' with style '{style}'")
 
             for i in range(
                 number_of_images
@@ -291,12 +290,12 @@ class ImagenService:
     async def generate_images_from_gemini(
         self, request_dto: CreateImagenDto
     ) -> list[ImageGenerationResult]:
-        client = ImagenModelSetup.init(model_id=request_dto.generation_model)
+        client = GenAIModelSetup.init()
         gemini_coroutine = self._generate_with_gemini(
             client=client,
             term=request_dto.prompt,
             number_of_images=request_dto.number_of_images,
-            image_style=request_dto.image_style,
+            style=request_dto.style,
         )
         results = await asyncio.gather(gemini_coroutine, return_exceptions=True)
 
@@ -331,7 +330,7 @@ class ImagenService:
 
     def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
         """Generates a single image and returns the image bytes."""
-        client = ImagenModelSetup.init(model_id=GenerationModelEnum.IMAGEN_4_ULTRA)
+        client = GenAIModelSetup.init()
         response = client.models.generate_images(
             model=GenerationModelEnum.IMAGEN_4_ULTRA,
             prompt=prompt,
@@ -411,7 +410,7 @@ class ImagenService:
         self, request_dto: EditImagenDto
     ) -> list[ImageGenerationResult]:
         """Edits an image using the Google GenAI client."""
-        client = ImagenModelSetup.init(model_id=request_dto.generation_model)
+        client = GenAIModelSetup.init()
         cfg = ConfigService()
         gcs_output_directory = f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_EDITED_SUBFOLDER}"
 

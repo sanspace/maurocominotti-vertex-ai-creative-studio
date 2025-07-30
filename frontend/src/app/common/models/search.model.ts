@@ -14,12 +14,25 @@
  * limitations under the License.
  */
 
-export type SearchRequest = {
+export type ImagenRequest = {
   prompt: string;
   generationModel: string;
   aspectRatio: string;
-  imageStyle: string;
   numberOfImages: number;
+  imageStyle: string;
+  lighting: string;
+  colorAndTone: string;
+  composition: string;
+  addWatermark: boolean;
+  negativePrompt: string;
+};
+
+export type VeoRequest = {
+  prompt: string;
+  generationModel: string;
+  aspectRatio: string;
+  numberOfVideos?: number;
+  videoStyle: string;
   lighting: string;
   colorAndTone: string;
   composition: string;

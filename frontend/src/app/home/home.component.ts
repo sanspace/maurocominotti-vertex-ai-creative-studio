@@ -30,11 +30,8 @@ import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {finalize} from 'rxjs/operators';
 import {SearchService} from '../services/search/search.service';
-import {
-  CombinedImageResults,
-  GeneratedImage,
-} from '../common/models/generated-image.model';
-import {SearchRequest} from '../common/models/search.model';
+import {GeneratedImage} from '../common/models/generated-image.model';
+import {ImagenRequest} from '../common/models/search.model';
 import lightGallery from 'lightgallery';
 import {LightGallery} from 'lightgallery/lightgallery';
 import lgThumbnail from 'lightgallery/plugins/thumbnail';
@@ -42,6 +39,8 @@ import lgZoom from 'lightgallery/plugins/zoom';
 import lgShare from 'lightgallery/plugins/share';
 import {Subscription} from 'rxjs';
 import {additionalShareOptions} from '../utils/lightgallery-share-options';
+import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {MatSnackBar} from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-home',
@@ -56,7 +55,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
-  searchRequest: SearchRequest = {
+  searchRequest: ImagenRequest = {
     prompt:
       'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
     generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
@@ -87,7 +86,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     {value: 'imagegeneration@002', viewValue: 'ImageGen (002)'},
   ];
   selectedGenerationModel = this.generationModels[0].viewValue;
-  aspectRatios = ['16:9', '1:1', '9:16', '4:3', '3:4'];
+  aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
+    [
+      {value: '1:1', viewValue: '1080x1080 \n Post', disabled: false},
+      {value: '16:9', viewValue: '1200x628 \n Landscape', disabled: false},
+      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: false},
+      {value: '3:4', viewValue: '1080x1350 \n Portrait', disabled: false},
+      {value: '4:3', viewValue: '1000x1500 \n Pin', disabled: false},
+      {value: '', viewValue: '300x250 \n Medium Banner', disabled: true},
+      {value: '', viewValue: '728x90 \n Leaderboard', disabled: true},
+      {value: '', viewValue: '160x600 \n Wide Skyscraper', disabled: true},
+      {value: '1:2', viewValue: '300x600 \n Half Page', disabled: true},
+      {value: '', viewValue: '970x90 \n L. Leaderboard', disabled: true},
+    ];
+  selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   imageStyles = [
     'Photorealistic',
     'Cinematic',
@@ -160,6 +172,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
     private service: SearchService,
+    private _snackBar: MatSnackBar,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -366,6 +379,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         },
         error: error => {
           console.error('Search error:', error);
+          const errorMessage =
+            error?.error?.detail?.[0]?.msg ||
+            error?.message ||
+            'Something went wrong';
+          this._snackBar.openFromComponent(ToastMessageComponent, {
+            panelClass: ['red-toast'],
+            verticalPosition: 'top',
+            horizontalPosition: 'right',
+            duration: 6000,
+            data: {
+              text: errorMessage,
+              icon: 'cross-in-circle-white',
+            },
+          });
         },
       });
   }

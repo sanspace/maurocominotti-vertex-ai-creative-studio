@@ -1,11 +1,19 @@
-<div *ngIf="isLoading" class="flex flex-col justify-center items-center h-screen text-white text-center">
-  <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
+<div
+  *ngIf="isLoading"
+  class="flex flex-col justify-center items-center h-screen text-white text-center"
+>
+  <mat-progress-spinner
+    color="primary"
+    mode="indeterminate"
+  ></mat-progress-spinner>
   <p class="pt-8">Loading media details...</p>
 </div>
 
 <div *ngIf="mediaItem" class="lg:container lg:mx-auto py-8 px-4">
-  <button [routerLink]="['/gallery']"
-    class="mb-8 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center">
+  <button
+    [routerLink]="['/gallery']"
+    class="mb-8 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+  >
     &larr; Back to Gallery
   </button>
 
@@ -20,15 +28,29 @@
     <div class="md:col-span-1 text-white">
       <h2 class="text-3xl font-bold mb-4">Details</h2>
       <div class="space-y-3">
-
-        <div>
-          <strong class="font-semibold">Prompt:</strong>
-          <p class="mt-1">{{ mediaItem.prompt || 'N/A' }}</p>
-        </div>
-
         <div *ngIf="mediaItem.original_prompt">
           <strong class="font-semibold">Original Prompt:</strong>
           <p>{{ mediaItem.original_prompt }}</p>
+        </div>
+
+        <div>
+          <div
+            class="flex cursor-pointer items-center justify-between"
+            (click)="isPromptVisible = !isPromptVisible"
+          >
+            <strong class="font-semibold">Prompt used for generation:</strong>
+            <button
+              type="button"
+              class="text-gray-400 hover:text-white focus:outline-none"
+              aria-label="Toggle prompt visibility"
+            >
+              <mat-icon>{{ isPromptVisible ? 'expand_less' : 'expand_more' }}</mat-icon>
+            </button>
+          </div>
+          <pre
+            *ngIf="isPromptVisible"
+            class="mt-1 rounded-md bg-gray-800 p-2 text-sm whitespace-pre-wrap break-words"
+            >{{ formattedPrompt }}</pre>
         </div>
 
         <div *ngIf="mediaItem.rewritten_prompt">
@@ -48,8 +70,8 @@
 
         <div>
           <strong class="font-semibold">Created at:</strong>
-          <p>{{ mediaItem.created_at | date:'medium' }}</p>
-        </div> 
+          <p>{{ mediaItem.created_at | date: 'medium' }}</p>
+        </div>
 
         <div>
           <strong class="font-semibold">Mime Type:</strong>
@@ -81,7 +103,9 @@
         <div *ngIf="mediaItem.source_images_gcs?.length">
           <strong class="font-semibold">Source Images GCS:</strong>
           <ul>
-            <li *ngFor="let image of mediaItem.source_images_gcs">{{ image }}</li>
+            <li *ngFor="let image of mediaItem.source_images_gcs">
+              {{ image }}
+            </li>
           </ul>
         </div>
 
@@ -93,9 +117,9 @@
           </ul>
         </div>
 
-        <div *ngIf="mediaItem.num_images">
+        <div *ngIf="mediaItem.num_media">
           <strong class="font-semibold">Number of Images:</strong>
-          <p>{{ mediaItem.num_images }}</p>
+          <p>{{ mediaItem.num_media }}</p>
         </div>
 
         <div *ngIf="mediaItem.aspect_ratio">
@@ -103,9 +127,9 @@
           <p>{{ mediaItem.aspect_ratio }}</p>
         </div>
 
-        <div *ngIf="mediaItem.image_style">
+        <div *ngIf="mediaItem.style">
           <strong class="font-semibold">Image Style:</strong>
-          <p>{{ mediaItem.image_style }}</p>
+          <p>{{ mediaItem.style }}</p>
         </div>
 
         <div *ngIf="mediaItem.lighting">
@@ -173,18 +197,21 @@
           <strong class="font-semibold">Comment:</strong>
           <p>{{ mediaItem.comment }}</p>
         </div>
-<!-- Music Specific -->
-<div *ngIf="mediaItem.audio_analysis">
-  <b class="font-semibold">Audio Analysis:</b>
-  <pre class="bg-gray-800 p-2 rounded-md overflow-x-auto">{{ mediaItem.audio_analysis | json }}</pre>
-</div>
+        <!-- Music Specific -->
+        <div *ngIf="mediaItem.audio_analysis">
+          <b class="font-semibold">Audio Analysis:</b>
+          <pre
+            class="bg-gray-800 p-2 rounded-md text-sm whitespace-pre-wrap break-words"
+            >{{ mediaItem.audio_analysis | json }}</pre>
+        </div>
 
-<!-- Debugging -->
-<div *ngIf="mediaItem.raw_data">
-  <b class="font-semibold">Raw Data:</b>
-  <pre class="bg-gray-800 p-2 rounded-md overflow-x-auto">{{ mediaItem.raw_data | json }}</pre>
-</div>
-
+        <!-- Debugging -->
+        <div *ngIf="mediaItem.raw_data">
+          <b class="font-semibold">Raw Data:</b>
+          <pre
+            class="bg-gray-800 p-2 rounded-md text-sm whitespace-pre-wrap break-words"
+            >{{ mediaItem.raw_data | json }}</pre>
+        </div>
       </div>
     </div>
   </div>

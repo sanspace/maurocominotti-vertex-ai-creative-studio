@@ -29,7 +29,17 @@ export type GeneratedImage = {
   source?: string;
 };
 
-export interface CombinedImageResults {
-  geminiResults: GeneratedImage[];
-  imagenResults: GeneratedImage[];
-}
+type Video = {
+  gcsUri?: string;
+  presignedUrl?: string;
+  imageBytes?: ArrayBuffer;
+  encodedImage?: string;
+  mimeType?: string;
+};
+
+export type GeneratedVideo = {
+  video?: Video;
+  raiFilteredReason?: string;
+  enhancedPrompt?: string;
+  source?: string;
+};

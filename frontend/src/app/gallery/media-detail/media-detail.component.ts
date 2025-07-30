@@ -39,6 +39,11 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   public isLoading = true;
   public mediaItem: MediaItem | undefined;
 
+  // Flags to control visibility of collapsible sections
+  public isPromptVisible = false;
+  public isAudioAnalysisVisible = false;
+  public isRawDataVisible = false;
+
   constructor(
     private route: ActivatedRoute,
     private location: Location,
@@ -83,7 +88,9 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
     // We use a microtask to wait for the view to be stable before initialization.
     Promise.resolve().then(() => {
       if (this.lightGalleryCarousels?.length) {
-        console.log('ngAfterViewInit: Element already present, initializing gallery.');
+        console.log(
+          'ngAfterViewInit: Element already present, initializing gallery.',
+        );
         this.initLightGallery();
       }
     });
@@ -163,5 +170,34 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  /**
+   * Gets the prompt, formatted as a beautified JSON string if it's a
+   * valid JSON object or stringified JSON. Otherwise, returns the original prompt.
+   */
+  get formattedPrompt(): string {
+    if (!this.mediaItem?.prompt) {
+      return 'N/A';
+    }
+
+    // The prompt could already be an object.
+    if (typeof this.mediaItem.prompt === 'object') {
+      return JSON.stringify(this.mediaItem.prompt, null, 2);
+    }
+
+    // Or it could be a string, which might be stringified JSON.
+    try {
+      const parsed = JSON.parse(this.mediaItem.prompt);
+      // We only want to format it if the parsed content is an object or array.
+      if (parsed && typeof parsed === 'object') {
+        return JSON.stringify(parsed, null, 2);
+      }
+    } catch (e) {
+      // It's not a valid JSON string, so we'll fall through and return the original string.
+    }
+
+    // Return the original string if it's not an object or valid stringified JSON.
+    return this.mediaItem.prompt;
   }
 }

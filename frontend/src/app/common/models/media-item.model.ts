@@ -48,9 +48,9 @@ export interface MediaItem {
 
   // Image specific
   modifiers: string[];
-  num_images?: number;
+  num_media?: number;
   aspect_ratio?: string;
-  image_style?: string;
+  style?: string;
   lighting?: string;
   color_and_tone?: string;
   composition?: string;

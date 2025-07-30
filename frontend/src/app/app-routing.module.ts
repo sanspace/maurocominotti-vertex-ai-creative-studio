@@ -38,19 +38,19 @@ const routes: Routes = [
   // When a user goes to '/gallery', show the main feed.
   {
     path: 'gallery',
-    component: MediaGalleryComponent
+    component: MediaGalleryComponent,
   },
   // When a user goes to '/gallery/some-unique-id', show the detail page.
   // The ':id' is a placeholder for the media item's ID.
   {
     path: 'gallery/:id',
-    component: MediaDetailComponent
+    component: MediaDetailComponent,
   },
   // Optional: Redirect the base URL to the gallery
   {
     path: '',
     redirectTo: '/gallery',
-    pathMatch: 'full'
+    pathMatch: 'full',
   },
 ];
 
