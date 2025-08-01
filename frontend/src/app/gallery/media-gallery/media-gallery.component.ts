@@ -149,17 +149,43 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   }
 
   public onMouseEnter(media: MediaItem): void {
-    if (media.mime_type === 'video/mp4')
-      this.playVideo(media.id);
+    if (media.mime_type === 'video/mp4') this.playVideo(media.id);
 
     this.stopAutoSlide(media.id);
   }
 
   public onMouseLeave(media: MediaItem): void {
-    if (media.mime_type === 'video/mp4')
-      this.stopVideo();
+    if (media.mime_type === 'video/mp4') this.stopVideo();
 
     this.startAutoSlide(media);
+  }
+
+  public getShortPrompt(
+    prompt: string | undefined | null,
+    wordLimit = 20,
+  ): string {
+    if (!prompt) return 'Generated media';
+
+    let textToTruncate = prompt;
+
+    // Prompts can sometimes be stringified JSON.
+    try {
+      const parsedPrompt = JSON.parse(prompt);
+      if (
+        parsedPrompt &&
+        typeof parsedPrompt === 'object' &&
+        parsedPrompt.prompt_name
+      ) {
+        textToTruncate = parsedPrompt.prompt_name;
+      }
+    } catch (e) {
+      // It's not JSON, so we use the prompt as is.
+    }
+
+    const words = textToTruncate.split(/\s+/);
+    if (words.length > wordLimit)
+      return words.slice(0, wordLimit).join(' ') + '...';
+    return textToTruncate;
   }
 
   public playVideo(mediaId: string): void {

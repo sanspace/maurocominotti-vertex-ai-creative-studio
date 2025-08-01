@@ -181,7 +181,7 @@
                 *ngFor="let url of media.presigned_urls; let i = index"
                 class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500 group-hover:opacity-80"
                 [src]="url"
-                [alt]="'Gallery image'"
+                [alt]="getShortPrompt(media.original_prompt)"
                 [class.active]="(currentImageIndices[media.id] || 0) === i"
                 [style.opacity]="
                   (currentImageIndices[media.id] || 0) === i ? 1 : 0
@@ -220,7 +220,7 @@
                   *ngFor="let url of media.presigned_thumbnail_urls; let i = index"
                   class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500"
                   [src]="url"
-                  [alt]="'Gallery video thumbnail'"
+                  [alt]="getShortPrompt(media.original_prompt)"
                   [class.active]="(currentImageIndices[media.id] || 0) === i"
                   [style.opacity]="(currentImageIndices[media.id] || 0) === i ? 1 : 0"
                 />
