@@ -5,18 +5,16 @@ import {
   OnDestroy,
   OnInit,
   QueryList,
-  ViewChildren,
+  ViewChildren
 } from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Location} from '@angular/common';
 import {Subscription} from 'rxjs';
 import {LightGallery} from 'lightgallery/lightgallery';
 import lgZoom from 'lightgallery/plugins/zoom';
-import {InitDetail} from 'lightgallery/lg-events';
 import lgThumbnail from 'lightgallery/plugins/thumbnail';
 import lgShare from 'lightgallery/plugins/share';
 import lgVideo from 'lightgallery/plugins/video';
-import {VideoSource} from 'lightgallery/plugins/video/types';
 import {additionalShareOptions} from '../../utils/lightgallery-share-options';
 import {MediaItem} from '../../common/models/media-item.model';
 import {GalleryService} from '../gallery.service';
@@ -40,6 +38,7 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   private lightGalleryInstance?: LightGallery;
   public isLoading = true;
   public mediaItem: MediaItem | undefined;
+  private initialSlideIndex = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -52,12 +51,11 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
     this.mediaItem =
       this.router.getCurrentNavigation()?.extras.state?.['mediaItem'];
 
-    console.log('mediaItem', this.mediaItem);
-
     if (this.mediaItem) {
       // If we have the media item, we don't need to load it
       this.loadingService.hide();
       this.isLoading = false;
+      this.readInitialIndexFromUrl();
     } else {
       // If not, fetch the media item using the ID from the route params
       this.fetchMediaItem();
@@ -69,25 +67,17 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   ngAfterViewInit(): void {
     this.gallerySubscription = this.lightGalleryCarousels?.changes.subscribe(
       (list: QueryList<ElementRef>) => {
-        console.log('ngAfterViewInit called list', list);
-
         if (list.first) {
-          console.log('ngAfterViewInit called list.first');
           this.initLightGallery();
         }
       },
     );
 
-    // The `changes` subscription only fires when the list of elements changes.
-    // If the carousel element is already in the DOM when this component initializes
-    // (because `mediaItem` was passed in the route state), `changes` will not fire.
-    // We need to check for this case and initialize the gallery manually.
-    // We use a microtask to wait for the view to be stable before initialization.
+    // The `changes` subscription only fires when the list of elements changes. If the
+    // carousel element is already in the DOM (e.g. mediaItem was passed in state),
+    // `changes` won't fire. We need to check for this case and initialize manually.
     Promise.resolve().then(() => {
       if (this.lightGalleryCarousels?.length) {
-        console.log(
-          'ngAfterViewInit: Element already present, initializing gallery.',
-        );
         this.initLightGallery();
       }
     });
@@ -105,8 +95,16 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy(): void {
     this.routeSub?.unsubscribe();
     this.mediaSub?.unsubscribe();
-    this.lightGalleryInstance?.destroy();
     this.gallerySubscription?.unsubscribe();
+
+    // Clean up lightgallery
+    if (this.lightGalleryInstance) {
+      const galleryElement = this.lightGalleryCarousels?.first?.nativeElement;
+      if (galleryElement) {
+        galleryElement.removeEventListener('lgAfterSlide', this.onAfterSlide);
+      }
+      this.lightGalleryInstance.destroy();
+    }
   }
 
   fetchMediaDetails(id: string): void {
@@ -115,6 +113,7 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
         this.mediaItem = data;
         this.isLoading = false;
         this.loadingService.hide();
+        this.readInitialIndexFromUrl();
       },
       error: err => {
         console.error('Failed to fetch media details', err);
@@ -124,12 +123,25 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  private initLightGallery(): void {
-    console.log('initLightGallery');
+  private readInitialIndexFromUrl(): void {
+    const indexStr = this.route.snapshot.queryParamMap.get('img_index');
+    if (indexStr) {
+      const index = parseInt(indexStr, 10);
+      if (
+        !isNaN(index) &&
+        index >= 0 &&
+        index < (this.mediaItem?.presigned_urls?.length || 0)
+      ) {
+        this.initialSlideIndex = index;
+      }
+    }
+  }
 
+  private initLightGallery(): void {
     const galleryElement = this.lightGalleryCarousels?.first.nativeElement;
 
-    console.log('initLightGallery galleryElement', galleryElement);
+    // Add a listener to update the URL when the slide changes.
+    galleryElement.addEventListener('lgAfterSlide', this.onAfterSlide);
 
     if (!galleryElement || !this.mediaItem?.presigned_urls) return;
 
@@ -168,12 +180,11 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     });
 
-    console.log('dynamicElements', dynamicElements);
-
     this.lightGalleryInstance = lightGallery(galleryElement, {
       container: galleryElement,
       dynamic: true,
       dynamicEl: dynamicElements,
+      index: this.initialSlideIndex,
       plugins: [lgZoom, lgShare, lgVideo, lgThumbnail],
       speed: 500,
       download: true,
@@ -189,6 +200,23 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
     // Programmatically open the gallery since we are in dynamic mode
     this.lightGalleryInstance.openGallery();
   }
+
+  /**
+   * Handles the afterSlide event from lightGallery to update the URL.
+   * This is an arrow function to preserve the `this` context.
+   */
+  private onAfterSlide = (event: CustomEvent): void => {
+    const newIndex = event.detail.index;
+    const url = this.router
+      .createUrlTree([], {
+        relativeTo: this.route,
+        queryParams: {img_index: newIndex},
+        queryParamsHandling: 'merge', // Keeps other query params if any
+      })
+      .toString();
+
+    this.location.replaceState(url);
+  };
 
   goBack(): void {
     this.location.back();
