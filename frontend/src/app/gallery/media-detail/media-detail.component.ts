@@ -21,6 +21,8 @@ import {GalleryService} from '../gallery.service';
 import {LoadingService} from '../../common/services/loading.service';
 import lightGallery from 'lightgallery';
 import {GalleryItem} from 'lightgallery/lg-utils';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
 
 @Component({
   selector: 'app-media-detail',
@@ -46,6 +48,7 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
     private router: Router,
     private galleryService: GalleryService,
     private loadingService: LoadingService,
+    private _snackBar: MatSnackBar,
   ) {
     // Get the media item from the router state
     this.mediaItem =
@@ -199,6 +202,33 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Programmatically open the gallery since we are in dynamic mode
     this.lightGalleryInstance.openGallery();
+
+    // Add a custom click handler for our "Copy Link" button.
+    // We do this because the share plugin doesn't support custom actions, only setting hrefs.
+    const copyLinkButton = galleryElement.querySelector('.lg-share-copy-link');
+    if (copyLinkButton) {
+      copyLinkButton.addEventListener('click', (e: Event) => {
+        e.preventDefault();
+        const urlToCopy = (e.currentTarget as HTMLAnchorElement).href;
+        navigator.clipboard.writeText(urlToCopy).then(
+          () => {
+            this._snackBar.openFromComponent(ToastMessageComponent, {
+              panelClass: ['green-toast'],
+              verticalPosition: 'top',
+              horizontalPosition: 'right',
+              duration: 6000,
+              data: {
+                text: 'Url copied!',
+                matIcon: 'check_small',
+              },
+            });
+          },
+          err => {
+            console.error('Failed to copy link: ', err);
+          },
+        );
+      });
+    }
   }
 
   /**

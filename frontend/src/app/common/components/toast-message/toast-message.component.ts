@@ -26,12 +26,15 @@ import {MatSnackBar, MAT_SNACK_BAR_DATA} from '@angular/material/snack-bar';
 export class ToastMessageComponent {
   text: string;
   icon: string;
+  matIcon: string;
+
   constructor(
     private _snackBar: MatSnackBar,
     @Inject(MAT_SNACK_BAR_DATA) public snackBarData: any,
   ) {
     this.text = snackBarData.text;
     this.icon = snackBarData.icon;
+    this.matIcon = snackBarData.matIcon;
   }
 
   closeToast() {
