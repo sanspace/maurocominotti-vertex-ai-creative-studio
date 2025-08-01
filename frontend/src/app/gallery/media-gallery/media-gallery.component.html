@@ -168,8 +168,8 @@
         <div
           *ngFor="let media of column; trackBy: trackByImage"
           class="relative group rounded-lg overflow-hidden shadow-lg"
-          (mouseenter)="stopAutoSlide(media.id)"
-          (mouseleave)="startAutoSlide(media)"
+          (mouseenter)="onMouseEnter(media)"
+          (mouseleave)="onMouseLeave(media)"
         >
           <a
             [routerLink]="['/gallery', media.id]"
@@ -181,7 +181,7 @@
                 *ngFor="let url of media.presigned_urls; let i = index"
                 class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500 group-hover:opacity-80"
                 [src]="url"
-                [alt]="media.prompt || 'Gallery image'"
+                [alt]="'Gallery image'"
                 [class.active]="(currentImageIndices[media.id] || 0) === i"
                 [style.opacity]="
                   (currentImageIndices[media.id] || 0) === i ? 1 : 0
@@ -194,22 +194,46 @@
               ></div>
             </ng-container>
             <ng-container *ngIf="media.mime_type === 'video/mp4'">
-              <video
-                *ngFor="let url of media.presigned_urls; let i = index"
-                class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500 group-hover:opacity-80"
-                [class.active]="(currentImageIndices[media.id] || 0) === i"
-                [style.opacity]="
-                  (currentImageIndices[media.id] || 0) === i ? 1 : 0
-                "
-                oncanplay="this.play()"
-                onloadedmetadata="this.muted = true"
-                muted
-                playsinline
-                loop
-                autoplay
-              >
-                <source [src]="url" [type]="media.mime_type" />
-              </video>
+              <!-- Show video on hover -->
+              <ng-container *ngIf="hoveredVideoId === media.id">
+                <video
+                  *ngFor="let url of media.presigned_urls; let i = index"
+                  class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500"
+                  [class.active]="(currentImageIndices[media.id] || 0) === i"
+                  [style.opacity]="
+                    (currentImageIndices[media.id] || 0) === i ? 1 : 0
+                  "
+                  oncanplay="this.play()"
+                  onloadedmetadata="this.muted = true"
+                  muted
+                  playsinline
+                  loop
+                  autoplay
+                >
+                  <source [src]="url" [type]="media.mime_type" />
+                </video>
+              </ng-container>
+
+              <!-- Show thumbnail by default -->
+              <ng-container *ngIf="hoveredVideoId !== media.id">
+                <img
+                  *ngFor="let url of media.presigned_thumbnail_urls; let i = index"
+                  class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500"
+                  [src]="url"
+                  [alt]="'Gallery video thumbnail'"
+                  [class.active]="(currentImageIndices[media.id] || 0) === i"
+                  [style.opacity]="(currentImageIndices[media.id] || 0) === i ? 1 : 0"
+                />
+                <!-- Play Button Overlay -->
+                <div
+                  class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 opacity-50 transition-opacity duration-300 group-hover:opacity-0"
+                >
+                  <svg class="h-16 w-16 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                  </svg>
+                </div>
+              </ng-container>
+
               <!-- A "spacer" div that defines the aspect ratio of the container -->
               <div
                 class="w-full"

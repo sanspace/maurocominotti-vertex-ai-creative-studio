@@ -41,6 +41,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   ];
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
+  public hoveredVideoId: string | null = null;
   constructor(
     private galleryService: GalleryService,
     private sanitizer: DomSanitizer,
@@ -145,6 +146,28 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     const currentIndex = this.currentImageIndices[imageId] || 0;
     this.currentImageIndices[imageId] =
       (currentIndex - 1 + urlsLength) % urlsLength;
+  }
+
+  public onMouseEnter(media: MediaItem): void {
+    if (media.mime_type === 'video/mp4')
+      this.playVideo(media.id);
+
+    this.stopAutoSlide(media.id);
+  }
+
+  public onMouseLeave(media: MediaItem): void {
+    if (media.mime_type === 'video/mp4')
+      this.stopVideo();
+
+    this.startAutoSlide(media);
+  }
+
+  public playVideo(mediaId: string): void {
+    this.hoveredVideoId = mediaId;
+  }
+
+  public stopVideo(): void {
+    this.hoveredVideoId = null;
   }
 
   public onShowOnlyMyMediaChange(event: MatCheckboxChange): void {
