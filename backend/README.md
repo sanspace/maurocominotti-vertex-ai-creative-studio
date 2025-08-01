@@ -149,6 +149,15 @@ uv sync --all-extras
 
 > **IMPORTANT!** VS Code may not recognize your env, in that case type "ctrl + shift + P", then select "Python: Select Interpreter" and then select "Enter interpreter path..." and then select your .venv python interpreter, in this case .backend/.venv/bin/python
 
+### 1.1 Installing ffmpeg
+If you want to use the video capabilities, you will need to install ffmpeg. Meanwhile this is done automatically on Docker, if you are trying this on local you will need to install it. You can see [the official FFMPEG documentation here](https://ffmpeg.org/download.html), but overall:
+```
+# On Debian/Ubuntu
+sudo apt install ffmpeg
+
+# On Windows, OS X, etc
+brew install ffmpeg
+```
 
 ### 2. Setup gcloud credentials
 ```

@@ -7,9 +7,11 @@ class CustomVeoResult(BaseSchema):
     mime_type: str
     encoded_video: str
     presigned_url: str
+    presigned_thumbnail_url: str
 
 
 class VeoGenerationResult(BaseSchema):
     enhanced_prompt: str
+    original_prompt: str
     rai_filtered_reason: Optional[str]
     video: CustomVeoResult

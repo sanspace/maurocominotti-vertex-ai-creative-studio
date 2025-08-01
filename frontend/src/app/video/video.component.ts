@@ -31,6 +31,8 @@ import {additionalShareOptions} from '../utils/lightgallery-share-options';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {GalleryItem} from 'lightgallery/lg-utils';
+import lgVideo from 'lightgallery/plugins/video';
 
 @Component({
   selector: 'app-video',
@@ -41,13 +43,14 @@ export class VideoComponent {
   // --- Component State ---
   videoDocuments: GeneratedVideo[] = [];
   isLoading = false;
+  isAudioGenerationDisabled = false;
   showDefaultDocuments = false;
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
   searchRequest: VeoRequest = {
     prompt:
-      'A hiker during a late spring day in California’s Big Sur overlooking the ocean',
+      "From the depths of the ocean, the power of Neptune's trident is unleashed, summoning a vortex of water and light that forges the Maserati MC20 supercar. Opening Shot: The camera glides over the seabed and discovers a massive, ancient bronze trident, half-buried in the sand. It begins to hum and glow with a brilliant aquamarine light. Main Action: The glowing trident unleashes its power, creating a massive, swirling underwater vortex. Sand, bubbles, and light are pulled into its powerful spin, with the trident at its center. Solidification: Within the vortex, the chaotic currents of water are hydro-dynamically sculpted into the sleek, aerodynamic form of a Maserati MC20. The iconic trident logo on the front grille materializes first, glowing brightly. The water-form then solidifies into 'Bianco Audace' metallic white. The Breach: The fully formed car rockets upwards from the depths. It bursts through the ocean surface in a spectacular explosion of water and spray, captured in slow motion. It lands perfectly on a wet, black-sand beach at twilight, water streaming off its flawless body. Start with a slow, exploratory glide through the deep water. Circle the glowing trident as it activates. Get caught in the vortex, spinning with the forming car. Follow the car as it rockets upwards, capturing the breach in epic slow motion. End on a low, wide-angle shot of the car on the beach, looking powerful and serene.",
     generationModel: 'veo-3.0-fast-generate-preview',
     aspectRatio: '16:9',
     videoStyle: 'Modern',
@@ -55,8 +58,9 @@ export class VideoComponent {
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',
-    addWatermark: false,
     negativePrompt: '',
+    generateAudio: true,
+    durationSeconds: 8,
   };
 
   // --- Negative Prompt Chips ---
@@ -79,7 +83,7 @@ export class VideoComponent {
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
       {value: '16:9', viewValue: '1200x628 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: false},
+      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: true},
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [
@@ -118,6 +122,7 @@ export class VideoComponent {
     'Toned',
   ];
   numberOfVideosOptions = [1, 2, 3, 4];
+  durationOptions = [1, 2, 3, 4, 5, 6, 7, 8];
   compositions = [
     'Closeup',
     'Knolling',
@@ -129,13 +134,6 @@ export class VideoComponent {
     'Surface detail',
     'Wide angle',
   ];
-  watermarkOptions = [
-    {value: true, viewValue: 'Yes'},
-    {value: false, viewValue: 'No'},
-  ];
-  selectedWatermark = this.watermarkOptions.find(
-    o => o.value === this.searchRequest.addWatermark,
-  )!.viewValue;
 
   @ViewChildren('lightGalleryVideos')
   lightGalleryElements?: QueryList<ElementRef>;
@@ -198,25 +196,36 @@ export class VideoComponent {
 
     if (galleryElement) {
       console.log('ISIDE galleryElement');
-      const dynamicElements = this.videoDocuments.map((doc, index) => ({
-        src: doc?.video?.presignedUrl || '',
-        thumb: doc?.video?.presignedUrl || '',
-        subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1}</h4><p>Generated with ${doc?.source || 'Videon 4 Model'}</p></div>`,
-        // Add data-src attribute for sharing video url
-        // TODO: We should create a creative studio url for that particular video
-        'data-src': doc?.video?.presignedUrl || '',
-        facebookShareUrl: doc?.video?.presignedUrl || '',
-        twitterShareUrl: doc?.video?.presignedUrl || '',
-        tweetText: 'Try Google Creative Studio now!!',
-        pinterestText: 'Try Google Creative Studio now!!',
-      }));
+      console.log('this.videoDocuments', this.videoDocuments);
+
+      const dynamicElements = this.videoDocuments.map((mediaItem, index) => {
+        const dynamicVideo: GalleryItem = {
+          src: '',
+          thumb: mediaItem?.video?.presignedThumbnailUrl || '',
+          subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1} of ${this.videoDocuments?.length}</h4><p>${mediaItem?.originalPrompt || ''}</p></div>`,
+          video: {
+            source: [
+              {
+                src: mediaItem?.video?.presignedUrl || '',
+                type: mediaItem?.video?.mimeType || 'video/mp4',
+              },
+            ],
+            tracks: [],
+            // The type definition for 'attributes' is incorrectly expecting a full
+            // HTMLVideoElement object. We cast to 'any' to provide a plain object
+            // of attributes, which is what the library actually uses.
+            attributes: {preload: 'metadata', controls: true} as any,
+          },
+        };
+        return dynamicVideo;
+      });
 
       console.log('dynamicElements', dynamicElements);
 
       this.lightGalleryInstance = lightGallery(galleryElement, {
         container: galleryElement,
         dynamic: true,
-        plugins: [lgZoom, lgThumbnail, lgShare],
+        plugins: [lgZoom, lgShare, lgThumbnail, lgVideo],
         speed: 200,
         download: true,
         share: true,
@@ -262,10 +271,41 @@ export class VideoComponent {
   selectModel(model: {value: string; viewValue: string}): void {
     this.searchRequest.generationModel = model.value;
     this.selectedGenerationModel = model.viewValue;
+
+    const isVeo2 = model.value.includes('veo-2.0');
+
+    if (isVeo2) {
+      // Veo 2 models do not support audio.
+      this.isAudioGenerationDisabled = true;
+      this.searchRequest.generateAudio = false;
+
+      // Re-enable all aspect ratios for Veo 2.
+      this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
+    } else {
+      // Veo 3 models support audio.
+      this.isAudioGenerationDisabled = false;
+
+      // Veo 3 only supports 16:9 aspect ratio.
+      this.searchRequest.aspectRatio = '16:9';
+      const landscapeOption = this.aspectRatioOptions.find(
+        opt => opt.value === '16:9',
+      )!;
+      this.selectedAspectRatio = landscapeOption.viewValue;
+
+      this.aspectRatioOptions.forEach(opt => {
+        opt.disabled = opt.value !== '16:9';
+      });
+    }
   }
 
   selectAspectRatio(ratio: string): void {
     this.searchRequest.aspectRatio = ratio;
+    const selectedOption = this.aspectRatioOptions.find(
+      opt => opt.value === ratio,
+    );
+    if (selectedOption) {
+      this.selectedAspectRatio = selectedOption.viewValue;
+    }
   }
 
   selectVideoStyle(style: string): void {
@@ -284,13 +324,18 @@ export class VideoComponent {
     this.searchRequest.numberOfVideos = num;
   }
 
+  selectDuration(seconds: number): void {
+    this.searchRequest.durationSeconds = seconds;
+  }
+
   selectComposition(composition: string): void {
     this.searchRequest.composition = composition;
   }
 
-  selectWatermark(option: {value: boolean; viewValue: string}): void {
-    this.searchRequest.addWatermark = option.value;
-    this.selectedWatermark = option.viewValue;
+  toggleAudio(): void {
+    if (!this.isAudioGenerationDisabled) {
+      this.searchRequest.generateAudio = !this.searchRequest.generateAudio;
+    }
   }
 
   addNegativePhrase(event: MatChipInputEvent): void {

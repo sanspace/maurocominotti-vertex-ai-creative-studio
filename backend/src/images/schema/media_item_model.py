@@ -23,12 +23,12 @@ class MediaItem(BaseDocument):
     prompt: Optional[str] = None
     original_prompt: Optional[str] = None
     rewritten_prompt: Optional[str] = None
+    num_media: Optional[int] = None
     generation_time: Optional[float] = None
     error_message: Optional[str] = None
 
     # Common fields across imagen and video types
     aspect_ratio: AspectRatioEnum
-    num_media: Optional[int] = None
     style: Optional[StyleEnum] = None
     lighting: Optional[LightingEnum] = None
     color_and_tone: Optional[ColorAndToneEnum] = None
@@ -42,7 +42,8 @@ class MediaItem(BaseDocument):
     source_images_gcs: List[str] = Field(default_factory=list)
 
     # Video specific
-    duration: Optional[float] = None
+    duration_seconds: Optional[float] = None
+    thumbnail_uris: List[str] = Field(default_factory=list)
     reference_image: Optional[str] = None
     last_reference_image: Optional[str] = None
     enhanced_prompt_used: Optional[bool] = None

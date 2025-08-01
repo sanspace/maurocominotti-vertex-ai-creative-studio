@@ -50,10 +50,20 @@ class GalleryService:
         # Await all URL generation tasks to complete concurrently
         presigned_urls = await asyncio.gather(*tasks)
 
+        thumbnail_tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in item.thumbnail_uris
+            if uri
+        ]
+        presigned_thumbnail_urls = await asyncio.gather(*thumbnail_tasks)
+
         # Create the response DTO, copying all original data and adding the new URLs
         return GalleryItemResponse(
             **item.model_dump(),
-            presigned_urls=presigned_urls
+            presigned_urls=presigned_urls,
+            presigned_thumbnail_urls=presigned_thumbnail_urls
         )
 
     async def get_paginated_gallery(self, search_dto: GallerySearchDto) -> PaginatedGalleryResponse:

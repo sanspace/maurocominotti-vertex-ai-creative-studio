@@ -23,3 +23,4 @@ class GalleryItemResponse(MediaItem):
     temporary, presigned URLs for frontend display.
     """
     presigned_urls: List[str] = []
+    presigned_thumbnail_urls: List[str] = []

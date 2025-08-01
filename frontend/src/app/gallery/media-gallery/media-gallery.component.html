@@ -190,7 +190,7 @@
               <!-- A "spacer" div that defines the aspect ratio of the container -->
               <div
                 class="w-full"
-                [style.aspect-ratio]="(media.aspect_ratio || '1/1').replace(':', ' / ')"
+                [style.aspect-ratio]="(media.aspect_ratio || '1:1').replace(':', ' / ')"
               ></div>
             </ng-container>
             <ng-container *ngIf="media.mime_type === 'video/mp4'">

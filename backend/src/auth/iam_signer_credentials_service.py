@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import datetime
+import logging
 from os import getenv
 from google.auth import credentials
 from google.cloud import iam_credentials_v1
 from google.cloud import storage
+
+logger = logging.getLogger(__name__)
 
 class IamSignerCredentials(credentials.Signing):
     """
@@ -72,7 +75,7 @@ class IamSignerCredentials(credentials.Signing):
             )
             return url
         except Exception as e:
-            print(f"Error generating presigned URL for {gcs_uri}: {e}")
+            logger.error(f"Error generating presigned URL for {gcs_uri}: {e}")
             return gcs_uri
 
     @property
@@ -89,8 +92,10 @@ class IamSignerCredentials(credentials.Signing):
             )
             return response.signed_blob
         except Exception as e:
-            print(f"IAM PERMISSION DENIED: The principal running this code does not have "
-                  f"'roles/iam.serviceAccountTokenCreator' on the service account '{self.service_account_email}'.")
+            logger.error(
+                f"IAM PERMISSION DENIED: The principal running this code does not have "
+                f"'roles/iam.serviceAccountTokenCreator' on the service account '{self.service_account_email}'."
+            )
             raise e  # Re-raise the exception to be caught by the caller
 
     # Alias sign_bytes to sign to satisfy the Signer interface, which is

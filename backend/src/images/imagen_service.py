@@ -31,9 +31,12 @@ from src.images.schema.media_item_model import MediaItem
 from src.images.repository.media_item_repository import MediaRepository
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
-from src.images.schema.imagen_result_model import CustomImagenResult, ImageGenerationResult
+from src.images.schema.imagen_result_model import (
+    CustomImagenResult,
+    ImageGenerationResult,
+)
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.storage_service import store_to_gcs
+from src.common.storage_service import GcsService
 from src.config.config_service import ConfigService
 import uuid
 import base64
@@ -49,13 +52,16 @@ class ImagenService:
         self.iam_signer_credentials = IamSignerCredentials()
         self.media_repo = MediaRepository()
         self.gemini_service = GeminiService()
+        self.gcs_service = GcsService()
 
     @retry(
         wait=wait_exponential(
             multiplier=1, min=1, max=10
         ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
         stop=stop_after_attempt(3),  # Stop after 3 attempts
-        retry=retry_if_exception_type(Exception),  # Retry on all exceptions for robustness
+        retry=retry_if_exception_type(
+            Exception
+        ),  # Retry on all exceptions for robustness
         reraise=True,  # re-raise the last exception if all retries fail
     )
     async def generate_images(
@@ -152,20 +158,25 @@ class ImagenService:
             presigned_urls = await asyncio.gather(*presigned_url_tasks)
 
             # Create and save a SINGLE MediaItem for the entire batch
-            dto_data = request_dto.model_dump(
-                exclude={"number_of_images", "prompt"}
-            )
             media_post_to_save = MediaItem(
-                **dto_data,  # Unpack all other matching fields from the DTO
-                mime_type=mime_type,
+                # Core Props
                 user_email=user_email,
+                mime_type=mime_type,
                 model=request_dto.generation_model,
-                generation_time=generation_time,
+                # Common Props
                 prompt=rewritten_prompt,
                 original_prompt=original_prompt,
-                gcs_uris=permanent_gcs_uris,
-                aspect_ratio=request_dto.aspect_ratio,
                 num_media=len(permanent_gcs_uris),
+                generation_time=generation_time,
+                aspect_ratio=request_dto.aspect_ratio,
+                gcs_uris=permanent_gcs_uris,
+                # Styling props
+                style=request_dto.style,
+                lighting=request_dto.lighting,
+                color_and_tone=request_dto.color_and_tone,
+                composition=request_dto.composition,
+                negative_prompt=request_dto.negative_prompt,
+                add_watermark=request_dto.add_watermark,
             )
             self.media_repo.save(media_post_to_save)
 
@@ -203,7 +214,6 @@ class ImagenService:
         response_gemini: List[ImageGenerationResult] = []
         try:
             gemini_prompt_text = f"Create an image with a style '{style}' based on this user prompt: {term}"
-            print(f"Calling Gemini model for '{term}' with style '{style}'")
 
             for i in range(
                 number_of_images
@@ -277,14 +287,16 @@ class ImagenService:
                                     )
                                 )
                             elif part.text is not None:
-                                print(
+                                logger.info(
                                     f"Gemini Text Output (not an image part): {part.text}"
                                 )
 
-            print(f"Number of images created by Gemini: {len(response_gemini)}")
+            logger.info(
+                f"Number of images created by Gemini: {len(response_gemini)}"
+            )
             return response_gemini
         except Exception as e:
-            print(f"Error during Gemini generation: {e}")
+            logger.error(f"Error during Gemini generation: {e}")
             return []
 
     async def generate_images_from_gemini(
@@ -304,13 +316,13 @@ class ImagenService:
         if gemini_result_index < len(results):
             gemini_task_result = results[gemini_result_index]
             if isinstance(gemini_task_result, Exception):
-                print(
+                logger.error(
                     f"Exception in Gemini generation task: {gemini_task_result}"
                 )
             elif gemini_task_result is not None and isinstance(gemini_task_result, List):
                 response_gemini = gemini_task_result
         else:
-            print(
+            logger.info(
                 "Gemini task result not found in the expected position in results list."
             )
         return response_gemini
@@ -387,7 +399,7 @@ class ImagenService:
                 encoded_mask_string = prediction["bytesBase64Encoded"]   # type: ignore
                 mask_bytes = base64.b64decode(encoded_mask_string)
 
-                gcs_uri = store_to_gcs(
+                gcs_uri = self.gcs_service.store_to_gcs(
                     folder="recontext_results",
                     file_name=f"recontext_result_{uuid.uuid4()}.png",
                     mime_type="image/png",

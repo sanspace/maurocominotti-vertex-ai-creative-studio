@@ -43,7 +43,6 @@ class GenAIModelSetup:
                 model_id = config.MODEL_ID
                 if None in [project_id, location, model_id]:
                     raise ValueError("All parameters must be set.")
-                print(f"initiating genai client with {project_id} in {location}")
 
                 logger.info(f"Initializing shared GenAI client for project '{project_id}' in location '{cfg.LOCATION}'")
 

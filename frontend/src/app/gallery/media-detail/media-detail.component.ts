@@ -16,11 +16,13 @@ import {InitDetail} from 'lightgallery/lg-events';
 import lgThumbnail from 'lightgallery/plugins/thumbnail';
 import lgShare from 'lightgallery/plugins/share';
 import lgVideo from 'lightgallery/plugins/video';
+import {VideoSource} from 'lightgallery/plugins/video/types';
 import {additionalShareOptions} from '../../utils/lightgallery-share-options';
 import {MediaItem} from '../../common/models/media-item.model';
 import {GalleryService} from '../gallery.service';
 import {LoadingService} from '../../common/services/loading.service';
 import lightGallery from 'lightgallery';
+import {GalleryItem} from 'lightgallery/lg-utils';
 
 @Component({
   selector: 'app-media-detail',
@@ -38,11 +40,6 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   private lightGalleryInstance?: LightGallery;
   public isLoading = true;
   public mediaItem: MediaItem | undefined;
-
-  // Flags to control visibility of collapsible sections
-  public isPromptVisible = false;
-  public isAudioAnalysisVisible = false;
-  public isRawDataVisible = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -139,20 +136,45 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
     // Prevent re-initialization
     this.lightGalleryInstance?.destroy();
 
-    const dynamicElements = this.mediaItem.presigned_urls.map((url, index) => ({
-      src: url,
-      thumb: url,
-      subHtml: `<div class="lightGallery-captions"><h4>Image ${index + 1} of ${
-        this.mediaItem?.presigned_urls?.length
-      }</h4><p>${this.mediaItem?.prompt || ''}</p></div>`,
-      'data-src': url, // for sharing
-    }));
+    const dynamicElements = this.mediaItem.presigned_urls.map((url, index) => {
+      const isVideo = this.mediaItem?.mime_type?.startsWith('video/');
+
+      if (isVideo) {
+        // For videos, we need to build a specific object structure for lightGallery.
+        // The 'src' property on the top-level item should be empty.
+        const dynamicVideo: GalleryItem = {
+          src: '',
+          thumb: this.mediaItem?.presigned_thumbnail_urls?.[index] || '',
+          subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4><p>${this.mediaItem?.original_prompt || ''}</p></div>`,
+          video: {
+            source: [
+              {src: url, type: this.mediaItem?.mime_type || 'video/mp4'},
+            ],
+            tracks: [],
+            // The type definition for 'attributes' is incorrectly expecting a full
+            // HTMLVideoElement object. We cast to 'any' to provide a plain object
+            // of attributes, which is what the library actually uses.
+            attributes: {preload: 'metadata', controls: true} as any,
+          },
+        };
+        return dynamicVideo;
+      } else {
+        return {
+          src: url,
+          thumb: url,
+          subHtml: `<div class="lightGallery-captions"><h4>Image ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4><p>${this.mediaItem?.original_prompt || ''}</p></div>`,
+          'data-src': url, // for sharing
+        };
+      }
+    });
+
+    console.log('dynamicElements', dynamicElements);
 
     this.lightGalleryInstance = lightGallery(galleryElement, {
       container: galleryElement,
       dynamic: true,
       dynamicEl: dynamicElements,
-      plugins: [lgZoom, lgThumbnail, lgShare],
+      plugins: [lgZoom, lgShare, lgVideo, lgThumbnail],
       speed: 500,
       download: true,
       share: true,
@@ -199,5 +221,17 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Return the original string if it's not an object or valid stringified JSON.
     return this.mediaItem.prompt;
+  }
+
+  /**
+   * Converts a GCS URI (gs://...) to a clickable console URL.
+   * @param uri The GCS URI.
+   * @returns A URL to the GCS object in the Google Cloud Console.
+   */
+  public getGcsLink(uri: string): string {
+    if (!uri || !uri.startsWith('gs://')) {
+      return '#';
+    }
+    return `https://console.cloud.google.com/storage/browser/${uri.substring(5)}`;
   }
 }

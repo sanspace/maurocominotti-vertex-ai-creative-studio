@@ -36,8 +36,9 @@ export type VeoRequest = {
   lighting: string;
   colorAndTone: string;
   composition: string;
-  addWatermark: boolean;
   negativePrompt: string;
+  generateAudio: boolean;
+  durationSeconds: number;
 };
 
 export type SearchResponse = {

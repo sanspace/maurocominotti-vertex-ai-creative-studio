@@ -39,6 +39,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Update package lists and install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
 
@@ -47,8 +50,5 @@ ENV ENVIRONMENT="development"
 ENV FRONTEND_URL="http://localhost:4200"
 
 EXPOSE 8080
-
-RUN ls -l /app/.venv/bin
-RUN echo "PATH is: $PATH"
 
 CMD ["gunicorn", "main:app", "--workers=4", "--worker-class=uvicorn.workers.UvicornWorker", "--timeout=36000", "--bind=0.0.0.0:8080"]

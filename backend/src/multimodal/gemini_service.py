@@ -81,7 +81,7 @@ class GeminiService:
             rewritten_text = response.text or ""
             return rewritten_text
         except Exception as e:
-            print(f"Gemini rewriter failed: {e}")
+            logger.error(f"Gemini rewriter failed: {e}")
             raise
 
     def generate_random_image_prompt(self) -> str:
@@ -146,10 +146,8 @@ class GeminiService:
         prompt_parts = [video_request_dto.prompt.strip()]
 
         # Conditionally add style modifiers to the prompt.
-        if video_request_dto.video_style:
-            prompt_parts.append(
-                f"in a {video_request_dto.video_style.lower()} style"
-            )
+        if video_request_dto.style:
+            prompt_parts.append(f"in a {video_request_dto.style.lower()} style")
 
         # Conditionally add lighting description.
         if video_request_dto.lighting:

@@ -37,6 +37,7 @@ export interface MediaItem {
   gcs_uris: string[];
   source_images_gcs: string[];
   presigned_urls?: string[];
+  presigned_thumbnail_urls?: string[];
 
   // Video specific
   aspect?: string; // Note: 'aspect' is used for video, 'aspect_ratio' for image
