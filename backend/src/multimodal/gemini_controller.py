@@ -18,11 +18,9 @@ from pydantic import BaseModel
 
 # Import the service and the necessary DTO for the request body
 from src.auth.auth_guard import RoleChecker
-from src.multimodal.gemini_service import GeminiService
-from src.images.dto.create_imagen_dto import CreateImagenDto
+from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 from fastapi import APIRouter, Depends
 
-# Define simple Pydantic models for structured JSON responses
 class RewrittenPromptResponse(BaseModel):
     rewritten_prompt: str
 
@@ -42,12 +40,14 @@ router = APIRouter(
 
 
 @router.post(
-    "/rewrite-image-prompt",
+    "/rewrite-prompt",
     response_model=RewrittenPromptResponse,
-    summary="Rewrite and enhance a prompt for image generation"
+    summary="Rewrite and enhance a prompt for image generation",
 )
-async def rewrite_image_prompt_endpoint(
-    image_request: CreateImagenDto,
+async def rewrite_prompt_endpoint(
+    promptTarget: PromptTargetEnum,
+    userPrompt: str,
+    gemini_service: GeminiService = Depends(),
 ):
     """
     Takes a set of image generation parameters and combines them into a single,
@@ -55,9 +55,11 @@ async def rewrite_image_prompt_endpoint(
     This uses a deterministic, rule-based approach.
     """
     try:
-        # Since rewrite_for_image is a static method, we can call it directly
+        # Since rewrite_for is a static method, we can call it directly
         # on the class without needing to instantiate the service.
-        rewritten_prompt = GeminiService.rewrite_for_image(image_request)
+        rewritten_prompt = gemini_service.generate_random_or_rewrite_prompt(
+            promptTarget, userPrompt
+        )
         return RewrittenPromptResponse(rewritten_prompt=rewritten_prompt)
     except Exception as e:
         raise HTTPException(
@@ -66,12 +68,13 @@ async def rewrite_image_prompt_endpoint(
         )
 
 
-@router.get(
-    "/random-image-prompt",
+@router.post(
+    "/random-prompt",
     response_model=RandomPromptResponse,
-    summary="Generate a random, creative prompt for image creation"
+    summary="Generate a random, creative prompt for image creation",
 )
-async def random_image_prompt_endpoint(
+async def random_prompt_endpoint(
+    promptTarget: PromptTargetEnum,
     gemini_service: GeminiService = Depends(),
 ):
     """
@@ -81,7 +84,9 @@ async def random_image_prompt_endpoint(
     try:
         # This method requires an instance of the service to make an API call.
         # FastAPI's Depends() handles the instantiation for us.
-        random_prompt = gemini_service.generate_random_image_prompt()
+        random_prompt = gemini_service.generate_random_or_rewrite_prompt(
+            promptTarget
+        )
         return RandomPromptResponse(prompt=random_prompt)
     except Exception as e:
         # This endpoint makes a network call, so error handling is critical.

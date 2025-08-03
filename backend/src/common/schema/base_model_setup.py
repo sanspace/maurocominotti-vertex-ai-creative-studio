@@ -40,7 +40,7 @@ class GenAIModelSetup:
                 config = ConfigService()
                 project_id = config.PROJECT_ID
                 location = config.LOCATION
-                model_id = config.MODEL_ID
+                model_id = config.GEMINI_MODEL_ID
                 if None in [project_id, location, model_id]:
                     raise ValueError("All parameters must be set.")
 

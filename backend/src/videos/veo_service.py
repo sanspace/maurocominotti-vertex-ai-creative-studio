@@ -39,7 +39,7 @@ from src.images.repository.media_item_repository import MediaRepository
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.config.config_service import ConfigService
-from src.multimodal.gemini_service import GeminiService
+from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,9 @@ class VeoService:
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
         original_prompt = request_dto.prompt
-        rewritten_prompt = self.gemini_service.rewrite_for_video(request_dto)
+        rewritten_prompt = self.gemini_service.enhance_prompt_from_dto(
+            dto=request_dto, target_type=PromptTargetEnum.VIDEO
+        )
         request_dto.prompt = rewritten_prompt
 
         all_generated_videos: List[types.GeneratedVideo] = []

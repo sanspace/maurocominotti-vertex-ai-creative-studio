@@ -41,7 +41,7 @@ from src.config.config_service import ConfigService
 import uuid
 import base64
 from google.cloud import aiplatform
-from src.multimodal.gemini_service import GeminiService
+from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,9 @@ class ImagenService:
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
         original_prompt = request_dto.prompt
-        rewritten_prompt = self.gemini_service.rewrite_for_image(request_dto)
+        rewritten_prompt = self.gemini_service.enhance_prompt_from_dto(
+            dto=request_dto, target_type=PromptTargetEnum.IMAGE
+        )
         request_dto.prompt = rewritten_prompt
 
         all_generated_images: List[types.GeneratedImage] = []
