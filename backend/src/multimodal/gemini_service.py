@@ -26,11 +26,11 @@ from tenacity import (
     wait_exponential,
 )
 
-from backend.src.multimodal.dto.create_prompt_imagen_dto import (
+from src.multimodal.dto.create_prompt_imagen_dto import (
     CreatePromptImageDto,
 )
 from src.videos.dto.create_veo_dto import CreateVeoDto
-from backend.src.multimodal.dto.create_prompt_video_dto import (
+from src.multimodal.dto.create_prompt_video_dto import (
     CreatePromptVideoDto,
 )
 from src.multimodal.rewriters import (

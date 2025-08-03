@@ -17,15 +17,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 # Import the service and the necessary DTO for the request body
+from src.multimodal.dto.gemini_prompt_enhancer_dto import (
+    RandomPromptRequest,
+    RandomPromptResponse,
+    RewritePromptRequest,
+    RewrittenPromptResponse,
+)
 from src.auth.auth_guard import RoleChecker
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 from fastapi import APIRouter, Depends
-
-class RewrittenPromptResponse(BaseModel):
-    rewritten_prompt: str
-
-class RandomPromptResponse(BaseModel):
-    prompt: str
 
 
 # Create a new router for Gemini-related utility endpoints
@@ -45,8 +45,7 @@ router = APIRouter(
     summary="Rewrite and enhance a prompt for image generation",
 )
 async def rewrite_prompt_endpoint(
-    promptTarget: PromptTargetEnum,
-    userPrompt: str,
+    rewrite_request: RewritePromptRequest,
     gemini_service: GeminiService = Depends(),
 ):
     """
@@ -58,7 +57,7 @@ async def rewrite_prompt_endpoint(
         # Since rewrite_for is a static method, we can call it directly
         # on the class without needing to instantiate the service.
         rewritten_prompt = gemini_service.generate_random_or_rewrite_prompt(
-            promptTarget, userPrompt
+            rewrite_request.target_type, rewrite_request.user_prompt
         )
         return RewrittenPromptResponse(rewritten_prompt=rewritten_prompt)
     except Exception as e:
@@ -74,7 +73,7 @@ async def rewrite_prompt_endpoint(
     summary="Generate a random, creative prompt for image creation",
 )
 async def random_prompt_endpoint(
-    promptTarget: PromptTargetEnum,
+    random_request: RandomPromptRequest,
     gemini_service: GeminiService = Depends(),
 ):
     """
@@ -85,7 +84,7 @@ async def random_prompt_endpoint(
         # This method requires an instance of the service to make an API call.
         # FastAPI's Depends() handles the instantiation for us.
         random_prompt = gemini_service.generate_random_or_rewrite_prompt(
-            promptTarget
+            random_request.target_type
         )
         return RandomPromptResponse(prompt=random_prompt)
     except Exception as e:
