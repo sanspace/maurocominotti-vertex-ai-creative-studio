@@ -1,4 +1,3 @@
-from enum import Enum
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
@@ -10,10 +9,13 @@ class RewritePromptRequest(BaseModel):
     target_type: Annotated[PromptTargetEnum, Field(
         description="The target media type to tailor the prompt for (e.g., 'image' or 'video')."
     )]
-    user_prompt: Annotated[str, Field(
-        description="The simple, user-provided prompt to be rewritten and enhanced.",
-        min_length=5
-    )]
+    user_prompt: Annotated[
+        str,
+        Field(
+            description="The simple, user-provided prompt to be rewritten and enhanced.",
+            min_length=5,
+        ),
+    ]
 
 class RandomPromptRequest(BaseModel):
     """Request body for the /random-prompt endpoint."""
@@ -24,6 +26,7 @@ class RandomPromptRequest(BaseModel):
 
 class RewrittenPromptResponse(BaseModel):
     rewritten_prompt: str
+
 
 class RandomPromptResponse(BaseModel):
     prompt: str

@@ -14,9 +14,7 @@
 # limitations under the License.
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 
-# Import the service and the necessary DTO for the request body
 from src.multimodal.dto.gemini_prompt_enhancer_dto import (
     RandomPromptRequest,
     RandomPromptResponse,
@@ -24,11 +22,10 @@ from src.multimodal.dto.gemini_prompt_enhancer_dto import (
     RewrittenPromptResponse,
 )
 from src.auth.auth_guard import RoleChecker
-from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
+from src.multimodal.gemini_service import GeminiService
 from fastapi import APIRouter, Depends
 
 
-# Create a new router for Gemini-related utility endpoints
 router = APIRouter(
     prefix="/api/gemini",
     tags=["Gemini APIs"],
@@ -54,8 +51,6 @@ async def rewrite_prompt_endpoint(
     This uses a deterministic, rule-based approach.
     """
     try:
-        # Since rewrite_for is a static method, we can call it directly
-        # on the class without needing to instantiate the service.
         rewritten_prompt = gemini_service.generate_random_or_rewrite_prompt(
             rewrite_request.target_type, rewrite_request.user_prompt
         )
@@ -81,14 +76,11 @@ async def random_prompt_endpoint(
     Useful for sparking creativity or for a "surprise me" feature.
     """
     try:
-        # This method requires an instance of the service to make an API call.
-        # FastAPI's Depends() handles the instantiation for us.
         random_prompt = gemini_service.generate_random_or_rewrite_prompt(
             random_request.target_type
         )
         return RandomPromptResponse(prompt=random_prompt)
     except Exception as e:
-        # This endpoint makes a network call, so error handling is critical.
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate random prompt from Gemini: {e}"
