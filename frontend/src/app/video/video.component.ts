@@ -401,7 +401,7 @@ export class VideoComponent {
     this.isLoading = true;
     this.searchRequest.prompt = '';
     this.service
-      .getRandomPrompt({target_type: 'image'})
+      .getRandomPrompt({target_type: 'video'})
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (response: {prompt: string}) => {
