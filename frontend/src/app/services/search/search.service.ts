@@ -23,6 +23,7 @@ import {
   GeneratedImage,
   GeneratedVideo,
 } from '../../common/models/generated-image.model';
+import {Observable} from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -30,7 +31,7 @@ import {
 export class SearchService {
   constructor(private http: HttpClient) {}
 
-  search(searchRequest: ImagenRequest) {
+  searchImagen(searchRequest: ImagenRequest) {
     const searchURL = `${environment.backendURL}/images/generate-images`;
     return this.http
       .post(searchURL, searchRequest)
@@ -41,6 +42,25 @@ export class SearchService {
     const searchURL = `${environment.backendURL}/videos/generate-videos`;
     return this.http
       .post(searchURL, searchRequest)
-      .pipe(map(response => response as []));
+      .pipe(map(response => response as GeneratedVideo[]));
+  }
+
+  rewritePrompt(payload: {
+    targetType: 'image' | 'video';
+    userPrompt: string;
+  }): Observable<{prompt: string}> {
+    return this.http.post<{prompt: string}>(
+      `${environment.backendURL}/gemini/rewrite-prompt`,
+      payload,
+    );
+  }
+
+  getRandomPrompt(payload: {
+    target_type: 'image' | 'video';
+  }): Observable<{prompt: string}> {
+    return this.http.post<{prompt: string}>(
+      `${environment.backendURL}/gemini/random-prompt`,
+      payload,
+    );
   }
 }

@@ -1,6 +1,6 @@
 from typing import Optional
-from pydantic import BaseModel
 
+from src.common.base_schema_model import BaseSchema
 from src.galleries.dto.gallery_response_dto import GalleryItemResponse
 from src.common.dto.base_search_dto import BaseSearchDto
 
@@ -9,7 +9,8 @@ class GallerySearchDto(BaseSearchDto):
     mime_type: Optional[str] = None
     model: Optional[str] = None
 
-class PaginatedGalleryResponse(BaseModel):
+
+class PaginatedGalleryResponse(BaseSchema):
     """Defines the response structure for a paginated gallery query."""
     items: list[GalleryItemResponse]
     next_page_cursor: Optional[str] = None

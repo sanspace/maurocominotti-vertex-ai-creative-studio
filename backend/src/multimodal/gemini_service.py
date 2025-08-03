@@ -106,9 +106,6 @@ class GeminiService:
         response_schema = self._get_response_schema(target_type)
 
         try:
-            logger.info(
-                f"Generating structured prompt for target '{target_type.value}' with model '{self.rewriter_model}'..."
-            )
             response = None
             if response_mime_type.value == MimeTypeEnum.JSON.value:
                 response = self.client.models.generate_content(
@@ -142,7 +139,6 @@ class GeminiService:
     ) -> str:
         """Generates a completely new, random, and creative text prompt."""
         try:
-            logger.info("Generating random prompt text...")
             prompt_template = RANDOM_IMAGE_PROMPT_TEMPLATE
 
             if not original_prompt:

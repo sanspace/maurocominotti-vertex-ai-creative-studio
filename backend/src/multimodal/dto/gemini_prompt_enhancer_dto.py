@@ -1,10 +1,11 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
 from typing_extensions import Annotated
 
+from src.common.base_schema_model import BaseSchema
 from src.multimodal.gemini_service import PromptTargetEnum
 
 
-class RewritePromptRequest(BaseModel):
+class RewritePromptRequestDto(BaseSchema):
     """Request body for the /rewrite-prompt endpoint."""
     target_type: Annotated[PromptTargetEnum, Field(
         description="The target media type to tailor the prompt for (e.g., 'image' or 'video')."
@@ -17,16 +18,13 @@ class RewritePromptRequest(BaseModel):
         ),
     ]
 
-class RandomPromptRequest(BaseModel):
+
+class RandomPromptRequestDto(BaseSchema):
     """Request body for the /random-prompt endpoint."""
     target_type: Annotated[PromptTargetEnum, Field(
         description="The target media type for which to generate a random prompt."
     )]
 
 
-class RewrittenPromptResponse(BaseModel):
-    rewritten_prompt: str
-
-
-class RandomPromptResponse(BaseModel):
+class RewrittenOrRandomPromptResponse(BaseSchema):
     prompt: str

@@ -13,7 +13,21 @@
 # limitations under the License.
 
 # Random Prompt Templates
-RANDOM_IMAGE_PROMPT_TEMPLATE = """Generate a single, random, creative, and visually descriptive prompt suitable for an AI image generator. The prompt should be concise, evocative, and paint a complete picture. Include specific details about the main subject and its action, the surrounding scene or context, the quality and style of the lighting, the overall visual aesthetic (e.g., photorealistic, cinematic, fantasy art), and the camera perspective (e.g., 'macro close-up', 'ultra-wide angle shot')."""
+RANDOM_IMAGE_PROMPT_TEMPLATE = """
+Generate a single, random, creative, and visually descriptive prompt suitable for an AI image generator.
+- First, write the main Creative Prompt as a single, evocative paragraph. This paragraph must paint a complete picture by describing:
+- The Subject and Action: What is the main focus and what is it doing?
+- The Scene: What is the environment or background?
+- The Lighting: What is the quality and style of the light (e.g., 'dramatic backlighting', 'soft morning light')?
+- The Camera Perspective: What is the shot type or angle (e.g., 'macro close-up', 'ultra-wide aerial shot')?
+
+After the main prompt, on separate lines, provide the following Technical Parameters:
+- Style: Suggest a primary visual style (e.g., 'Photorealistic', 'Fantasy Art', 'Studio Photography').
+- Composition: Suggest a compositional rule (e.g., 'Rule of Thirds', 'Symmetrical Framing', 'Leading Lines').
+- Color and Tone: Describe the desired color palette and emotional tone (e.g., 'Vibrant and contrasting, joyful tone', 'Muted earth tones, melancholic and somber').
+- Aspect Ratio: Suggest an appropriate aspect ratio (e.g., '16:9', '1:1', '4:3').
+- Negative Prompt: List common elements to exclude for higher quality results (e.g., 'blurry, deformed, text, watermark, ugly, low quality').
+"""
 
 RANDOM_VIDEO_PROMPT_TEMPLATE = """Generate a single, random, creative, and visually descriptive prompt suitable for an AI Video generator. The prompt should describe a complete, short scene with a clear beginning, middle, and end. Include specific details about the subject and the sequence of actions, the environment and lighting, and the overall visual aesthetic. Crucially, describe the camera work, including movements (e.g., 'slow dolly-in', 'sweeping crane shot') and angles. Finally, suggest the sound design or key audio elements."""
 
@@ -21,13 +35,30 @@ RANDOM_AUDIO_PROMPT_TEMPLATE = """ """
 
 
 # Rewrite Text Prompt Templates
-REWRITE_IMAGE_TEXT_PROMPT_TEMPLATE = """Please rewrite the following prompt suitable for an AI image generator. The prompt should be concise, evocative, and paint a complete picture. Include specific details about the main subject and its action, the surrounding scene or context, the quality and style of the lighting, the overall visual aesthetic (e.g., photorealistic, cinematic, fantasy art), and the camera perspective (e.g., 'macro close-up', 'ultra-wide angle shot').
+REWRITE_IMAGE_TEXT_PROMPT_TEMPLATE = """
+Generate a single, random, creative, and visually descriptive prompt suitable for an AI image generator.
+- First, write the main Creative Prompt as a single, evocative paragraph. This paragraph must paint a complete picture by describing:
+- The Subject and Action: What is the main focus and what is it doing?
+- The Scene: What is the environment or background?
+- The Lighting: What is the quality and style of the light (e.g., 'dramatic backlighting', 'soft morning light')?
+- The Camera Perspective: What is the shot type or angle (e.g., 'macro close-up', 'ultra-wide aerial shot')?
+
+After the main prompt, on separate lines, provide the following Technical Parameters:
+- Style: Suggest a primary visual style (e.g., 'Photorealistic', 'Fantasy Art', 'Studio Photography').
+- Composition: Suggest a compositional rule (e.g., 'Rule of Thirds', 'Symmetrical Framing', 'Leading Lines').
+- Color and Tone: Describe the desired color palette and emotional tone (e.g., 'Vibrant and contrasting, joyful tone', 'Muted earth tones, melancholic and somber').
+- Aspect Ratio: Suggest an appropriate aspect ratio (e.g., '16:9', '1:1', '4:3').
+- Negative Prompt: List common elements to exclude for higher quality results (e.g., 'blurry, deformed, text, watermark, ugly, low quality').
+
+IMPORTANT!!: JUST RETURN THE REWRITTEN PROMPT DIRECTLY, YOU DON'T NEED TO CLARIFY THAT.
 
 The User Prompt to rewrite:
 '{}'
 """
 
 REWRITE_VIDEO_TEXT_PROMPT_TEMPLATE = """Please rewrite the following prompt suitable for an AI Video generator. The prompt should describe a complete, short scene with a clear beginning, middle, and end. Include specific details about the subject and the sequence of actions, the environment and lighting, and the overall visual aesthetic. Crucially, describe the camera work, including movements (e.g., 'slow dolly-in', 'sweeping crane shot') and angles. Finally, suggest the sound design or key audio elements.
+
+IMPORTANT!!: JUST RETURN THE REWRITTEN PROMPT DIRECTLY, YOU DON'T NEED TO CLARIFY THAT.
 
 The User Prompt to rewrite:
 '{}'

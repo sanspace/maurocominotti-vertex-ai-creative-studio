@@ -251,7 +251,6 @@ export class VideoComponent {
       source: 'Video 3 Model',
     }));
 
-
     const hasVideonResults = this.videoDocuments.length > 0;
 
     if (hasVideonResults) {
@@ -374,5 +373,77 @@ export class VideoComponent {
           });
         },
       });
+  }
+
+  rewritePrompt() {
+    if (!this.searchRequest.prompt) return;
+
+    this.isLoading = true;
+    const promptToSend = this.searchRequest.prompt;
+    this.searchRequest.prompt = '';
+    this.service
+      .rewritePrompt({
+        targetType: 'video',
+        userPrompt: promptToSend,
+      })
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          this.handleError(error, 'Rewrite prompt');
+        },
+      });
+  }
+
+  getRandomPrompt() {
+    this.isLoading = true;
+    this.searchRequest.prompt = '';
+    this.service
+      .getRandomPrompt({target_type: 'image'})
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          this.handleError(error, 'Get random prompt');
+        },
+      });
+  }
+
+  resetAllFilters() {
+    this.searchRequest = {
+      prompt: '',
+      generationModel: 'veo-3.0-generate-preview',
+      aspectRatio: '16:9',
+      videoStyle: 'Modern',
+      numberOfVideos: 4,
+      lighting: 'Cinematic',
+      colorAndTone: 'Vibrant',
+      composition: 'Closeup',
+      negativePrompt: '',
+      generateAudio: true,
+      durationSeconds: 8,
+    };
+  }
+
+  private handleError(error: any, context: string) {
+    console.error(`${context} error:`, error);
+    const errorMessage =
+      error?.error?.detail?.[0]?.msg ||
+      error?.message ||
+      'Something went wrong';
+    this._snackBar.openFromComponent(ToastMessageComponent, {
+      panelClass: ['red-toast'],
+      verticalPosition: 'top',
+      horizontalPosition: 'right',
+      duration: 6000,
+      data: {
+        text: errorMessage,
+        icon: 'cross-in-circle-white',
+      },
+    });
   }
 }

@@ -16,10 +16,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.multimodal.dto.gemini_prompt_enhancer_dto import (
-    RandomPromptRequest,
-    RandomPromptResponse,
-    RewritePromptRequest,
-    RewrittenPromptResponse,
+    RandomPromptRequestDto,
+    RewritePromptRequestDto,
+    RewrittenOrRandomPromptResponse,
 )
 from src.auth.auth_guard import RoleChecker
 from src.multimodal.gemini_service import GeminiService
@@ -38,11 +37,11 @@ router = APIRouter(
 
 @router.post(
     "/rewrite-prompt",
-    response_model=RewrittenPromptResponse,
+    response_model=RewrittenOrRandomPromptResponse,
     summary="Rewrite and enhance a prompt for image generation",
 )
 async def rewrite_prompt_endpoint(
-    rewrite_request: RewritePromptRequest,
+    rewrite_request: RewritePromptRequestDto,
     gemini_service: GeminiService = Depends(),
 ):
     """
@@ -54,7 +53,7 @@ async def rewrite_prompt_endpoint(
         rewritten_prompt = gemini_service.generate_random_or_rewrite_prompt(
             rewrite_request.target_type, rewrite_request.user_prompt
         )
-        return RewrittenPromptResponse(rewritten_prompt=rewritten_prompt)
+        return RewrittenOrRandomPromptResponse(prompt=rewritten_prompt)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -64,11 +63,11 @@ async def rewrite_prompt_endpoint(
 
 @router.post(
     "/random-prompt",
-    response_model=RandomPromptResponse,
+    response_model=RewrittenOrRandomPromptResponse,
     summary="Generate a random, creative prompt for image creation",
 )
 async def random_prompt_endpoint(
-    random_request: RandomPromptRequest,
+    random_request: RandomPromptRequestDto,
     gemini_service: GeminiService = Depends(),
 ):
     """
@@ -79,7 +78,7 @@ async def random_prompt_endpoint(
         random_prompt = gemini_service.generate_random_or_rewrite_prompt(
             random_request.target_type
         )
-        return RandomPromptResponse(prompt=random_prompt)
+        return RewrittenOrRandomPromptResponse(prompt=random_prompt)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

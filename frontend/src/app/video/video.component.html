@@ -355,15 +355,15 @@
           class="inline-flex justify-between items-center grid grid-cols-1 lg:flex gap-4"
         >
           <div class="flex justify-start items-center gap-4">
-            <button mat-raised-button color="primary">
+            <button mat-raised-button color="primary" (click)="getRandomPrompt()" [disabled]="isLoading">
               <mat-icon>shuffle</mat-icon>
               Random
             </button>
-            <button mat-raised-button color="primary">
+            <button mat-raised-button color="primary" (click)="rewritePrompt()" [disabled]="isLoading">
               <mat-icon>drive_file_rename_outline</mat-icon>
               Rewrite
             </button>
-            <button mat-raised-button class="!bg-white" (click)="searchTerm()">
+            <button mat-raised-button class="!bg-white" (click)="searchTerm()" [disabled]="isLoading">
               <mat-icon svgIcon="gemini-spark-icon"></mat-icon>
               <span
                 class="font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent"
@@ -372,7 +372,7 @@
               </span>
             </button>
           </div>
-          <button mat-stroked-button class="!text-white">Clear</button>
+          <button mat-stroked-button class="!text-white" (click)="resetAllFilters()" [disabled]="isLoading">Clear</button>
         </div>
       </div>
       <!-- Magazin Editor Section -->

@@ -371,30 +371,87 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.lightGalleryInstance?.destroy();
 
     this.service
-      .search(this.searchRequest)
+      .searchImagen(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (searchResponse: GeneratedImage[]) => {
           this.processSearchResults(searchResponse);
         },
         error: error => {
-          console.error('Search error:', error);
-          const errorMessage =
-            error?.error?.detail?.[0]?.msg ||
-            error?.message ||
-            'Something went wrong';
-          this._snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['red-toast'],
-            verticalPosition: 'top',
-            horizontalPosition: 'right',
-            duration: 6000,
-            data: {
-              text: errorMessage,
-              icon: 'cross-in-circle-white',
-            },
-          });
+          this.handleError(error, 'Search');
         },
       });
+  }
+
+  rewritePrompt() {
+    if (!this.searchRequest.prompt) return;
+
+    this.isLoading = true;
+    const promptToSend = this.searchRequest.prompt;
+    this.searchRequest.prompt = '';
+    this.service
+      .rewritePrompt({
+        targetType: 'image',
+        userPrompt: promptToSend,
+      })
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          this.handleError(error, 'Rewrite prompt');
+        },
+      });
+  }
+
+  getRandomPrompt() {
+    this.isLoading = true;
+    this.searchRequest.prompt = '';
+    this.service
+      .getRandomPrompt({target_type: 'image'})
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          this.handleError(error, 'Get random prompt');
+        },
+      });
+  }
+
+  resetAllFilters() {
+    this.searchRequest = {
+      prompt: '',
+      generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
+      aspectRatio: '1:1',
+      imageStyle: 'Modern',
+      numberOfImages: 4,
+      lighting: 'Cinematic',
+      colorAndTone: 'Vibrant',
+      composition: 'Closeup',
+      addWatermark: false,
+      negativePrompt: '',
+    };
+  }
+
+  private handleError(error: any, context: string) {
+    console.error(`${context} error:`, error);
+    const errorMessage =
+      error?.error?.detail?.[0]?.msg ||
+      error?.message ||
+      'Something went wrong';
+    this._snackBar.openFromComponent(ToastMessageComponent, {
+      panelClass: ['red-toast'],
+      verticalPosition: 'top',
+      horizontalPosition: 'right',
+      duration: 6000,
+      data: {
+        text: errorMessage,
+        icon: 'cross-in-circle-white',
+      },
+    });
   }
 
   private onMouseMove = (event: MouseEvent) => {
