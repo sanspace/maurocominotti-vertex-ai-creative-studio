@@ -215,7 +215,6 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
       }
     });
 
-    console.log('dynamicElements', dynamicElements);
     this.lightGalleryInstance = lightGallery(galleryElement, {
       container: galleryElement,
       dynamic: true,

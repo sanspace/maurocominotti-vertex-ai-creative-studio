@@ -192,17 +192,14 @@ export class VideoComponent {
 
   private initLightGallery(): void {
     const galleryElement = this.lightGalleryElements?.first?.nativeElement;
-    console.log('initLightGallery galleryElement', galleryElement);
 
     if (galleryElement) {
-      console.log('ISIDE galleryElement');
-      console.log('this.videoDocuments', this.videoDocuments);
-
       const dynamicElements = this.videoDocuments.map((mediaItem, index) => {
         const dynamicVideo: GalleryItem = {
           src: '',
           thumb: mediaItem?.video?.presignedThumbnailUrl || '',
           subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1} of ${this.videoDocuments?.length}</h4><p>${mediaItem?.originalPrompt || ''}</p></div>`,
+          downloadUrl: mediaItem?.video?.presignedUrl,
           video: {
             source: [
               {
@@ -219,8 +216,6 @@ export class VideoComponent {
         };
         return dynamicVideo;
       });
-
-      console.log('dynamicElements', dynamicElements);
 
       this.lightGalleryInstance = lightGallery(galleryElement, {
         container: galleryElement,

@@ -158,7 +158,6 @@ export class AuthService {
       .get<UserData>(`${environment.backendURL}/users/me`, {headers})
       .pipe(
         tap((userDetails: UserData) => {
-          console.log('userDetails', userDetails);
           // The backend is the source of truth. Save the returned profile to local storage.
           localStorage.setItem(USER_DETAILS, JSON.stringify(userDetails));
           console.log('User profile successfully synced with backend.');
