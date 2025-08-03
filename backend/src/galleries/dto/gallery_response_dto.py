@@ -14,7 +14,7 @@
 
 from typing import List
 
-from src.images.schema.media_item_model import MediaItem
+from backend.src.common.schema.media_item_model import MediaItem
 
 class GalleryItemResponse(MediaItem):
     """

@@ -23,10 +23,15 @@
   overflow: hidden;
   display: block;
   position: relative;
+  border-radius: 1rem;
 
   video {
     margin-top: -15%;
   }
+}
+
+::ng-deep .mat-mdc-chip-action {
+  color: white !important;
 }
 
 // Small devices (landscape phones, 576px and up)
@@ -36,7 +41,7 @@
 // Medium devices (tablets, 768px and up)
 @media (min-width: 768px) {
   .video-container {
-    height: 45vh;
+    height: 25vh;
   }
 }
 
@@ -57,4 +62,9 @@
 
 // 4K Displays (Ultra HD) (Projectors or Higher Resolution Screens, 2160px and up)
 @media screen and (min-width: 2160px) {
+  .video-container {
+    video {
+      margin-top: -10%;
+    }
+  }
 }

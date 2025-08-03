@@ -29,12 +29,12 @@ from tenacity import (
     wait_exponential,
 )
 from src.common.storage_service import GcsService
-from src.common.schema.base_model_setup import GenAIModelSetup
+from backend.src.common.schema.genai_model_setup import GenAIModelSetup
 from src.videos.schema.veo_result_model import (
     CustomVeoResult,
     VeoGenerationResult,
 )
-from src.images.schema.media_item_model import MediaItem
+from backend.src.common.schema.media_item_model import MediaItem
 from src.images.repository.media_item_repository import MediaRepository
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials

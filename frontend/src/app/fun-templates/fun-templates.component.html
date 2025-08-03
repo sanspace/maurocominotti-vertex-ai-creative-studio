@@ -16,87 +16,196 @@
 
 <div class="lg:container lg:mx-auto">
   <div class="home-margin grid grid-cols-1">
-    <!-- Video Homepage -->
-    <img priority width="1272" height="513" ngSrc="assets/images/fun-templates-homepage.png" class="w-full rounded-xl" alt="Fun Templates Homepage">
+    <div class="video-container mb-8">
+      <!-- Text for Tablet and beyond -->
+      <div
+        class="hidden md:flex justify-center items-center w-full h-full absolute flex-col"
+      >
+        <h1
+          class="text-center justify-center text-white text-2xl font-bold !m-0 !z-[50]"
+        >
+          Creative Studio Fun Templates
+        </h1>
+        <p class="mt-4 text-lg leading-8 text-white !z-[50]">
+          A showcase of Templates for images, videos, audio and more ✨
+        </p>
+      </div>
+      <div
+        class="gradient-bg hidden md:block !relative !w-full !h-full !z-[10]"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="goo">
+              <feGaussianBlur
+                in="SourceGraphic"
+                stdDeviation="10"
+                result="blur"
+              />
+              <feColorMatrix
+                in="blur"
+                mode="matrix"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8"
+                result="goo"
+              />
+              <feBlend in="SourceGraphic" in2="goo" />
+            </filter>
+          </defs>
+        </svg>
+        <div class="gradients-container absolute top-0 left-0">
+          <div class="g1"></div>
+          <div class="g2"></div>
+          <div class="g3"></div>
+          <div class="g4"></div>
+          <div class="g5"></div>
+          <div #interactiveBubble class="interactive"></div>
+        </div>
+      </div>
 
-    <!-- Control Options -->
-    <div class="inline-flex justify-center items-center grid grid-cols-2 md:grid-cols-3 lg:flex gap-4 mt-10 place-items-center">
-      <div matTooltip="Select Black & White" class="cursor-pointer w-28 inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon>contrast</mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">Black & White</div>
-      </div>
-      <div matTooltip="Select Stylized 3D" class="cursor-pointer w-24 rounded-lg inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon>view_in_ar</mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">Stylized 3D</div>
-      </div>
-      <div matTooltip="Select Black Ink Tattoo" class="cursor-pointer w-32 rounded-lg inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon svgIcon="black-ink-icon"></mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">Black Ink Tattoo</div>
-      </div>
-      <div matTooltip="Select Stylized Portraits" class="cursor-pointer w-32 rounded-lg inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon>photo_camera_front</mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">Stylized Portraits</div>
-      </div>
-      <div matTooltip="Select Cake Pops" class="cursor-pointer w-24 rounded-lg inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon>cake</mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">Cake Pops</div>
-      </div>
-      <div matTooltip="Select Corporate Memphis" class="cursor-pointer w-40 inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon>apartment</mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">Corporate Memphis</div>
-      </div>
-      <div matTooltip="Select More Filters" class="cursor-pointer w-24 inline-flex flex-col justify-start items-center">
-          <button matFab class="w-6 h-6 text-center justify-center text-stone-300 text-2xl">
-            <mat-icon svgIcon="more-filters-icon"></mat-icon>
-          </button>
-          <div class="text-center justify-center text-neutral-200 text-base">More Filters</div>
-      </div>
-    </div>
-
-    <!-- Prompt Generator -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 mt-10 gap-4">
-      <!-- Prompt Section -->
-      <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
-          <div class="justify-center text-neutral-200 text-base font-bold leading-7">Prompt:</div>
-          <textarea id="promptId" class="self-stretch w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            placeholder="This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel."></textarea>
-          <div class="inline-flex justify-between items-center grid grid-cols-1 lg:flex gap-4">
-              <div class="flex justify-start items-center gap-4">
-                  <button mat-raised-button color="primary">
-                      <mat-icon>shuffle</mat-icon>
-                      Random
-                  </button>
-                  <button mat-raised-button color="primary">
-                      <mat-icon>drive_file_rename_outline</mat-icon>
-                      Rewrite
-                  </button>
-                  <button mat-raised-button class="!bg-white">
-                      <mat-icon svgIcon="gemini-spark-icon"></mat-icon>
-                      <span class="font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent">
-                        Generate
-                      </span>
-                  </button>
-              </div>
-              <button mat-stroked-button class="!text-white">Clear</button>
+      <!-- Text for mobile -->
+      <div
+        class="flex flex-col justify-center items-center w-full h-full md:hidden"
+      >
+        <!-- As this svg uses a gradient, it needs to have a different fill id, therefore we have one for mobile and other for larger devices -->
+        <div class="flex">
+          <mat-icon
+            svgIcon="mobile-white-gemini-spark-icon"
+            class="!w-6 !h-6 mr-2 md:mr-[1rem]"
+          ></mat-icon>
+          <div
+            class="text-center justify-center text-white title-font font-bold"
+          >
+            Creative Studio Fun Templates
           </div>
-      </div>
-      <!-- Magazin Editor Section -->
-      <div class="lg:col-span-1 flex flex-col justify-start items-start gap-4">
-        <div class="justify-center text-neutral-200 text-base font-bold leading-7" style="align-self: flex-end;">Magazin Editor</div>
-        <textarea id="magazinId" class="w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-xl text-neutral-200 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="I am here to help with your creative design!"></textarea>
+        </div>
+        <p class="mt-4 text-white text-center md:text-lg md:leading-8">
+          A showcase of Templates for images, videos, audio and more ✨
+        </p>
       </div>
     </div>
+
+
+
+
+<div
+      *ngIf="isLoading"
+      class="flex flex-col items-center justify-center mt-8 text-center"
+    >
+      <mat-progress-spinner
+        color="primary"
+        mode="indeterminate"
+      ></mat-progress-spinner>
+      <p class="pt-5 text-white">Loading Creative Templates...</p>
+    </div>
+
+    <div *ngIf="!isLoading">
+      <div class="flex flex-wrap items-center gap-2 mb-6">
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Industry</mat-label>
+          <mat-select
+            [(ngModel)]="templateFilter.industry"
+            (selectionChange)="applyFilters()"
+          >
+            <mat-option *ngFor="let industry of industries" [value]="industry">
+              {{ industry }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Media Type</mat-label>
+          <mat-select
+            [(ngModel)]="templateFilter.mediaType"
+            (selectionChange)="applyFilters()"
+          >
+            <mat-option *ngFor="let type of mediaTypes" [value]="type">
+              {{ type | titlecase }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Search by Name</mat-label>
+          <input
+            matInput
+            [(ngModel)]="templateFilter.name"
+            (input)="applyFilters()"
+            placeholder="e.g., Rolex"
+          />
+        </mat-form-field>
+
+        <button
+          mat-stroked-button
+          (click)="clearFilters()"
+          class="clear-filters-btn"
+        >
+          Clear Filters
+        </button>
+      </div>
+
+      <div
+        *ngIf="filteredTemplates.length > 0; else noResults"
+        class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
+        <div
+          *ngFor="let template of filteredTemplates; trackBy: trackById"
+          class="template-card group"
+          (click)="useTemplate(template)"
+        >
+          <div class="relative overflow-hidden rounded-t-lg">
+            <img
+              [src]="template.thumbnail_uri"
+              [alt]="template.name"
+              class="object-cover w-full h-48 transition-transform duration-300 group-hover:scale-105"
+            />
+            <div
+              class="absolute inset-0 flex items-center justify-center transition-all duration-300 bg-black bg-opacity-0 group-hover:bg-opacity-60"
+            >
+              <span
+                class="p-2 px-4 text-sm font-bold text-white transition-opacity duration-300 opacity-0 rounded-full bg-black/50 group-hover:opacity-100"
+              >
+                Use Template
+              </span>
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-white">{{ template.name }}</h3>
+              <span
+                class="px-2 py-1 text-xs font-semibold rounded-full"
+                [ngClass]="{
+                  'bg-blue-500/20 text-blue-300':
+                    template.media_type === 'video/mp4',
+                  'bg-purple-500/20 text-purple-300':
+                    template.media_type === 'image/png'
+                }"
+              >
+                {{ template.media_type | titlecase }}
+              </span>
+            </div>
+            <p class="mt-2 text-sm text-gray-400">
+              {{ template.description }}
+            </p>
+            <div class="mt-3">
+              <mat-chip-listbox aria-label="Template Tags">
+                <mat-chip *ngFor="let tag of template.tags.slice(0, 3)">{{
+                  tag
+                }}</mat-chip>
+              </mat-chip-listbox>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noResults>
+      <div class="py-16 text-center text-gray-500">
+        <p>No templates found matching your criteria.</p>
+        <button mat-button (click)="clearFilters()" class="mt-4">
+          Reset Filters
+        </button>
+      </div>
+    </ng-template>
+
+
   </div>
 </div>

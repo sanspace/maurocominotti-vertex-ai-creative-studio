@@ -5,6 +5,7 @@ from src.common.base_schema_model import (
     AspectRatioEnum,
     ColorAndToneEnum,
     CompositionEnum,
+    GenerationModelEnum,
     StyleEnum,
     LightingEnum,
 )
@@ -17,7 +18,7 @@ class MediaItem(BaseDocument):
     # created_at is an index but is autopopulated by BaseDocument
     user_email: str
     mime_type: str
-    model: str
+    model: GenerationModelEnum
 
     # Common fields across media types
     prompt: Optional[str] = None
@@ -59,3 +60,13 @@ class MediaItem(BaseDocument):
 
     # Debugging field
     raw_data: Optional[Dict] = Field(default_factory=dict)
+
+    # Track if a MediaItem was created from a template
+    created_from_template_id: Optional[str] = Field(
+        default=None,
+        description="The ID of the template used to generate this item, if any.",
+    )
+    created_from_media_id: Optional[str] = Field(
+        default=None,
+        description="The ID of the MediaItem used to generate this item, if any.",
+    )
