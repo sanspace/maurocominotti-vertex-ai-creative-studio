@@ -168,10 +168,6 @@ textarea {
   }
 }
 
-svg {
-    fill: var(--mat-fab-foreground-color);
-  }
-
 .gradient-bg {
   width: 100vw;
   height: 120vh;
@@ -291,6 +287,15 @@ svg {
   }
 }
 
+.mat-mdc-button-base {
+  background-color: transparent !important;
+  color: white !important;
+  fill: white !important;
+}
+
+svg {
+  fill: white !important;
+}
 
 // --- Media Queries for Mobile-First Responsive Design ---
 // Small devices (landscape phones, 576px and up)

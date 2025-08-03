@@ -3,9 +3,8 @@ import {
   Component,
   ElementRef,
   OnDestroy,
-  OnInit,
   QueryList,
-  ViewChildren
+  ViewChildren,
 } from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Location} from '@angular/common';
@@ -23,13 +22,14 @@ import lightGallery from 'lightgallery';
 import {GalleryItem} from 'lightgallery/lg-utils';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
+import {CreatePromptMediaDto} from '../../common/models/prompt.model';
 
 @Component({
   selector: 'app-media-detail',
   templateUrl: './media-detail.component.html',
   styleUrls: ['./media-detail.component.scss'],
 })
-export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
+export class MediaDetailComponent implements OnDestroy, AfterViewInit {
   private routeSub?: Subscription;
   private mediaSub?: Subscription;
 
@@ -41,6 +41,7 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
   public isLoading = true;
   public mediaItem: MediaItem | undefined;
   private initialSlideIndex = 0;
+  promptJson: CreatePromptMediaDto | undefined;
 
   constructor(
     private route: ActivatedRoute,
@@ -59,13 +60,12 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
       this.loadingService.hide();
       this.isLoading = false;
       this.readInitialIndexFromUrl();
+      this.parsePrompt();
     } else {
       // If not, fetch the media item using the ID from the route params
       this.fetchMediaItem();
     }
   }
-
-  ngOnInit(): void {}
 
   ngAfterViewInit(): void {
     this.gallerySubscription = this.lightGalleryCarousels?.changes.subscribe(
@@ -117,6 +117,7 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
         this.isLoading = false;
         this.loadingService.hide();
         this.readInitialIndexFromUrl();
+        this.parsePrompt();
       },
       error: err => {
         console.error('Failed to fetch media details', err);
@@ -124,6 +125,27 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
         this.loadingService.hide();
       },
     });
+  }
+
+  private parsePrompt(): void {
+    if (!this.mediaItem?.prompt) {
+      this.promptJson = undefined;
+      return;
+    }
+    try {
+      if (typeof this.mediaItem.prompt === 'string') {
+        const parsed = JSON.parse(this.mediaItem.prompt);
+        if (parsed && typeof parsed === 'object') {
+          this.promptJson = parsed;
+        }
+      } else if (typeof this.mediaItem.prompt === 'object') {
+        // It's already an object, just cast it.
+        this.promptJson = this.mediaItem.prompt as CreatePromptMediaDto;
+      }
+    } catch (e) {
+      // Not a valid JSON string.
+      this.promptJson = undefined;
+    }
   }
 
   private readInitialIndexFromUrl(): void {
@@ -158,9 +180,13 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
         // For videos, we need to build a specific object structure for lightGallery.
         // The 'src' property on the top-level item should be empty.
         const dynamicVideo: GalleryItem = {
-          src: '',
+          src: "",
           thumb: this.mediaItem?.presigned_thumbnail_urls?.[index] || '',
-          subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4><p>${this.mediaItem?.original_prompt || ''}</p></div>`,
+          subHtml: `<div class="lightGallery-captions">
+                      <h4>Video ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4>
+                      <p>${this.mediaItem?.original_prompt || ''}</p>
+                    </div>`,
+          downloadUrl: url,
           video: {
             source: [
               {src: url, type: this.mediaItem?.mime_type || 'video/mp4'},
@@ -169,20 +195,27 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
             // The type definition for 'attributes' is incorrectly expecting a full
             // HTMLVideoElement object. We cast to 'any' to provide a plain object
             // of attributes, which is what the library actually uses.
-            attributes: {preload: 'metadata', controls: true} as any,
-          },
+            attributes: {
+              preload: 'metadata',
+              controls: true,
+            } as HTMLVideoElement,
+          }
         };
         return dynamicVideo;
       } else {
         return {
           src: url,
           thumb: url,
-          subHtml: `<div class="lightGallery-captions"><h4>Image ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4><p>${this.mediaItem?.original_prompt || ''}</p></div>`,
+          subHtml: `<div class="lightGallery-captions">
+                      <h4>Image ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4>
+                      <p>${this.mediaItem?.original_prompt || ''}</p>
+                    </div>`,
           'data-src': url, // for sharing
         };
       }
     });
 
+    console.log('dynamicElements', dynamicElements);
     this.lightGalleryInstance = lightGallery(galleryElement, {
       container: galleryElement,
       dynamic: true,
@@ -261,20 +294,8 @@ export class MediaDetailComponent implements OnInit, OnDestroy, AfterViewInit {
       return 'N/A';
     }
 
-    // The prompt could already be an object.
-    if (typeof this.mediaItem.prompt === 'object') {
-      return JSON.stringify(this.mediaItem.prompt, null, 2);
-    }
-
-    // Or it could be a string, which might be stringified JSON.
-    try {
-      const parsed = JSON.parse(this.mediaItem.prompt);
-      // We only want to format it if the parsed content is an object or array.
-      if (parsed && typeof parsed === 'object') {
-        return JSON.stringify(parsed, null, 2);
-      }
-    } catch (e) {
-      // It's not a valid JSON string, so we'll fall through and return the original string.
+    if (this.promptJson) {
+      return JSON.stringify(this.promptJson, null, 2);
     }
 
     // Return the original string if it's not an object or valid stringified JSON.

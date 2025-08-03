@@ -28,4 +28,13 @@
   ::ng-deep .mat-mdc-tab-group .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label {
     color: #2D7CEF;
   }
+
+  ::ng-deep .mat-mdc-chip-action-label {
+      color: white !important;
+  }
+}
+
+
+.inline-gallery-container {
+  height: 70vh;
 }

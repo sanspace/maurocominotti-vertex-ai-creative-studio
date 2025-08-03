@@ -39,6 +39,15 @@
   text-overflow: ellipsis;
 }
 
+.control-options mat-icon {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: visible;
+  transform: scale(1.5);
+}
+
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 375px) {
   .title-font {

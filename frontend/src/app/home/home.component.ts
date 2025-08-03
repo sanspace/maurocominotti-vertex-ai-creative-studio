@@ -61,7 +61,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
     aspectRatio: '1:1',
     imageStyle: 'Modern',
-    numberOfImages: 1,
+    numberOfImages: 4,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',

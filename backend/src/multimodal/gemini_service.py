@@ -124,6 +124,7 @@ class GeminiService:
 
         # Join all the available parts into a single, well-formatted string.
         # Example output: "A futuristic city, in a vintage style, with dramatic studio lighting"
+        # TODO: Add ALL of the properties from the CreateImagenDto into the prompt
         rewritten_prompt = self.rewrite_prompt_with_gemini(
             ", ".join(prompt_parts), IMAGEN_REWRITER_PROMPT
         )

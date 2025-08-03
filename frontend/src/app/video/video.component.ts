@@ -50,11 +50,11 @@ export class VideoComponent {
   // This object holds the current state of all user selections.
   searchRequest: VeoRequest = {
     prompt:
-      "From the depths of the ocean, the power of Neptune's trident is unleashed, summoning a vortex of water and light that forges the Maserati MC20 supercar. Opening Shot: The camera glides over the seabed and discovers a massive, ancient bronze trident, half-buried in the sand. It begins to hum and glow with a brilliant aquamarine light. Main Action: The glowing trident unleashes its power, creating a massive, swirling underwater vortex. Sand, bubbles, and light are pulled into its powerful spin, with the trident at its center. Solidification: Within the vortex, the chaotic currents of water are hydro-dynamically sculpted into the sleek, aerodynamic form of a Maserati MC20. The iconic trident logo on the front grille materializes first, glowing brightly. The water-form then solidifies into 'Bianco Audace' metallic white. The Breach: The fully formed car rockets upwards from the depths. It bursts through the ocean surface in a spectacular explosion of water and spray, captured in slow motion. It lands perfectly on a wet, black-sand beach at twilight, water streaming off its flawless body. Start with a slow, exploratory glide through the deep water. Circle the glowing trident as it activates. Get caught in the vortex, spinning with the forming car. Follow the car as it rockets upwards, capturing the breach in epic slow motion. End on a low, wide-angle shot of the car on the beach, looking powerful and serene.",
-    generationModel: 'veo-3.0-fast-generate-preview',
+      'Create an ad for Cymball consisting in the following: In a sunlit Scandinavian bedroom, a single, sealed Cymball box sits in the center of the otherwise empty room. From a fixed, wide-angle cinematic shot, the box trembles and opens. In a rapid, hyper-lapse sequence, furniture pieces assemble themselves precisely, quickly filling the space with a bed, wardrobe, shelves, and other decor! The action concludes as a yellow Cymball throw blanket lands perfectly on the bed, leaving a calm, fully furnished, and serene modern room. you can see the box placed in the front of the bed, with the Cymball logo at the end',
+    generationModel: 'veo-3.0-generate-preview',
     aspectRatio: '16:9',
     videoStyle: 'Modern',
-    numberOfVideos: 1,
+    numberOfVideos: 4,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',
@@ -69,12 +69,12 @@ export class VideoComponent {
   // --- Dropdown Options ---
   generationModels = [
     {
-      value: 'veo-3.0-fast-generate-preview',
-      viewValue: 'Veo 3 Fast \n (Beta Audio)',
-    },
-    {
       value: 'veo-3.0-generate-preview',
       viewValue: 'Veo 3 Quality \n (Beta Audio)',
+    },
+    {
+      value: 'veo-3.0-fast-generate-preview',
+      viewValue: 'Veo 3 Fast \n (Beta Audio)',
     },
     {value: 'veo-2.0-generate-001', viewValue: 'Veo 2 Quality \n (No Audio)'},
     {value: 'veo-2.0-fast-generate-001', viewValue: 'Veo 2 Fast \n (No Audio)'},
@@ -256,7 +256,6 @@ export class VideoComponent {
       source: 'Video 3 Model',
     }));
 
-    console.log(this.videoDocuments);
 
     const hasVideonResults = this.videoDocuments.length > 0;
 
