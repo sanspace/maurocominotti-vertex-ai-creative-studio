@@ -66,7 +66,7 @@ export class GalleryService {
     this.fetchImages()
       .pipe(
         tap(response => {
-          this.nextPageCursor = response.next_page_cursor;
+          this.nextPageCursor = response.nextPageCursor;
           // Accumulate images in our central cache and push the new list to subscribers
           this.allFetchedImages = [...this.allFetchedImages, ...response.items];
           this.imagesCache$.next(this.allFetchedImages);

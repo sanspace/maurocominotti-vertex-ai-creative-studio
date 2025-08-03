@@ -73,5 +73,5 @@ export interface MediaItem {
  */
 export interface PaginatedGalleryResponse {
   items: MediaItem[];
-  next_page_cursor: string | null;
+  nextPageCursor: string | null;
 }
