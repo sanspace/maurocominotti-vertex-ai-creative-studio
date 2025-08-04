@@ -43,7 +43,6 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   public readonly mediaTypes = Object.values(MimeType);
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
-  public hoveredVideoId: string | null = null;
 
   // Services using inject() for modern Angular
   private router = inject(Router);
@@ -219,19 +218,8 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
       (currentIndex - 1 + urlsLength) % urlsLength;
   }
 
-  public playVideo(mediaId: string): void {
-    this.hoveredVideoId = mediaId;
-  }
-
-  public stopVideo(): void {
-    this.hoveredVideoId = null;
-  }
-
   public startAutoSlide(template: Template): void {
-    const urls =
-      template.mime_type === MimeType.VIDEO
-        ? template.thumbnail_uris
-        : template.presigned_urls;
+    const urls = template.presigned_urls;
     if (urls && urls.length > 1) {
       if (this.autoSlideIntervals[template.id]) {
         return;
@@ -247,18 +235,6 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
       clearInterval(this.autoSlideIntervals[imageId]);
       delete this.autoSlideIntervals[imageId];
     }
-  }
-
-  public onMouseEnter(media: Template): void {
-    if (media.mime_type === 'video/mp4') this.playVideo(media.id);
-
-    this.stopAutoSlide(media.id);
-  }
-
-  public onMouseLeave(media: Template): void {
-    if (media.mime_type === 'video/mp4') this.stopVideo();
-
-    this.startAutoSlide(media);
   }
 
   ngOnDestroy(): void {
