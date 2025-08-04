@@ -38,6 +38,11 @@
                 "input": "public"
               },
               {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets/"
+              },
+              {
                 "glob": "robots.txt",
                 "input": "src",
                 "output": "/"
@@ -154,6 +159,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets/"
               },
               {
                 "glob": "robots.txt",

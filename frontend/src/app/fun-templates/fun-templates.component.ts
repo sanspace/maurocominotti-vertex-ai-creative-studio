@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import {Component, inject, OnDestroy, OnInit} from '@angular/core';
+import {Component, inject, OnDestroy, OnInit, PLATFORM_ID} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MimeType, Template, TemplateFilter} from './template.model';
 import {Router} from '@angular/router';
 import {INDUSTRIES, TEMPLATES} from './templates.data';
+import {isPlatformBrowser} from '@angular/common';
 
 @Component({
   selector: 'app-fun-templates',
@@ -27,6 +28,7 @@ import {INDUSTRIES, TEMPLATES} from './templates.data';
   styleUrl: './fun-templates.component.scss',
 })
 export class FunTemplatesComponent implements OnInit, OnDestroy {
+  private isBrowser: boolean;
   public isLoading = true;
   public allTemplates: Template[] = [];
   public filteredTemplates: Template[] = [];
@@ -49,6 +51,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   public matIconRegistry = inject(MatIconRegistry);
 
   constructor() {
+    this.isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
     const iconPath = '../../assets/images';
     this.matIconRegistry
       .addSvgIcon(
@@ -62,16 +65,26 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Simulate fetching data
-    this.isLoading = true;
-    setTimeout(() => {
+    if (this.isBrowser) {
+      // Simulate fetching data only on the browser to avoid SSR timeouts
+      this.isLoading = true;
+      setTimeout(() => {
+        this.allTemplates = TEMPLATES;
+        this.allTemplates.forEach(t => {
+          this.currentImageIndices[t.id] = 0;
+        });
+        this.applyFilters(); // This will also start the intervals
+        this.isLoading = false;
+      }, 500); // Simulate 0.5 second network delay
+    } else {
+      // For SSR, load the data synchronously
       this.allTemplates = TEMPLATES;
+      this.filteredTemplates = [...this.allTemplates];
       this.allTemplates.forEach(t => {
         this.currentImageIndices[t.id] = 0;
       });
-      this.applyFilters(); // Apply initial (empty) filters
       this.isLoading = false;
-    }, 500); // Simulate 0.5 second network delay
+    }
   }
 
   /**
