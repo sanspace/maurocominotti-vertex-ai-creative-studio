@@ -41,6 +41,7 @@ import {Subscription} from 'rxjs';
 import {additionalShareOptions} from '../utils/lightgallery-share-options';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
+import {GenerationParameters} from '../fun-templates/template.model';
 
 @Component({
   selector: 'app-home',
@@ -51,6 +52,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // --- Component State ---
   imagenDocuments: GeneratedImage[] = [];
   isLoading = false;
+  templateParams: GenerationParameters | undefined;
   showDefaultDocuments = false;
 
   // --- Search Request Object ---
@@ -60,8 +62,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
     generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
     aspectRatio: '1:1',
-    imageStyle: 'Modern',
-    numberOfImages: 4,
+    style: 'Modern',
+    numberOfMedia: 4,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',
@@ -199,6 +201,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         'mobile-white-gemini-spark-icon',
         this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
       );
+
+    this.templateParams =
+      this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
+    this.applyTemplateParameters();
   }
 
   private path = '../../assets/images';
@@ -247,6 +253,69 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     // As this should be browser code we check first if window exists
     if (typeof window !== 'undefined')
       window.addEventListener('mousemove', this.onMouseMove);
+  }
+
+  private applyTemplateParameters(): void {
+    console.log('Applying template parameters:', this.templateParams);
+
+    if (!this.templateParams) {
+      return;
+    }
+
+    if (this.templateParams.prompt) {
+      this.searchRequest.prompt = this.templateParams.prompt;
+    }
+
+    if (this.templateParams.num_media) {
+      console.log('Setting number of images:', this.templateParams.num_media);
+      this.searchRequest.numberOfMedia = this.templateParams.num_media;
+    }
+
+    if (this.templateParams.model) {
+      const templateModel = this.templateParams.model;
+      const modelOption = this.generationModels.find(m =>
+        m.value.toLowerCase().includes(templateModel.toLowerCase()),
+      );
+      if (modelOption) {
+        this.searchRequest.generationModel = modelOption.value;
+        this.selectedGenerationModel = modelOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.aspect_ratio) {
+      const templateAspectRatio = this.templateParams.aspect_ratio;
+      const aspectRatioOption = this.aspectRatioOptions.find(
+        r => r.value === templateAspectRatio,
+      );
+      if (aspectRatioOption) {
+        this.searchRequest.aspectRatio = aspectRatioOption.value;
+        this.selectedAspectRatio = aspectRatioOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.style) {
+      this.searchRequest.style = this.templateParams.style;
+    }
+
+    if (this.templateParams.lighting) {
+      this.searchRequest.lighting = this.templateParams.lighting;
+    }
+
+    if (this.templateParams.color_and_tone) {
+      this.searchRequest.colorAndTone = this.templateParams.color_and_tone;
+    }
+
+    if (this.templateParams.composition) {
+      this.searchRequest.composition = this.templateParams.composition;
+    }
+
+    if (this.templateParams.negative_prompt) {
+      this.negativePhrases = this.templateParams.negative_prompt
+        .split(',')
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+      this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
+    }
   }
 
   openLink(url: string | undefined) {
@@ -325,7 +394,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectImageStyle(style: string): void {
-    this.searchRequest.imageStyle = style;
+    this.searchRequest.style = style;
   }
 
   selectLighting(lighting: string): void {
@@ -337,7 +406,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectNumberOfImages(num: number): void {
-    this.searchRequest.numberOfImages = num;
+    this.searchRequest.numberOfMedia = num;
   }
 
   selectComposition(composition: string): void {
@@ -426,8 +495,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       prompt: '',
       generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
       aspectRatio: '1:1',
-      imageStyle: 'Modern',
-      numberOfImages: 4,
+      style: 'Modern',
+      numberOfMedia: 4,
       lighting: 'Cinematic',
       colorAndTone: 'Vibrant',
       composition: 'Closeup',

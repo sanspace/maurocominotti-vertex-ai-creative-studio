@@ -33,6 +33,7 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {GalleryItem} from 'lightgallery/lg-utils';
 import lgVideo from 'lightgallery/plugins/video';
+import {GenerationParameters} from '../fun-templates/template.model';
 
 @Component({
   selector: 'app-video',
@@ -40,6 +41,8 @@ import lgVideo from 'lightgallery/plugins/video';
   styleUrl: './video.component.scss',
 })
 export class VideoComponent {
+  templateParams: GenerationParameters | undefined;
+
   // --- Component State ---
   videoDocuments: GeneratedVideo[] = [];
   isLoading = false;
@@ -53,8 +56,8 @@ export class VideoComponent {
       'Create an ad for Cymball consisting in the following: In a sunlit Scandinavian bedroom, a single, sealed Cymball box sits in the center of the otherwise empty room. From a fixed, wide-angle cinematic shot, the box trembles and opens. In a rapid, hyper-lapse sequence, furniture pieces assemble themselves precisely, quickly filling the space with a bed, wardrobe, shelves, and other decor! The action concludes as a yellow Cymball throw blanket lands perfectly on the bed, leaving a calm, fully furnished, and serene modern room. you can see the box placed in the front of the bed, with the Cymball logo at the end',
     generationModel: 'veo-3.0-generate-preview',
     aspectRatio: '16:9',
-    videoStyle: 'Modern',
-    numberOfVideos: 4,
+    style: 'Modern',
+    numberOfMedia: 4,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',
@@ -164,6 +167,10 @@ export class VideoComponent {
         'gemini-spark-icon',
         this.setPath(`${this.path}/gemini-spark-icon.svg`),
       );
+
+    this.templateParams =
+      this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
+    this.applyTemplateParameters();
   }
 
   private path = '../../assets/images';
@@ -302,7 +309,7 @@ export class VideoComponent {
   }
 
   selectVideoStyle(style: string): void {
-    this.searchRequest.videoStyle = style;
+    this.searchRequest.style = style;
   }
 
   selectLighting(lighting: string): void {
@@ -314,7 +321,7 @@ export class VideoComponent {
   }
 
   selectNumberOfVideos(num: number): void {
-    this.searchRequest.numberOfVideos = num;
+    this.searchRequest.numberOfMedia = num;
   }
 
   selectDuration(seconds: number): void {
@@ -418,8 +425,8 @@ export class VideoComponent {
       prompt: '',
       generationModel: 'veo-3.0-generate-preview',
       aspectRatio: '16:9',
-      videoStyle: 'Modern',
-      numberOfVideos: 4,
+      style: 'Modern',
+      numberOfMedia: 4,
       lighting: 'Cinematic',
       colorAndTone: 'Vibrant',
       composition: 'Closeup',
@@ -445,5 +452,71 @@ export class VideoComponent {
         icon: 'cross-in-circle-white',
       },
     });
+  }
+
+  private applyTemplateParameters(): void {
+    console.log('Applying template parameters:', this.templateParams);
+
+    if (!this.templateParams) {
+      return;
+    }
+
+    if (this.templateParams.prompt) {
+      this.searchRequest.prompt = this.templateParams.prompt;
+    }
+
+    if (this.templateParams.num_media) {
+      console.log('Setting number of images:', this.templateParams.num_media);
+      this.searchRequest.numberOfMedia = this.templateParams.num_media;
+    }
+
+    if (this.templateParams.model) {
+      const templateModel = this.templateParams.model;
+      const modelOption = this.generationModels.find(m =>
+        m.value.toLowerCase().includes(templateModel.toLowerCase()),
+      );
+      if (modelOption) {
+        this.searchRequest.generationModel = modelOption.value;
+        this.selectedGenerationModel = modelOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.aspect_ratio) {
+      const templateAspectRatio = this.templateParams.aspect_ratio;
+      const aspectRatioOption = this.aspectRatioOptions.find(
+        r => r.value === templateAspectRatio,
+      );
+      if (aspectRatioOption) {
+        this.searchRequest.aspectRatio = aspectRatioOption.value;
+        this.selectedAspectRatio = aspectRatioOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.duration_seconds)
+      this.searchRequest.durationSeconds = this.templateParams.duration_seconds;
+
+    if (this.templateParams.style) {
+      this.searchRequest.style = this.templateParams.style;
+    }
+
+    if (this.templateParams.lighting) {
+      this.searchRequest.lighting = this.templateParams.lighting;
+    }
+
+    if (this.templateParams.color_and_tone) {
+      this.searchRequest.colorAndTone = this.templateParams.color_and_tone;
+    }
+
+    if (this.templateParams.composition) {
+      this.searchRequest.composition = this.templateParams.composition;
+    }
+
+    if (this.templateParams.negative_prompt) {
+      this.negativePhrases = this.templateParams.negative_prompt
+        .split(',')
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+      this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
+    }
   }
 }

@@ -163,15 +163,15 @@
           <mat-icon>style</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.imageStyle }}
+          {{ searchRequest.style }}
         </div>
         <mat-menu #imageStylingMenu="matMenu">
           <button
-            *ngFor="let imageStyle of imageStyles"
+            *ngFor="let style of imageStyles"
             mat-menu-item
-            (click)="selectImageStyle(imageStyle)"
+            (click)="selectImageStyle(style)"
           >
-            <span>{{ imageStyle }}</span>
+            <span>{{ style }}</span>
           </button>
         </mat-menu>
       </div>
@@ -238,7 +238,7 @@
           <mat-icon svgIcon="number-of-images-icon" color="primary"></mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.numberOfImages }}
+          {{ searchRequest.numberOfMedia }}
           Image(s)
         </div>
         <mat-menu #numImagesMenu="matMenu">

@@ -123,15 +123,15 @@
           <mat-icon>style</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.videoStyle }}
+          {{ searchRequest.style }}
         </div>
         <mat-menu #videoStylingMenu="matMenu">
           <button
-            *ngFor="let videoStyle of videoStyles"
+            *ngFor="let style of videoStyles"
             mat-menu-item
-            (click)="selectVideoStyle(videoStyle)"
+            (click)="selectVideoStyle(style)"
           >
-            <span>{{ videoStyle }}</span>
+            <span>{{ style }}</span>
           </button>
         </mat-menu>
       </div>
@@ -197,7 +197,7 @@
           <mat-icon svgIcon="number-of-images-icon" color="primary"></mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.numberOfVideos }}
+          {{ searchRequest.numberOfMedia }}
           Video(s)
         </div>
         <mat-menu #numVideosMenu="matMenu">

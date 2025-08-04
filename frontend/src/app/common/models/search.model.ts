@@ -18,8 +18,8 @@ export type ImagenRequest = {
   prompt: string;
   generationModel: string;
   aspectRatio: string;
-  numberOfImages: number;
-  imageStyle: string;
+  numberOfMedia: number;
+  style: string;
   lighting: string;
   colorAndTone: string;
   composition: string;
@@ -31,8 +31,8 @@ export type VeoRequest = {
   prompt: string;
   generationModel: string;
   aspectRatio: string;
-  numberOfVideos?: number;
-  videoStyle: string;
+  numberOfMedia?: number;
+  style: string;
   lighting: string;
   colorAndTone: string;
   composition: string;

@@ -29,7 +29,7 @@ class CreateVeoDto(BaseSchema):
         default=AspectRatioEnum.RATIO_16_9,
         description="Aspect ratio of the image.",
     )
-    number_of_videos: int = Field(
+    number_of_media: int = Field(
         default=1,
         ge=1,
         le=4,

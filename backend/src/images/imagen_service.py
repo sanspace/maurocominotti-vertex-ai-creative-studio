@@ -103,7 +103,7 @@ class ImagenService:
                             add_watermark=request_dto.add_watermark,
                         ),
                     )
-                    for _ in range(request_dto.number_of_images)
+                    for _ in range(request_dto.number_of_media)
                 ]
                 api_responses = await asyncio.gather(*tasks)
                 for response in api_responses:
@@ -115,7 +115,7 @@ class ImagenService:
                     model=request_dto.generation_model,
                     prompt=request_dto.prompt,
                     config=types.GenerateImagesConfig(
-                        number_of_images=request_dto.number_of_images,
+                        number_of_images=request_dto.number_of_media,
                         output_gcs_uri=gcs_output_directory,
                         aspect_ratio=request_dto.aspect_ratio,
                         negative_prompt=request_dto.negative_prompt,
@@ -308,13 +308,13 @@ class ImagenService:
         gemini_coroutine = self._generate_with_gemini(
             client=client,
             term=request_dto.prompt,
-            number_of_images=request_dto.number_of_images,
+            number_of_images=request_dto.number_of_media,
             style=request_dto.style,
         )
         results = await asyncio.gather(gemini_coroutine, return_exceptions=True)
 
         response_gemini: List[ImageGenerationResult] = []
-        gemini_result_index = request_dto.number_of_images
+        gemini_result_index = request_dto.number_of_media
         if gemini_result_index < len(results):
             gemini_task_result = results[gemini_result_index]
             if isinstance(gemini_task_result, Exception):
@@ -445,7 +445,7 @@ class ImagenService:
 
         try:
             logger.info(
-                f"models.image_models.edit_image: Requesting {request_dto.number_of_images} edited images for model {request_dto.generation_model} with output to {gcs_output_directory}"
+                f"models.image_models.edit_image: Requesting {request_dto.number_of_media} edited images for model {request_dto.generation_model} with output to {gcs_output_directory}"
             )
             images_imagen_response = client.models.edit_image(
                 model=request_dto.generation_model,
@@ -453,7 +453,7 @@ class ImagenService:
                 reference_images=[raw_ref_image, mask_ref_image],  # type: ignore
                 config=types.EditImageConfig(
                     edit_mode=request_dto.edit_mode,
-                    number_of_images=request_dto.number_of_images,
+                    number_of_images=request_dto.number_of_media,
                     include_rai_reason=True,
                     output_gcs_uri=gcs_output_directory,
                     output_mime_type="image/jpeg",

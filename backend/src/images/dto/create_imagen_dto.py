@@ -32,7 +32,7 @@ class CreateImagenDto(BaseSchema):
         default=AspectRatioEnum.RATIO_1_1,
         description="Aspect ratio of the image.",
     )
-    number_of_images: int = Field(
+    number_of_media: int = Field(
         default=1,
         ge=1,
         le=4,

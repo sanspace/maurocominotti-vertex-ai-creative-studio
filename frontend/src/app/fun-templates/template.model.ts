@@ -19,6 +19,19 @@ export enum MimeType {
   VIDEO = 'video/mp4',
 }
 
+export enum IndustryEnum {
+  TECHNOLOGY = 'Technology',
+  ART_AND_DESIGN = 'Art & Design',
+  FASHION_AND_APPAREL = 'Fashion & Apparel',
+  LUXURY_GOODS = 'Luxury Goods',
+  ENTERTAINMENT = 'Entertainment',
+  FOOD_AND_BEVERAGE = 'Food & Beverage',
+  HOME_APPLIANCES = 'Home Appliances',
+  AUTOMOTIVE = 'Automotive',
+  PET_SUPPLIES = 'Pet Supplies',
+  OTHER = 'Other',
+}
+
 // These would likely be enums in a real app, but using strings for simplicity
 export type Style = string;
 export type AspectRatio = string;
@@ -35,6 +48,8 @@ export interface GenerationParameters {
   color_and_tone?: string;
   composition?: string;
   negative_prompt?: string;
+  num_media?: number;
+  duration_seconds?: number;
 }
 
 export interface Template {
@@ -42,10 +57,10 @@ export interface Template {
   name: string;
   description: string;
   mime_type: MimeType;
-  industry: string;
+  industry: IndustryEnum;
   brand?: string;
   tags: string[];
-  thumbnail_uris: string[];
+  thumbnail_uris?: string[];
   presigned_urls: string[]; // The full video/image GCS URI
   generation_parameters: GenerationParameters; // All generator settings bundled
 }

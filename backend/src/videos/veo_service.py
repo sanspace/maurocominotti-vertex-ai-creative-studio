@@ -124,7 +124,7 @@ class VeoService:
                     model="veo-3.0-generate-preview",
                     prompt=request_dto.prompt,
                     config=types.GenerateVideosConfig(
-                        number_of_videos=request_dto.number_of_videos,
+                        number_of_videos=request_dto.number_of_media,
                         output_gcs_uri=gcs_output_directory,
                         aspect_ratio=request_dto.aspect_ratio,
                         negative_prompt=request_dto.negative_prompt,

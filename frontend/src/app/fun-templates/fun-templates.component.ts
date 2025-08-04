@@ -161,13 +161,15 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
    * @param template The template object that was clicked.
    */
   useTemplate(template: Template): void {
-    console.log('Using template:', template);
     // Navigate to the homepage (or your generator page) and pass the parameters
-    this.router.navigate(['/home'], {
-      state: {
-        templateParams: template.generation_parameters,
+    this.router.navigate(
+      [template.mime_type === MimeType.VIDEO ? '/video' : '/'],
+      {
+        state: {
+          templateParams: template.generation_parameters,
+        },
       },
-    });
+    );
   }
 
   /**

@@ -27,6 +27,7 @@ export interface MediaItem {
   prompt?: string;
   original_prompt?: string;
   rewritten_prompt?: string;
+  num_media?: number;
   model?: string;
   mime_type?: string;
   generation_time?: number;
@@ -49,7 +50,6 @@ export interface MediaItem {
 
   // Image specific
   modifiers: string[];
-  num_media?: number;
   aspect_ratio?: string;
   style?: string;
   lighting?: string;
