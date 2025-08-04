@@ -19,7 +19,7 @@ from src.galleries.dto.gallery_search_dto import GallerySearchDto, PaginatedGall
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.galleries.dto.gallery_response_dto import GalleryItemResponse
 from src.images.repository.media_item_repository import MediaRepository
-from backend.src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItem
 
 class GalleryService:
     """

@@ -3,7 +3,7 @@ from google.cloud import firestore
 
 from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.common.base_repository import BaseRepository
-from backend.src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItem
 
 
 class MediaRepository(BaseRepository[MediaItem]):

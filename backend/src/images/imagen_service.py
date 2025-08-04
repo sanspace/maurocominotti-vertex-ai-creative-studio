@@ -25,9 +25,9 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
-from backend.src.common.schema.genai_model_setup import GenAIModelSetup
+from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.base_schema_model import GenerationModelEnum
-from backend.src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItem
 from src.images.repository.media_item_repository import MediaRepository
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
