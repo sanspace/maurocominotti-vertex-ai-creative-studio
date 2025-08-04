@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import {Component, inject, OnInit} from '@angular/core';
+import {Component, inject, OnDestroy, OnInit} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {MediaType, Template, TemplateFilter} from './template.model';
+import {MimeType, Template, TemplateFilter} from './template.model';
 import {Router} from '@angular/router';
 import {INDUSTRIES, TEMPLATES} from './templates.data';
 
@@ -26,7 +26,7 @@ import {INDUSTRIES, TEMPLATES} from './templates.data';
   templateUrl: './fun-templates.component.html',
   styleUrl: './fun-templates.component.scss',
 })
-export class FunTemplatesComponent implements OnInit {
+export class FunTemplatesComponent implements OnInit, OnDestroy {
   public isLoading = true;
   public allTemplates: Template[] = [];
   public filteredTemplates: Template[] = [];
@@ -38,7 +38,10 @@ export class FunTemplatesComponent implements OnInit {
     name: null,
   };
   public readonly industries: string[] = INDUSTRIES;
-  public readonly mediaTypes = Object.values(MediaType);
+  public readonly mediaTypes = Object.values(MimeType);
+  private autoSlideIntervals: {[id: string]: any} = {};
+  public currentImageIndices: {[id: string]: number} = {};
+  public hoveredVideoId: string | null = null;
 
   // Services using inject() for modern Angular
   private router = inject(Router);
@@ -63,6 +66,9 @@ export class FunTemplatesComponent implements OnInit {
     this.isLoading = true;
     setTimeout(() => {
       this.allTemplates = TEMPLATES;
+      this.allTemplates.forEach(t => {
+        this.currentImageIndices[t.id] = 0;
+      });
       this.applyFilters(); // Apply initial (empty) filters
       this.isLoading = false;
     }, 500); // Simulate 0.5 second network delay
@@ -93,7 +99,7 @@ export class FunTemplatesComponent implements OnInit {
 
     // Filter by Media Type
     if (filter.mediaType) {
-      templates = templates.filter(t => t.media_type === filter.mediaType);
+      templates = templates.filter(t => t.mime_type === filter.mediaType);
     }
 
     // Filter by Name (case-insensitive)
@@ -122,6 +128,18 @@ export class FunTemplatesComponent implements OnInit {
     }
 
     this.filteredTemplates = templates;
+
+    // Clear all intervals
+    Object.values(this.autoSlideIntervals).forEach(clearInterval);
+    this.autoSlideIntervals = {};
+
+    // Start intervals for filtered templates
+    this.filteredTemplates.forEach(t => {
+      if (this.currentImageIndices[t.id] === undefined) {
+        this.currentImageIndices[t.id] = 0;
+      }
+      this.startAutoSlide(t);
+    });
   }
 
   /**
@@ -155,5 +173,80 @@ export class FunTemplatesComponent implements OnInit {
 
   private setPath(url: string): SafeResourceUrl {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  public nextImage(
+    imageId: string,
+    urlsLength: number,
+    event?: MouseEvent,
+  ): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.stopAutoSlide(imageId);
+    }
+    const currentIndex = this.currentImageIndices[imageId] || 0;
+    this.currentImageIndices[imageId] = (currentIndex + 1) % urlsLength;
+  }
+
+  public prevImage(
+    imageId: string,
+    urlsLength: number,
+    event?: MouseEvent,
+  ): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.stopAutoSlide(imageId);
+    }
+    const currentIndex = this.currentImageIndices[imageId] || 0;
+    this.currentImageIndices[imageId] =
+      (currentIndex - 1 + urlsLength) % urlsLength;
+  }
+
+  public playVideo(mediaId: string): void {
+    this.hoveredVideoId = mediaId;
+  }
+
+  public stopVideo(): void {
+    this.hoveredVideoId = null;
+  }
+
+  public startAutoSlide(template: Template): void {
+    const urls =
+      template.mime_type === MimeType.VIDEO
+        ? template.thumbnail_uris
+        : template.presigned_urls;
+    if (urls && urls.length > 1) {
+      if (this.autoSlideIntervals[template.id]) {
+        return;
+      }
+      this.autoSlideIntervals[template.id] = setInterval(() => {
+        this.nextImage(template.id, urls.length);
+      }, 3000);
+    }
+  }
+
+  public stopAutoSlide(imageId: string): void {
+    if (this.autoSlideIntervals[imageId]) {
+      clearInterval(this.autoSlideIntervals[imageId]);
+      delete this.autoSlideIntervals[imageId];
+    }
+  }
+
+  public onMouseEnter(media: Template): void {
+    if (media.mime_type === 'video/mp4') this.playVideo(media.id);
+
+    this.stopAutoSlide(media.id);
+  }
+
+  public onMouseLeave(media: Template): void {
+    if (media.mime_type === 'video/mp4') this.stopVideo();
+
+    this.startAutoSlide(media);
+  }
+
+  ngOnDestroy(): void {
+    Object.values(this.autoSlideIntervals).forEach(clearInterval);
   }
 }

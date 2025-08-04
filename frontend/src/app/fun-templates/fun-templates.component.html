@@ -86,7 +86,7 @@
 
 
 
-<div
+    <div
       *ngIf="isLoading"
       class="flex flex-col items-center justify-center mt-8 text-center"
     >
@@ -149,24 +149,74 @@
         <div
           *ngFor="let template of filteredTemplates; trackBy: trackById"
           class="template-card group"
-          (click)="useTemplate(template)"
         >
           <div class="relative overflow-hidden rounded-t-lg">
-            <img
-              [src]="template.thumbnail_uri"
-              [alt]="template.name"
-              class="object-cover w-full h-48 transition-transform duration-300 group-hover:scale-105"
-            />
-            <div
-              class="absolute inset-0 flex items-center justify-center transition-all duration-300 bg-black bg-opacity-0 group-hover:bg-opacity-60"
-            >
-              <span
-                class="p-2 px-4 text-sm font-bold text-white transition-opacity duration-300 opacity-0 rounded-full bg-black/50 group-hover:opacity-100"
-              >
+            <ng-container [ngSwitch]="template.mime_type">
+              <ng-container *ngSwitchCase="'image/png'">
+                <img
+                  *ngFor="let url of template.presigned_urls; let i = index"
+                  class="absolute top-0 left-0 object-cover w-full h-48 transition-opacity duration-500"
+                  [src]="url"
+                  [alt]="template.name"
+                  [style.opacity]="
+                    (currentImageIndices[template.id] || 0) === i ? 1 : 0
+                  "
+                />
+                <!-- Spacer for aspect ratio -->
+                <div class="h-48"></div>
+              </ng-container>
+
+              <ng-container *ngSwitchCase="'video/mp4'">
+                <!-- Video on hover -->
+                <ng-container>
+                  <video
+                    *ngFor="let url of template.presigned_urls; let i = index"
+                    class="absolute top-0 left-0 object-cover w-full h-full transition-opacity duration-500"
+                    [style.opacity]="
+                      (currentImageIndices[template.id] || 0) === i ? 1 : 0
+                    "
+                    oncanplay="this.play()"
+                    onloadedmetadata="this.muted = true"
+                    muted
+                    playsinline
+                    loop
+                    autoplay
+                  >
+                    <source [src]="url" [type]="template.mime_type" />
+                  </video>
+                </ng-container>
+
+                <!-- Spacer for aspect ratio -->
+                <div class="h-48"></div>
+              </ng-container>
+            </ng-container>
+
+            <!-- Overlay with "Use Template" button -->
+            <div class="absolute inset-0 z-20 flex items-center justify-center transition-all duration-300 bg-black bg-opacity-0 group-hover:bg-opacity-60">
+              <button (click)="useTemplate(template); $event.stopPropagation()" class="p-2 px-4 text-sm font-bold text-white transition-opacity duration-300 opacity-0 rounded-full bg-black/50 group-hover:opacity-100 focus:outline-none">
                 Use Template
-              </span>
+              </button>
             </div>
+
+            <!-- Carousel Controls -->
+            <ng-container *ngIf="(template.mime_type === 'image/png' && template.presigned_urls.length > 1) || (template.mime_type === 'video/mp4' && template.thumbnail_uris.length > 1)">
+              <button (click)="prevImage(template.id, (template.mime_type === 'video/mp4' ? template.thumbnail_uris : template.presigned_urls).length, $event)" class="absolute top-1/2 left-2 z-30 p-1 text-white -translate-y-1/2 transition-opacity bg-black/50 rounded-full opacity-0 group-hover:opacity-100 focus:outline-none hover:bg-black/70">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <button (click)="nextImage(template.id, (template.mime_type === 'video/mp4' ? template.thumbnail_uris : template.presigned_urls).length, $event)" class="absolute top-1/2 right-2 z-30 p-1 text-white -translate-y-1/2 transition-opacity bg-black/50 rounded-full opacity-0 group-hover:opacity-100 focus:outline-none hover:bg-black/70">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </button>
+              <div class="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 transition-opacity opacity-0 space-x-1.5 group-hover:opacity-100">
+                <ng-container *ngIf="template.mime_type === 'video/mp4'">
+                  <span *ngFor="let url of template.thumbnail_uris; let i = index" class="block w-2 h-2 rounded-full" [class.bg-white]="(currentImageIndices[template.id] || 0) === i" [class.bg-gray-400]="(currentImageIndices[template.id] || 0) !== i"></span>
+                </ng-container>
+                <ng-container *ngIf="template.mime_type === 'image/png'">
+                  <span *ngFor="let url of template.presigned_urls; let i = index" class="block w-2 h-2 rounded-full" [class.bg-white]="(currentImageIndices[template.id] || 0) === i" [class.bg-gray-400]="(currentImageIndices[template.id] || 0) !== i"></span>
+                </ng-container>
+              </div>
+            </ng-container>
           </div>
+
           <div class="p-4">
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-bold text-white">{{ template.name }}</h3>
@@ -174,12 +224,12 @@
                 class="px-2 py-1 text-xs font-semibold rounded-full"
                 [ngClass]="{
                   'bg-blue-500/20 text-blue-300':
-                    template.media_type === 'video/mp4',
+                    template.mime_type === 'video/mp4',
                   'bg-purple-500/20 text-purple-300':
-                    template.media_type === 'image/png'
+                    template.mime_type === 'image/png'
                 }"
               >
-                {{ template.media_type | titlecase }}
+                {{ template.mime_type | titlecase }}
               </span>
             </div>
             <p class="mt-2 text-sm text-gray-400">
@@ -193,6 +243,7 @@
               </mat-chip-listbox>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -205,7 +256,6 @@
         </button>
       </div>
     </ng-template>
-
 
   </div>
 </div>

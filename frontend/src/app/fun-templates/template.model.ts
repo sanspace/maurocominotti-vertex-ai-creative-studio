@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-export enum MediaType {
+export enum MimeType {
   IMAGE = 'image/png',
   VIDEO = 'video/mp4',
 }
@@ -41,18 +41,18 @@ export interface Template {
   id: string; // Unique identifier for the template
   name: string;
   description: string;
-  media_type: MediaType;
+  mime_type: MimeType;
   industry: string;
   brand?: string;
   tags: string[];
-  thumbnail_uri: string; // Changed to single URI for simplicity in the view
-  gcs_uri: string; // The full video/image GCS URI
+  thumbnail_uris: string[];
+  presigned_urls: string[]; // The full video/image GCS URI
   generation_parameters: GenerationParameters; // All generator settings bundled
 }
 
 export interface TemplateFilter {
   industry: string | null;
-  mediaType: MediaType | null;
+  mediaType: MimeType | null;
   tags: string | null;
   model: string | null;
   name: string | null;
