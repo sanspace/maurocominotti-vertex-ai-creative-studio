@@ -17,6 +17,14 @@ from pydantic.alias_generators import to_camel
 from enum import Enum
 
 
+class MimeTypeEnum(str, Enum):
+    """MIME type for the media."""
+
+    IMAGE_JPEG = "image/jpeg"
+    IMAGE_PNG = "image/png"
+    VIDEO_MP4 = "video/mp4"
+
+
 class GenerationModelEnum(str, Enum):
     """Enum representing the available Imagen generation models."""
 
@@ -107,7 +115,7 @@ class CompositionEnum(str, Enum):
     WIDE_ANGLE = "Wide angle"
 
 
-class BaseSchema(BaseModel):
+class BaseDto(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,

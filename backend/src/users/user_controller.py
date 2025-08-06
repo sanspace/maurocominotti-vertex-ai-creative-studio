@@ -1,7 +1,18 @@
-from fastapi import APIRouter, Depends, status
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.auth.auth_guard import get_current_user
+from src.users.dto.user_create_dto import (
+    UserCreateDto,
+    UserUpdateRoleDto,
+)
+from src.users.dto.user_search_dto import UserSearchDto
+from src.users.user_service import UserService
+from src.auth.auth_guard import RoleChecker, get_current_user
 from src.users.user_model import User
+
+# Define role checkers for convenience and clean code
+admin_only = Depends(RoleChecker(allowed_roles=["admin"]))
+any_authenticated_user = Depends(get_current_user)
 
 router = APIRouter(
     prefix="/api/users",
@@ -26,3 +37,76 @@ async def get_my_profile(
     # The 'current_user' object is the fully validated user model from your database.
     # The controller doesn't need to know about the UID; it already has the whole object.
     return current_user
+
+
+# --- Admin-Only Endpoints ---
+@router.get(
+    "/",
+    response_model=List[User],
+    summary="List All Users (Admin Only)",
+    dependencies=[admin_only],
+)
+async def list_all_users(
+    search_params: UserSearchDto = Depends(),
+    user_service: UserService = Depends(),
+):
+    """
+    Retrieves a paginated list of all users in the system.
+    This functionality is restricted to administrators.
+    """
+    return user_service.find_all_users(search_params)
+
+
+@router.get(
+    "/{user_id}",
+    response_model=User,
+    summary="Get User by ID (Admin Only)",
+    dependencies=[admin_only],
+)
+async def get_user_by_id(user_id: str, user_service: UserService = Depends()):
+    """
+
+    Retrieves a single user's profile by their unique ID.
+    This functionality is restricted to administrators.
+    """
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.patch(
+    "/{user_id}/role",
+    response_model=User,
+    summary="Update a User's Role (Admin Only)",
+    dependencies=[admin_only],
+)
+async def update_user_role(
+    user_id: str,
+    role_data: UserUpdateRoleDto,
+    user_service: UserService = Depends(),
+):
+    """
+    Updates the role of a specific user (e.g., promote to 'admin' or 'creator').
+    This functionality is restricted to administrators.
+    """
+    updated_user = user_service.update_user_role(user_id, role_data)
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated_user
+
+
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a User (Admin Only)",
+    dependencies=[admin_only],
+)
+async def delete_user(user_id: str, user_service: UserService = Depends()):
+    """
+    Permanently deletes a user from the database.
+    This functionality is restricted to administrators.
+    """
+    if not user_service.delete_user_by_id(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    return

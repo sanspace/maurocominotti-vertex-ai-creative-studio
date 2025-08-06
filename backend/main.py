@@ -34,6 +34,9 @@ from src.users.user_controller import router as user_router
 from src.generation_options.generation_options_controller import (
     router as generation_options_router,
 )
+from src.media_templates.media_templates_controller import (
+    router as media_template_router,
+)
 
 # Get the logger instance that Uvicorn is using
 logging.basicConfig(

@@ -1,0 +1,35 @@
+<h1 mat-dialog-title class="text-2xl font-semibold mb-4">
+  {{ isEditMode ? 'Edit User' : 'Add New User' }}
+</h1>
+<div mat-dialog-content style="padding-top: 1rem;">
+  <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+    <!-- Email Field -->
+    <mat-form-field appearance="outline" class="w-full mb-4">
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" placeholder="user@example.com" required>
+      <mat-error *ngIf="userForm.get('email')?.hasError('required')">
+        Email is required.
+      </mat-error>
+      <mat-error *ngIf="userForm.get('email')?.hasError('pattern')">
+        Please enter a valid email address.
+      </mat-error>
+    </mat-form-field>
+
+    <!-- Add other form fields here based on your UserWhitelist model -->
+    <!-- Example for username (if you add it back to the model and form)
+    <mat-form-field appearance="outline" class="w-full mb-4">
+      <mat-label>Username</mat-label>
+      <input matInput formControlName="username" placeholder="john.doe" required>
+      <mat-error *ngIf="userForm.get('username')?.hasError('required')">
+        Username is required.
+      </mat-error>
+    </mat-form-field>
+    -->
+  </form>
+</div>
+<div mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="onCancel()" class="mr-2">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!userForm.valid">
+    {{ isEditMode ? 'Update' : 'Save' }}
+  </button>
+</div>

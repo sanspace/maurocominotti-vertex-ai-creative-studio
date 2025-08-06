@@ -14,9 +14,10 @@
 
 from typing import List
 
-from src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItemModel
 
-class GalleryItemResponse(MediaItem):
+
+class GalleryItemResponse(MediaItemModel):
     """
     The response model for a gallery item.
     It includes all fields from the original MediaItem plus a list of

@@ -1,9 +1,10 @@
 from typing import Optional
 from pydantic import Field
 
-from src.common.base_schema_model import BaseSchema
+from src.common.base_dto import BaseDto
 
-class BaseSearchDto(BaseSchema):
+
+class BaseSearchDto(BaseDto):
     """
     A base DTO for paginated search queries.
     Provides common fields for limit and cursor-based pagination.

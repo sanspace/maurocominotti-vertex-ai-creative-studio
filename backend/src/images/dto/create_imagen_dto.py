@@ -4,8 +4,8 @@ from pydantic import Field, field_validator
 from pydantic.alias_generators import to_camel
 from google.genai import types
 
-from src.common.base_schema_model import (
-    BaseSchema,
+from src.common.base_dto import (
+    BaseDto,
     ColorAndToneEnum,
     GenerationModelEnum,
     AspectRatioEnum,
@@ -15,7 +15,7 @@ from src.common.base_schema_model import (
 )
 
 
-class CreateImagenDto(BaseSchema):
+class CreateImagenDto(BaseDto):
     """
     The refactored request model. Defaults are defined here to make the API
     contract explicit and self-documenting.

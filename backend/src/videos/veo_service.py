@@ -34,7 +34,7 @@ from src.videos.schema.veo_result_model import (
     CustomVeoResult,
     VeoGenerationResult,
 )
-from src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItemModel
 from src.images.repository.media_item_repository import MediaRepository
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
@@ -250,7 +250,7 @@ class VeoService:
             )
 
             # Create and save a SINGLE MediaItem for the entire batch
-            media_post_to_save = MediaItem(
+            media_post_to_save = MediaItemModel(
                 # Core Props
                 user_email=user_email,
                 mime_type=mime_type,

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from fastapi import APIRouter
-from src.common.base_schema_model import (
+from src.common.base_dto import (
     AspectRatioEnum,
     CompositionEnum,
     GenerationModelEnum,

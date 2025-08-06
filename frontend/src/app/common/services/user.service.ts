@@ -37,13 +37,14 @@ interface LooseObject {
 }
 
 type UserStored = {
-  uid: string;
+  id: string;
   email: string;
-  photoURL: string;
+  name: string;
+  picture: string;
   displayName: string;
-  domain: string;
-  organizationName: string;
-  organizationKey: string;
+  roles: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 const badgeURL = `${environment.backendURL}/`;
@@ -68,20 +69,20 @@ export class UserService {
     await deleteDoc(userRef);
   }
 
-  getUserDetails() {
-    if (!isPlatformBrowser(this.platformId)) return '{}';
+  getUserDetails(): UserStored | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
 
     if (localStorage.getItem('USER_DETAILS') !== null) {
       const userObj = localStorage.getItem('USER_DETAILS');
-      return JSON.parse(userObj || '{}');
+      return JSON.parse(userObj || '{}') as UserStored;
     } else {
       const userDetails: LooseObject = {};
       userDetails['name'] = '';
       userDetails['email'] = '';
       userDetails['photoURL'] = '';
       userDetails['domain'] = '';
-      userDetails['role'] = '';
-      return userDetails;
+      userDetails['roles'] = [];
+      return userDetails as UserStored;
     }
   }
 

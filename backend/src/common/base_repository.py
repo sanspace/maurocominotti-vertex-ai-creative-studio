@@ -1,9 +1,10 @@
 import datetime
 from typing import Generic, TypeVar, Optional, List
 import uuid
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from google.cloud import firestore
 from src.auth import firebase_client_service
+from pydantic.alias_generators import to_camel
 
 class BaseDocument(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -12,6 +13,15 @@ class BaseDocument(BaseModel):
     )
     updated_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
+
+    # Pydantic v2 configuration for this sub-model
+    model_config = ConfigDict(
+        use_enum_values=True,  # Allows passing enum members like StyleEnum.MODERN
+        extra="forbid",  # Prevents accidental extra fields
+        populate_by_name=True,
+        from_attributes=True,
+        alias_generator=to_camel,
     )
 
 # Use this new base document as the bound for your generic type.

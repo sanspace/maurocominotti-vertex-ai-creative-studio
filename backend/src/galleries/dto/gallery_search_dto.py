@@ -1,6 +1,6 @@
 from typing import Optional
 
-from src.common.base_schema_model import BaseSchema
+from src.common.base_dto import BaseDto
 from src.galleries.dto.gallery_response_dto import GalleryItemResponse
 from src.common.dto.base_search_dto import BaseSearchDto
 
@@ -10,7 +10,7 @@ class GallerySearchDto(BaseSearchDto):
     model: Optional[str] = None
 
 
-class PaginatedGalleryResponse(BaseSchema):
+class PaginatedGalleryResponse(BaseDto):
     """Defines the response structure for a paginated gallery query."""
     items: list[GalleryItemResponse]
     next_page_cursor: Optional[str] = None

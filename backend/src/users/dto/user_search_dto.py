@@ -1,4 +1,5 @@
 from typing import Optional
+from src.users.user_model import UserRoleEnum
 from src.common.dto.base_search_dto import BaseSearchDto
 
 class UserSearchDto(BaseSearchDto):
@@ -7,4 +8,4 @@ class UserSearchDto(BaseSearchDto):
     Inherits pagination fields from BaseSearchDto.
     """
     email: Optional[str] = None
-    role: Optional[str] = None # To filter by a specific role
+    role: Optional[UserRoleEnum] = None

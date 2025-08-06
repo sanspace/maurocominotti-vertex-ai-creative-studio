@@ -34,7 +34,7 @@ interface Selection {
 
 export const ROLES: Selection[] = [
   {value: 'user', viewValue: 'User'},
-  {value: 'super_admin', viewValue: 'Super Admin'},
+  {value: 'admin', viewValue: 'Admin'},
   {value: 'org_admin', viewValue: 'Org Admin'},
   {value: 'creator', viewValue: 'Content Creator'},
   {value: 'viewer', viewValue: 'Content Viewer'},

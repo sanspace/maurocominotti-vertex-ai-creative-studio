@@ -19,7 +19,7 @@ from src.galleries.dto.gallery_search_dto import GallerySearchDto, PaginatedGall
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.galleries.dto.gallery_response_dto import GalleryItemResponse
 from src.images.repository.media_item_repository import MediaRepository
-from src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItemModel
 
 class GalleryService:
     """
@@ -31,15 +31,14 @@ class GalleryService:
         self.media_repo = MediaRepository()
         self.iam_signer_credentials = IamSignerCredentials()
 
-    async def _create_gallery_response(self, item: MediaItem) -> GalleryItemResponse:
+    async def _create_gallery_response(
+        self, item: MediaItemModel
+    ) -> GalleryItemResponse:
         """
         Helper function to convert a MediaItem into a GalleryItemResponse
         by generating presigned URLs in parallel for its GCS URIs.
         """
         all_gcs_uris = item.gcs_uris or []
-        # Also include the singular gcsuri if it exists
-        if item.gcsuri and item.gcsuri not in all_gcs_uris:
-            all_gcs_uris.append(item.gcsuri)
 
         # Create a list of tasks to run the synchronous URL generation in parallel threads
         tasks = [

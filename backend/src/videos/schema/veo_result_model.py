@@ -1,8 +1,9 @@
 from typing import  Optional
 
-from src.common.base_schema_model import BaseSchema
+from src.common.base_dto import BaseDto
 
-class CustomVeoResult(BaseSchema):
+
+class CustomVeoResult(BaseDto):
     gcs_uri: Optional[str]
     mime_type: str
     encoded_video: str
@@ -10,7 +11,7 @@ class CustomVeoResult(BaseSchema):
     presigned_thumbnail_url: str
 
 
-class VeoGenerationResult(BaseSchema):
+class VeoGenerationResult(BaseDto):
     enhanced_prompt: str
     original_prompt: str
     rai_filtered_reason: Optional[str]

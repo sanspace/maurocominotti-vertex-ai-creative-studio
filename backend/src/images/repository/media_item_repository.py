@@ -3,17 +3,17 @@ from google.cloud import firestore
 
 from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.common.base_repository import BaseRepository
-from src.common.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItemModel
 
 
-class MediaRepository(BaseRepository[MediaItem]):
+class MediaRepository(BaseRepository[MediaItemModel]):
     """Handles database operations for MediaItem objects in Firestore."""
 
     def __init__(self):
         # Call the parent __init__ with the collection name and Pydantic model
-        super().__init__(collection_name="media_library", model=MediaItem)
+        super().__init__(collection_name="media_library", model=MediaItemModel)
 
-    def query(self, search_dto: GallerySearchDto) -> List[MediaItem]:
+    def query(self, search_dto: GallerySearchDto) -> List[MediaItemModel]:
         """
         Performs a generic, paginated query on the media_library collection.
         """

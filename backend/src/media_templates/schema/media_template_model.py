@@ -1,10 +1,10 @@
-import datetime
 from enum import Enum
-from typing import Optional, List, Dict
-from pydantic import Field
+from typing import Annotated, Optional, List
+from pydantic import BaseModel, Field
 from src.common.base_repository import BaseDocument
-from src.common.base_schema_model import (
+from src.common.base_dto import (
     AspectRatioEnum,
+    MimeTypeEnum,
     StyleEnum,
     LightingEnum,
     ColorAndToneEnum,
@@ -16,54 +16,26 @@ class IndustryEnum(str, Enum):
 
     AUTOMOTIVE = "Automotive"
     CONSUMER_GOODS = "Consumer Goods"
+    ART_AND_DESIGN = "Art & Design"
+    ENTERTAINMENT = "Entertainment"
+    HOME_APPLIANCES = "Home Appliances"
     FASHION_AND_APPAREL = "Fashion & Apparel"
     FOOD_AND_BEVERAGE = "Food & Beverage"
     HEALTH_AND_WELLNESS = "Health & Wellness"
     LUXURY_GOODS = "Luxury Goods"
     TECHNOLOGY = "Technology"
     TRAVEL_AND_HOSPITALITY = "Travel & Hospitality"
+    PET_SUPPLIES = "Pet Supplies"
     OTHER = "Other"
 
-class TemplateModel(BaseDocument):
-    """Represents a pre-configured, queryable template for media generation."""
 
-    # --- Core Metadata ---
-    name: str = Field(
-        description="The display name of the template, e.g., 'Cinematic Rolex Watch Ad'."
-    )
-    description: str = Field(
-        description="A brief explanation of what the template is for and its intended use case."
-    )
+class GenerationParameters(BaseModel):
+    """
+    A nested model to cleanly bundle all settings that will be passed
+    to the media generation UI or service.
+    """
 
-    # --- Categorization & Filtering Fields ---
-    media_type: str = Field(
-        description="The primary type of media this template generates, e.g., 'image' or 'video'."
-    )
-    industry: IndustryEnum = Field(
-        description="The target industry for this template."
-    )
-    brand: Optional[str] = Field(
-        default=None,
-        description="The specific brand this template is inspired by, e.g., 'IKEA', 'Tesla'."
-    )
-    tags: List[str] = Field(
-        default_factory=list,
-        description="A list of searchable keywords for filtering. E.g., ['futuristic', 'product-focused', 'vibrant']."
-    )
-
-    # --- UI Display Fields ---
-    thumbnail_uris: Optional[str] = Field(
-        description="The permanent GCS URI of the primary image to display as a thumbnail for this template."
-    )
-    gcs_uris: Optional[str] = Field(
-        default=None,
-        description="The permanent GCS URI to show on hover or click."
-    )
-
-    # --- Generation Parameters ---
-    # This is the data payload the frontend will use to pre-fill the generation UI.
     prompt: Optional[str] = None
-    original_prompt: Optional[str] = None
     model: Optional[str] = None
     aspect_ratio: Optional[AspectRatioEnum] = None
     style: Optional[StyleEnum] = None
@@ -71,3 +43,64 @@ class TemplateModel(BaseDocument):
     color_and_tone: Optional[ColorAndToneEnum] = None
     composition: Optional[CompositionEnum] = None
     negative_prompt: Optional[str] = None
+
+
+# --- The Main Unified Template Model ---
+
+
+class MediaTemplateModel(BaseDocument):
+    """
+    Represents a unified, pre-configured, and queryable template for media generation,
+    incorporating strong validation and a clean structure.
+    """
+
+    # Using Field(..., min_length=1) for required, non-empty strings
+    name: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="The display name of the template, e.g., 'Cinematic Rolex Watch Ad'.",
+        ),
+    ]
+    description: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="A brief explanation of what the template is for and its intended use case.",
+        ),
+    ]
+
+    # --- Categorization & Filtering Fields ---
+    mime_type: MimeTypeEnum = Field(
+        description="The primary type of mime type this template generates."
+    )
+    industry: Optional[IndustryEnum] = Field(
+        default=None, description="The target industry for this template."
+    )
+    brand: Optional[str] = Field(
+        default=None,
+        description="The specific brand this template is inspired by, e.g., 'IKEA'.",
+    )
+    tags: Optional[List[str]] = Field(
+        default_factory=list,
+        description="A list of searchable keywords for filtering, e.g., ['futuristic', 'vibrant'].",
+    )
+
+    # --- UI Display Fields ---
+    # Using str for automatic URL validation
+    gcs_uris: Annotated[
+        List[str],
+        Field(
+            min_length=1,
+            description="A list of public URLs for the media to be displayed (e.g., video or image).",
+        ),
+    ]
+    thumbnail_uris: Annotated[
+        Optional[List[str]],
+        Field(
+            description="The public, permanent URL of the thumbnail image for this template."
+        ),
+    ]
+
+    # --- Nested Generation Parameters ---
+    generation_parameters: GenerationParameters

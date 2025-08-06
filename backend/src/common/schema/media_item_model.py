@@ -1,23 +1,25 @@
 import datetime
-from typing import Dict, List, Optional
-from pydantic import Field
-from src.common.base_schema_model import (
+from typing import Annotated, Dict, List, Optional
+from pydantic import Field, HttpUrl
+from src.common.base_dto import (
     AspectRatioEnum,
     ColorAndToneEnum,
     CompositionEnum,
     GenerationModelEnum,
+    MimeTypeEnum,
     StyleEnum,
     LightingEnum,
 )
 from src.common.base_repository import BaseDocument
 
-class MediaItem(BaseDocument):
+
+class MediaItemModel(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""
 
     # Indexes that shouldn't and mustn't be empty
     # created_at is an index but is autopopulated by BaseDocument
     user_email: str
-    mime_type: str
+    mime_type: MimeTypeEnum
     model: GenerationModelEnum
 
     # Common fields across media types
@@ -38,8 +40,13 @@ class MediaItem(BaseDocument):
     add_watermark: Optional[bool] = None
 
     # URI fields
-    gcsuri: Optional[str] = None
-    gcs_uris: List[str] = Field(default_factory=list)
+    gcs_uris: Annotated[
+        List[str],
+        Field(
+            min_length=1,
+            description="A list of public URLs for the media to be displayed (e.g., video or image).",
+        ),
+    ]
     source_images_gcs: List[str] = Field(default_factory=list)
 
     # Video specific

@@ -34,7 +34,6 @@ export interface MediaItem {
   error_message?: string;
 
   // URI and URL fields
-  gcsuri?: string;
   gcs_uris: string[];
   source_images_gcs: string[];
   presigned_urls?: string[];

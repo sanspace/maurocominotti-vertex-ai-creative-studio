@@ -237,16 +237,16 @@ export class AuthService {
     return isUserLoggedIn;
   }
 
-  isUserSuperAdmin() {
+  isUserAdmin() {
     if (!isPlatformBrowser(this.platformId)) return false;
 
-    // const user_role = this.userService.getUserDetails().appRole;
-    // return environment.SUPER_ADMIN === user_role;
+    const user_role = this.userService.getUserDetails()?.roles;
+    return user_role?.includes(environment.ADMIN) || false;
 
     // TODO: Now the role will come in the Firebase JWT
-    const userDetails = this.userService.getUserDetails(); // Get user details from localStorage
-    const userEmail = userDetails?.email?.toLowerCase();
-    return this.allowedAdminEmails.includes(userEmail.toLowerCase());
+    // const userDetails = this.userService.getUserDetails(); // Get user details from localStorage
+    // const userEmail = userDetails?.email?.toLowerCase();
+    // return this.allowedAdminEmails.includes(userEmail.toLowerCase());
   }
 
   getToken() {

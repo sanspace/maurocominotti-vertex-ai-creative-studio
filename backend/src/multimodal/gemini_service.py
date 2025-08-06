@@ -16,7 +16,7 @@
 from enum import Enum
 import json
 import logging
-from typing import Any, Type, Union
+from typing import Any, Optional, Type, Union
 from google.genai import types, Client
 from pydantic import BaseModel
 from tenacity import (
@@ -53,7 +53,7 @@ class PromptTargetEnum(str, Enum):
     VIDEO = "video"
 
 
-class MimeTypeEnum(str, Enum):
+class ResponseMimeTypeEnum(str, Enum):
     JSON = "application/json"
     TEXT = "text/plain"
 
@@ -89,7 +89,7 @@ class GeminiService:
         original_prompt: str,
         target_type: PromptTargetEnum,
         prompt_template: str,
-        response_mime_type: MimeTypeEnum = MimeTypeEnum.JSON,
+        response_mime_type: ResponseMimeTypeEnum = ResponseMimeTypeEnum.JSON,
     ) -> str:
         """
         Rewrites a user prompt using Gemini into a structured JSON format.
@@ -107,7 +107,7 @@ class GeminiService:
 
         try:
             response = None
-            if response_mime_type.value == MimeTypeEnum.JSON.value:
+            if response_mime_type.value == ResponseMimeTypeEnum.JSON.value:
                 response = self.client.models.generate_content(
                     model=self.rewriter_model,
                     contents=full_prompt,
@@ -116,7 +116,7 @@ class GeminiService:
                         response_schema=response_schema,
                     ),
                 )
-            elif response_mime_type.value == MimeTypeEnum.TEXT.value:
+            elif response_mime_type.value == ResponseMimeTypeEnum.TEXT.value:
                 response = self.client.models.generate_content(
                     model=self.rewriter_model,
                     contents=full_prompt,
@@ -157,7 +157,7 @@ class GeminiService:
                 original_prompt=original_prompt,
                 target_type=target_type,
                 prompt_template=prompt_template,
-                response_mime_type=MimeTypeEnum.TEXT,
+                response_mime_type=ResponseMimeTypeEnum.TEXT,
             )
             return response
         except Exception as e:
@@ -185,7 +185,7 @@ class GeminiService:
         self,
         dto: Union[CreateImagenDto, CreateVeoDto],
         target_type: PromptTargetEnum,
-        response_mime_type: MimeTypeEnum = MimeTypeEnum.JSON,
+        response_mime_type: ResponseMimeTypeEnum = ResponseMimeTypeEnum.JSON,
     ) -> str:
         """
         Enhances a partially filled DTO by converting it to a string,
@@ -216,3 +216,48 @@ class GeminiService:
             prompt_template=prompt_template,
             response_mime_type=response_mime_type,
         )
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    def generate_text(self, prompt: str, model_id: Optional[str] = None) -> str:
+        """
+        Generates plain text from a given prompt using a Gemini model.
+
+        This is a general-purpose method for simple text-in, text-out interactions.
+
+        Args:
+            prompt: The text prompt to send to the model.
+            model_id: Optional. The specific Gemini model ID to use, overriding the service default.
+
+        Returns:
+            A string containing the generated text from the model.
+
+        Raises:
+            Exception: Propagates exceptions from the API call after retries.
+        """
+        # Use the provided model_id or fall back to the service's default rewriter model
+        target_model = model_id or self.rewriter_model
+
+        logger.info(f"Sending text generation request to model: {target_model}")
+        try:
+            response = self.client.models.generate_content(
+                model=target_model,
+                contents=prompt,
+                # Configure for a simple text response without a schema
+                config=types.GenerateContentConfig(
+                    response_mime_type="text/plain"
+                ),
+            )
+            logger.info("Successfully received text response from Gemini.")
+            # Strip any leading/trailing whitespace from the response
+            return response.text.strip() if response.text else ""
+        except Exception as e:
+            # Log the error with part of the prompt for context
+            logger.error(
+                f"Gemini text generation failed for prompt '{prompt[:100]}...': {e}"
+            )
+            raise
