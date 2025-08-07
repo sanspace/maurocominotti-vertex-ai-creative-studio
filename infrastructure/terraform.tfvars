@@ -15,6 +15,8 @@ apis_to_enable = [
   "artifactregistry.googleapis.com", # Required for Artifact Registry
   "run.googleapis.com",              # Required for Cloud Run
 
+  "cloudresourcemanager.googleapis.com",
+
 
   "compute.googleapis.com",
   "cloudfunctions.googleapis.com",
