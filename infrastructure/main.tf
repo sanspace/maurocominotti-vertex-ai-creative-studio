@@ -109,7 +109,13 @@ resource "google_cloud_run_v2_service" "backend_service" {
   template {
     service_account = google_service_account.cloudrun_sa.email
     containers {
-      image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+      image = "us-central1-docker.pkg.dev/dojo-creativestudio/backend-service-repo/backend-service:7bd59c7"
+      resources {
+        limits = {
+          cpu    = "1000m"
+          memory = "1024Mi"
+        }
+      }
       dynamic "env" {
         for_each = local.container_env_vars
         content {

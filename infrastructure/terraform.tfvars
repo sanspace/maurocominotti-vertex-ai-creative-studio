@@ -28,7 +28,7 @@ apis_to_enable = [
 gcp_region = "us-central1"
 
 # [OPTIONAL] The name for your Cloud Run service and related resources.
-service_name = "backend-service"
+service_name = "backend-service" # TODO: creative-studio-backend 
 
 env_vars = {
   # Keep the default common and development variables...
@@ -49,6 +49,8 @@ env_vars = {
     ENVIRONMENT  = "production"
   }
 }
+
+environment = "development"
 
 # [OPTIONAL] GitHub repository details.
 github_repo_owner  = "sanspace"
