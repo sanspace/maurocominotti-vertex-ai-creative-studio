@@ -47,3 +47,33 @@ variable "github_branch_name" {
   description = "The branch name to trigger builds from."
   default     = "feature/add-angular-and-fastapi"
 }
+
+variable "environment" {
+  description = "The deployment environment (e.g., 'development', 'production')."
+  type        = string
+  default     = "development"
+  validation {
+    condition     = contains(["development", "production"], var.environment)
+    error_message = "The environment must be either 'development' or 'production'."
+  }
+}
+
+variable "env_vars" {
+  description = "A map of environment variables for different deployment environments."
+  type        = map(map(string))
+  default = {
+    common = {
+      LOG_LEVEL = "INFO"
+    }
+    development = {
+      FRONTEND_URL = "http://localhost:4200"
+      CORS_ORIGINS = "[\"http://localhost:4200\",\"http://127.0.0.1:4200\"]"
+    }
+    production = {
+      FRONTEND_URL = "https://your-production-frontend.com"
+      CORS_ORIGINS = "[\"https://your-production-frontend.com\"]"
+      LOG_LEVEL    = "WARN"
+    }
+  }
+}
+

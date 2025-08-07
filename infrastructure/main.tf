@@ -19,6 +19,18 @@ provider "google-beta" {
   region  = var.gcp_region
 }
 
+locals {
+  container_env_vars = merge(
+    lookup(var.env_vars, "common", {}),
+    lookup(var.env_vars, var.environment, {}),
+    {
+      "GENMEDIA_BUCKET"  = google_storage_bucket.genmedia.name
+      "SIGNING_SA_EMAIL" = google_service_account.bucket_reader_sa.email
+      "PROJECT_ID"       = var.gcp_project_id
+    }
+  )
+}
+
 # --- Enable the required Google Cloud APIs ---
 resource "google_project_service" "apis" {
   # Use a for_each loop to enable each API from the variable list
@@ -33,9 +45,13 @@ resource "google_project_service" "apis" {
 
 data "google_project" "project" {}
 
+data "google_client_openid_userinfo" "me" {
+}
+
 locals {
-  artifact_repo_id = "${var.service_name}-repo"
-  cloudbuild_sa    = "${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+  artifact_repo_id            = "${var.service_name}-repo"
+  terraform_runner_iam_member = endswith(data.google_client_openid_userinfo.me.email, ".iam.gserviceaccount.com") ? "serviceAccount:${data.google_client_openid_userinfo.me.email}" : "user:${data.google_client_openid_userinfo.me.email}"
+  cloudbuild_sa               = "${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
 }
 
 resource "google_service_account" "cloudrun_sa" {
@@ -49,8 +65,23 @@ resource "google_service_account" "cloudrun_sa" {
 resource "google_service_account" "cloudbuild_trigger_sa" {
   account_id   = "${var.service_name}-trigger-sa"
   display_name = "Service Account for ${var.service_name} Trigger"
-  depends_on = [google_project_service.apis]
+  depends_on   = [google_project_service.apis]
 }
+
+resource "google_service_account" "bucket_reader_sa" {
+  account_id   = "${var.service_name}-reader-sa"
+  display_name = "SA for reading ${var.service_name} (${var.environment}) bucket"
+  depends_on   = [google_project_service.apis]
+}
+
+resource "google_storage_bucket" "genmedia" {
+  name                        = "${var.gcp_project_id}-${var.service_name}-${var.environment}-bucket"
+  location                    = var.gcp_region
+  uniform_bucket_level_access = true
+  force_destroy               = true # Set to false for production
+  depends_on                  = [google_project_service.apis]
+}
+
 
 resource "google_artifact_registry_repository" "backend_repo" {
   location      = var.gcp_region
@@ -79,6 +110,13 @@ resource "google_cloud_run_v2_service" "backend_service" {
     service_account = google_service_account.cloudrun_sa.email
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+      dynamic "env" {
+        for_each = local.container_env_vars
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
     }
   }
 
@@ -87,18 +125,18 @@ resource "google_cloud_run_v2_service" "backend_service" {
 
 
 resource "google_cloudbuildv2_repository" "backend_repo_source" {
-  provider = google-beta
-  name     = var.github_repo_name
-  location = var.gcp_region
+  provider          = google-beta
+  name              = var.github_repo_name
+  location          = var.gcp_region
   parent_connection = "projects/${var.gcp_project_id}/locations/${var.gcp_region}/connections/gh-cstudio"
-  remote_uri = "https://github.com/${var.github_repo_owner}/${var.github_repo_name}.git"
+  remote_uri        = "https://github.com/${var.github_repo_owner}/${var.github_repo_name}.git"
 }
 
 resource "google_cloudbuild_trigger" "backend_trigger" {
-  name        = "${var.service_name}-trigger"
-  location    = var.gcp_region
-  description = "Trigger for ${var.service_name} changes"
-  filename    = "backend/cloudbuild.yaml"
+  name            = "${var.service_name}-trigger"
+  location        = var.gcp_region
+  description     = "Trigger for ${var.service_name} changes"
+  filename        = "backend/cloudbuild.yaml"
   service_account = google_service_account.cloudbuild_trigger_sa.id
 
   github {
@@ -115,6 +153,21 @@ resource "google_cloudbuild_trigger" "backend_trigger" {
 }
 
 # --- IAM Permissions: All IAM resources also depend on API enablement ---
+
+# Grant the new SA Object Viewer role on the new bucket
+resource "google_storage_bucket_iam_member" "bucket_viewer_binding" {
+  bucket = google_storage_bucket.genmedia.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.bucket_reader_sa.email}"
+}
+
+# Grant the Terraform runner identity Token Creator role on the new SA
+resource "google_service_account_iam_member" "token_creator_binding" {
+  service_account_id = google_service_account.bucket_reader_sa.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = local.terraform_runner_iam_member
+}
+
 
 # Grant the Trigger SA permission to write to Cloud Logging
 resource "google_project_iam_member" "logging_writer_binding" {
@@ -150,11 +203,16 @@ resource "google_service_account_iam_member" "run_sa_user_binding" {
   depends_on         = [google_project_service.apis]
 }
 
-# resource "google_cloud_run_v2_service_iam_member" "allow_unauthenticated" {
-#   name     = google_cloud_run_v2_service.backend_service.name
-#   location = google_cloud_run_v2_service.backend_service.location
-#   role     = "roles/run.invoker"
-#   member   = "allUsers"
+# Grant the Cloud Run SA the AI Platform User role
+resource "google_project_iam_member" "aiplatform_user_binding" {
+  project = var.gcp_project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.cloudrun_sa.email}"
+}
 
-#   depends_on = [google_project_service.apis]
-# }
+# Grant the Cloud Run SA the Storage Object Admin role
+resource "google_project_iam_member" "storage_object_admin_binding" {
+  project = var.gcp_project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.cloudrun_sa.email}"
+}
