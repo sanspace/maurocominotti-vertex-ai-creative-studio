@@ -151,10 +151,10 @@
           class="template-card group"
         >
           <div class="relative overflow-hidden rounded-t-lg">
-            <ng-container [ngSwitch]="template.mime_type">
+            <ng-container [ngSwitch]="template.mimeType">
               <ng-container *ngSwitchCase="'image/png'">
                 <img
-                  *ngFor="let url of template.presigned_urls; let i = index"
+                  *ngFor="let url of template.presignedUrls; let i = index"
                   class="absolute top-0 left-0 object-cover w-full h-48 transition-opacity duration-500"
                   [src]="url"
                   [alt]="template.name"
@@ -170,7 +170,7 @@
                 <!-- Video on hover -->
                 <ng-container>
                   <video
-                    *ngFor="let url of template.presigned_urls; let i = index"
+                    *ngFor="let url of template.presignedUrls; let i = index"
                     class="absolute top-0 left-0 object-cover w-full h-full transition-opacity duration-500"
                     [style.opacity]="
                       (currentImageIndices[template.id] || 0) === i ? 1 : 0
@@ -184,7 +184,7 @@
                     preload="auto"
                     controls="true"
                   >
-                    <source [src]="url" [type]="template.mime_type" />
+                    <source [src]="url" [type]="template.mimeType" />
                   </video>
                 </ng-container>
 
@@ -194,19 +194,19 @@
             </ng-container>
 
             <!-- Carousel Controls -->
-            <ng-container *ngIf="template.presigned_urls && template.presigned_urls.length > 1">
-              <button (click)="prevImage(template.id, template.presigned_urls.length, $event)" class="absolute top-1/2 left-2 z-30 p-1 text-white -translate-y-1/2 transition-opacity bg-black/50 rounded-full opacity-0 group-hover:opacity-100 focus:outline-none hover:bg-black/70">
+            <ng-container *ngIf="template.presignedUrls && template.presignedUrls.length > 1">
+              <button (click)="prevImage(template.id, template.presignedUrls.length, $event)" class="absolute top-1/2 left-2 z-30 p-1 text-white -translate-y-1/2 transition-opacity bg-black/50 rounded-full opacity-0 group-hover:opacity-100 focus:outline-none hover:bg-black/70">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
               </button>
-              <button (click)="nextImage(template.id, template.presigned_urls.length, $event)" class="absolute top-1/2 right-2 z-30 p-1 text-white -translate-y-1/2 transition-opacity bg-black/50 rounded-full opacity-0 group-hover:opacity-100 focus:outline-none hover:bg-black/70">
+              <button (click)="nextImage(template.id, template.presignedUrls.length, $event)" class="absolute top-1/2 right-2 z-30 p-1 text-white -translate-y-1/2 transition-opacity bg-black/50 rounded-full opacity-0 group-hover:opacity-100 focus:outline-none hover:bg-black/70">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
               </button>
               <div class="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 transition-opacity opacity-0 space-x-1.5 group-hover:opacity-100">
-                <ng-container *ngIf="template.mime_type === 'video/mp4'">
-                  <span *ngFor="let url of template.presigned_urls; let i = index" class="block w-2 h-2 rounded-full" [class.bg-white]="(currentImageIndices[template.id] || 0) === i" [class.bg-gray-400]="(currentImageIndices[template.id] || 0) !== i"></span>
+                <ng-container *ngIf="template.mimeType === 'video/mp4'">
+                  <span *ngFor="let url of template.presignedUrls; let i = index" class="block w-2 h-2 rounded-full" [class.bg-white]="(currentImageIndices[template.id] || 0) === i" [class.bg-gray-400]="(currentImageIndices[template.id] || 0) !== i"></span>
                 </ng-container>
-                <ng-container *ngIf="template.mime_type === 'image/png'">
-                  <span *ngFor="let url of template.presigned_urls; let i = index" class="block w-2 h-2 rounded-full" [class.bg-white]="(currentImageIndices[template.id] || 0) === i" [class.bg-gray-400]="(currentImageIndices[template.id] || 0) !== i"></span>
+                <ng-container *ngIf="template.mimeType === 'image/png'">
+                  <span *ngFor="let url of template.presignedUrls; let i = index" class="block w-2 h-2 rounded-full" [class.bg-white]="(currentImageIndices[template.id] || 0) === i" [class.bg-gray-400]="(currentImageIndices[template.id] || 0) !== i"></span>
                 </ng-container>
               </div>
             </ng-container>
@@ -219,12 +219,12 @@
                 class="px-2 py-1 text-xs font-semibold rounded-full"
                 [ngClass]="{
                   'bg-blue-500/20 text-blue-300':
-                    template.mime_type === 'video/mp4',
+                    template.mimeType === 'video/mp4',
                   'bg-purple-500/20 text-purple-300':
-                    template.mime_type === 'image/png'
+                    template.mimeType === 'image/png'
                 }"
               >
-                {{ template.mime_type | titlecase }}
+                {{ template.mimeType | titlecase }}
               </span>
             </div>
             <p class="mt-2 text-sm text-gray-400">

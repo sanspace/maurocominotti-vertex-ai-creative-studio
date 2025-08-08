@@ -47,22 +47,22 @@
 
                 <strong class="font-semibold text-gray-400">Creator:</strong>
                 <p class="text-right break-all">
-                  {{ mediaItem.user_email || 'N/A' }}
+                  {{ mediaItem.userEmail || 'N/A' }}
                 </p>
 
                 <strong class="font-semibold text-gray-400"
                   >Created At:</strong
                 >
                 <p class="text-right">
-                  {{ mediaItem.created_at | date: 'medium' }}
+                  {{ mediaItem.createdAt | date: 'medium' }}
                 </p>
 
-                <div *ngIf="mediaItem.generation_time" class="contents">
+                <div *ngIf="mediaItem.generationTime" class="contents">
                   <strong class="font-semibold text-gray-400"
                     >Generation Time:</strong
                   >
                   <p class="text-right">
-                    {{ mediaItem.generation_time | number: '1.0-2' }}s
+                    {{ mediaItem.generationTime | number: '1.0-2' }}s
                   </p>
                 </div>
 
@@ -71,11 +71,11 @@
                   <p class="text-right">{{ mediaItem.seed }}</p>
                 </div>
 
-                <div *ngIf="mediaItem.num_media" class="contents">
+                <div *ngIf="mediaItem.numMedia" class="contents">
                   <strong class="font-semibold text-gray-400"
                     >Number of Media:</strong
                   >
-                  <p class="text-right">{{ mediaItem.num_media }}</p>
+                  <p class="text-right">{{ mediaItem.numMedia }}</p>
                 </div>
 
                 <div *ngIf="mediaItem.duration" class="contents">
@@ -86,14 +86,14 @@
                 </div>
 
                 <div
-                  *ngIf="mediaItem.aspect_ratio || mediaItem.aspect"
+                  *ngIf="mediaItem.aspectRatio || mediaItem.aspect"
                   class="contents"
                 >
                   <strong class="font-semibold text-gray-400"
                     >Aspect Ratio:</strong
                   >
                   <p class="text-right">
-                    {{ mediaItem.aspect_ratio || mediaItem.aspect }}
+                    {{ mediaItem.aspectRatio || mediaItem.aspect }}
                   </p>
                 </div>
               </div>
@@ -105,7 +105,7 @@
               *ngIf="
                 mediaItem.style ||
                 mediaItem.lighting ||
-                mediaItem.color_and_tone ||
+                mediaItem.colorAndTone ||
                 mediaItem.composition ||
                 mediaItem.modifiers?.length
               "
@@ -128,11 +128,11 @@
                   >
                   <p class="text-right">{{ mediaItem.lighting }}</p>
                 </div>
-                <div *ngIf="mediaItem.color_and_tone" class="contents">
+                <div *ngIf="mediaItem.colorAndTone" class="contents">
                   <strong class="font-semibold text-gray-400"
                     >Color & Tone:</strong
                   >
-                  <p class="text-right">{{ mediaItem.color_and_tone }}</p>
+                  <p class="text-right">{{ mediaItem.colorAndTone }}</p>
                 </div>
                 <div *ngIf="mediaItem.composition" class="contents">
                   <strong class="font-semibold text-gray-400"
@@ -169,28 +169,28 @@
 
               <!-- Other Prompts -->
               <div class="text-sm space-y-3">
-                <div *ngIf="mediaItem.original_prompt">
+                <div *ngIf="mediaItem.originalPrompt">
                   <strong class="font-semibold text-gray-400 block mb-1"
                     >Original Prompt:</strong
                   >
                   <p class="p-3 rounded-md bg-gray-800 text-gray-300">
-                    {{ mediaItem.original_prompt }}
+                    {{ mediaItem.originalPrompt }}
                   </p>
                 </div>
-                <div *ngIf="mediaItem.rewritten_prompt">
+                <div *ngIf="mediaItem.rewrittenPrompt">
                   <strong class="font-semibold text-gray-400 block mb-1"
                     >Rewritten Prompt:</strong
                   >
                   <p class="p-3 rounded-md bg-gray-800 text-gray-300">
-                    {{ mediaItem.rewritten_prompt }}
+                    {{ mediaItem.rewrittenPrompt }}
                   </p>
                 </div>
-                <div *ngIf="mediaItem.negative_prompt">
+                <div *ngIf="mediaItem.negativePrompt">
                   <strong class="font-semibold text-gray-400 block mb-1"
                     >Negative Prompt:</strong
                   >
                   <p class="p-3 rounded-md bg-gray-800 text-gray-300">
-                    {{ mediaItem.negative_prompt }}
+                    {{ mediaItem.negativePrompt }}
                   </p>
                 </div>
               </div>
@@ -524,13 +524,13 @@
                 <strong class="font-semibold text-gray-400"
                   >Mime Type:</strong
                 >
-                <p class="text-right">{{ mediaItem.mime_type || 'N/A' }}</p>
+                <p class="text-right">{{ mediaItem.mimeType || 'N/A' }}</p>
 
                 <strong class="font-semibold text-gray-400"
                   >Watermark:</strong
                 >
                 <p class="text-right">
-                  {{ mediaItem.add_watermark ?? 'N/A' }}
+                  {{ mediaItem.addWatermark ?? 'N/A' }}
                 </p>
               </div>
             </section>
@@ -543,12 +543,12 @@
                 Storage
               </h3>
               <div class="text-sm space-y-3">
-                <div *ngIf="mediaItem.gcs_uris?.length">
+                <div *ngIf="mediaItem.gcsUris?.length">
                   <strong class="font-semibold text-gray-400 block mb-1"
                     >GCS URIs:</strong
                   >
                   <ul class="space-y-1">
-                    <li *ngFor="let uri of mediaItem.gcs_uris">
+                    <li *ngFor="let uri of mediaItem.gcsUris">
                       <a
                         [href]="getGcsLink(uri)"
                         target="_blank"
@@ -560,12 +560,12 @@
                     </li>
                   </ul>
                 </div>
-                <div *ngIf="mediaItem.source_images_gcs?.length">
+                <div *ngIf="mediaItem.sourceImagesGcs?.length">
                   <strong class="font-semibold text-gray-400 block mb-1"
                     >Source Images:</strong
                   >
                   <ul class="space-y-1">
-                    <li *ngFor="let image of mediaItem.source_images_gcs">
+                    <li *ngFor="let image of mediaItem.sourceImagesGcs">
                       <a
                         [href]="getGcsLink(image)"
                         target="_blank"
@@ -613,8 +613,8 @@
         <mat-tab
           label="Debug"
           *ngIf="
-            mediaItem.raw_data ||
-            mediaItem.audio_analysis ||
+            mediaItem.rawData ||
+            mediaItem.audioAnalysis ||
             mediaItem.error_message
           "
         >
@@ -629,7 +629,7 @@
             </div>
 
             <mat-expansion-panel
-              *ngIf="mediaItem.raw_data"
+              *ngIf="mediaItem.rawData"
               class="!bg-gray-800 !text-white"
             >
               <mat-expansion-panel-header>
@@ -639,12 +639,12 @@
               </mat-expansion-panel-header>
               <pre
                 class="mt-2 p-3 rounded-md bg-gray-900 text-sm whitespace-pre-wrap break-words text-gray-300"
-                >{{ mediaItem.raw_data | json }}</pre
+                >{{ mediaItem.rawData | json }}</pre
               >
             </mat-expansion-panel>
 
             <mat-expansion-panel
-              *ngIf="mediaItem.audio_analysis"
+              *ngIf="mediaItem.audioAnalysis"
               class="!bg-gray-800 !text-white"
             >
               <mat-expansion-panel-header>
@@ -654,7 +654,7 @@
               </mat-expansion-panel-header>
               <pre
                 class="mt-2 p-3 rounded-md bg-gray-900 text-sm whitespace-pre-wrap break-words text-gray-300"
-                >{{ mediaItem.audio_analysis | json }}</pre
+                >{{ mediaItem.audioAnalysis | json }}</pre
               >
             </mat-expansion-panel>
           </div>

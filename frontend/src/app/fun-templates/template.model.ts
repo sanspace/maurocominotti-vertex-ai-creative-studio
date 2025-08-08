@@ -40,29 +40,29 @@ export type Lighting = string;
 // The parameters that can be passed to the generator
 export interface GenerationParameters {
   prompt?: string;
-  original_prompt?: string;
+  originalPrompt?: string;
   model?: string;
-  aspect_ratio?: AspectRatio;
+  aspectRatio?: AspectRatio;
   style?: Style;
   lighting?: Lighting;
-  color_and_tone?: string;
+  colorAndTone?: string;
   composition?: string;
-  negative_prompt?: string;
-  num_media?: number;
-  duration_seconds?: number;
+  negativePrompt?: string;
+  numMedia?: number;
+  durationSeconds?: number;
 }
 
 export interface Template {
   id: string; // Unique identifier for the template
   name: string;
   description: string;
-  mime_type: MimeType;
+  mimeType: MimeType;
   industry: IndustryEnum;
   brand?: string;
   tags: string[];
-  thumbnail_uris?: string[];
-  presigned_urls: string[]; // The full video/image GCS URI
-  generation_parameters: GenerationParameters; // All generator settings bundled
+  thumbnailUris?: string[];
+  presignedUrls: string[]; // The full video/image GCS URI
+  generationParameters: GenerationParameters; // All generator settings bundled
 }
 
 export interface TemplateFilter {

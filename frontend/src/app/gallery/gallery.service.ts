@@ -11,8 +11,8 @@ import {GallerySearchDto} from '../common/models/search.model';
 import {LoadingService} from '../common/services/loading.service';
 
 export interface GalleryFilters {
-  user_email?: string;
-  mime_type?: string;
+  userEmail?: string;
+  mimeType?: string;
   model?: string;
 }
 
@@ -100,7 +100,7 @@ export class GalleryService {
     };
 
     if (this.nextPageCursor) {
-      body.start_after = this.nextPageCursor;
+      body.startAfter = this.nextPageCursor;
     }
     return this.http.post<PaginatedGalleryResponse>(galleryUrl, body).pipe(
       shareReplay(1), // important to cache the http get response

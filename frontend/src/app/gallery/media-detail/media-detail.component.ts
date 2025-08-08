@@ -155,7 +155,7 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
       if (
         !isNaN(index) &&
         index >= 0 &&
-        index < (this.mediaItem?.presigned_urls?.length || 0)
+        index < (this.mediaItem?.presignedUrls?.length || 0)
       ) {
         this.initialSlideIndex = index;
       }
@@ -168,29 +168,27 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
     // Add a listener to update the URL when the slide changes.
     galleryElement.addEventListener('lgAfterSlide', this.onAfterSlide);
 
-    if (!galleryElement || !this.mediaItem?.presigned_urls) return;
+    if (!galleryElement || !this.mediaItem?.presignedUrls) return;
 
     // Prevent re-initialization
     this.lightGalleryInstance?.destroy();
 
-    const dynamicElements = this.mediaItem.presigned_urls.map((url, index) => {
-      const isVideo = this.mediaItem?.mime_type?.startsWith('video/');
+    const dynamicElements = this.mediaItem.presignedUrls.map((url, index) => {
+      const isVideo = this.mediaItem?.mimeType?.startsWith('video/');
 
       if (isVideo) {
         // For videos, we need to build a specific object structure for lightGallery.
         // The 'src' property on the top-level item should be empty.
         const dynamicVideo: GalleryItem = {
-          src: "",
-          thumb: this.mediaItem?.presigned_thumbnail_urls?.[index] || '',
+          src: '',
+          thumb: this.mediaItem?.presignedThumbnailUrls?.[index] || '',
           subHtml: `<div class="lightGallery-captions">
-                      <h4>Video ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4>
-                      <p>${this.mediaItem?.original_prompt || ''}</p>
+                      <h4>Video ${index + 1} of ${this.mediaItem?.presignedUrls?.length}</h4>
+                      <p>${this.mediaItem?.originalPrompt || ''}</p>
                     </div>`,
           downloadUrl: url,
           video: {
-            source: [
-              {src: url, type: this.mediaItem?.mime_type || 'video/mp4'},
-            ],
+            source: [{src: url, type: this.mediaItem?.mimeType || 'video/mp4'}],
             tracks: [],
             // The type definition for 'attributes' is incorrectly expecting a full
             // HTMLVideoElement object. We cast to 'any' to provide a plain object
@@ -199,7 +197,7 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
               preload: 'metadata',
               controls: true,
             } as HTMLVideoElement,
-          }
+          },
         };
         return dynamicVideo;
       } else {
@@ -207,8 +205,8 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
           src: url,
           thumb: url,
           subHtml: `<div class="lightGallery-captions">
-                      <h4>Image ${index + 1} of ${this.mediaItem?.presigned_urls?.length}</h4>
-                      <p>${this.mediaItem?.original_prompt || ''}</p>
+                      <h4>Image ${index + 1} of ${this.mediaItem?.presignedUrls?.length}</h4>
+                      <p>${this.mediaItem?.originalPrompt || ''}</p>
                     </div>`,
           'data-src': url, // for sharing
         };

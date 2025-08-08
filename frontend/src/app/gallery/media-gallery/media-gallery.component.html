@@ -176,12 +176,12 @@
             [state]="{mediaItem: media}"
             class="transition-opacity duration-500 block"
           >
-            <ng-container *ngIf="media.mime_type === 'image/png'">
+            <ng-container *ngIf="media.mimeType === 'image/png'">
               <img
-                *ngFor="let url of media.presigned_urls; let i = index"
+                *ngFor="let url of media.presignedUrls; let i = index"
                 class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500 group-hover:opacity-80"
                 [src]="url"
-                [alt]="getShortPrompt(media.original_prompt)"
+                [alt]="getShortPrompt(media.originalPrompt)"
                 [class.active]="(currentImageIndices[media.id] || 0) === i"
                 [style.opacity]="
                   (currentImageIndices[media.id] || 0) === i ? 1 : 0
@@ -190,14 +190,14 @@
               <!-- A "spacer" div that defines the aspect ratio of the container -->
               <div
                 class="w-full"
-                [style.aspect-ratio]="(media.aspect_ratio || '1:1').replace(':', ' / ')"
+                [style.aspect-ratio]="(media.aspectRatio || '1:1').replace(':', ' / ')"
               ></div>
             </ng-container>
-            <ng-container *ngIf="media.mime_type === 'video/mp4'">
+            <ng-container *ngIf="media.mimeType === 'video/mp4'">
               <!-- Show video on hover -->
               <ng-container *ngIf="hoveredVideoId === media.id">
                 <video
-                  *ngFor="let url of media.presigned_urls; let i = index"
+                  *ngFor="let url of media.presignedUrls; let i = index"
                   class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500"
                   [class.active]="(currentImageIndices[media.id] || 0) === i"
                   [style.opacity]="
@@ -210,17 +210,17 @@
                   loop
                   autoplay
                 >
-                  <source [src]="url" [type]="media.mime_type" />
+                  <source [src]="url" [type]="media.mimeType" />
                 </video>
               </ng-container>
 
               <!-- Show thumbnail by default -->
               <ng-container *ngIf="hoveredVideoId !== media.id">
                 <img
-                  *ngFor="let url of media.presigned_thumbnail_urls; let i = index"
+                  *ngFor="let url of media.presignedThumbnailUrls; let i = index"
                   class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500"
                   [src]="url"
-                  [alt]="getShortPrompt(media.original_prompt)"
+                  [alt]="getShortPrompt(media.originalPrompt)"
                   [class.active]="(currentImageIndices[media.id] || 0) === i"
                   [style.opacity]="(currentImageIndices[media.id] || 0) === i ? 1 : 0"
                 />
@@ -237,21 +237,21 @@
               <!-- A "spacer" div that defines the aspect ratio of the container -->
               <div
                 class="w-full"
-                [style.aspect-ratio]="(media.aspect_ratio || '16:9').replace(':', ' / ')"
+                [style.aspect-ratio]="(media.aspectRatio || '16:9').replace(':', ' / ')"
               ></div>
             </ng-container>
-            <ng-container *ngIf="media.mime_type === 'audio/mpeg'">
+            <ng-container *ngIf="media.mimeType === 'audio/mpeg'">
 
             </ng-container>
           </a>
 
           <!-- Carousel Controls: Only show if there's more than one image -->
           <ng-container
-            *ngIf="media.presigned_urls && media.presigned_urls.length > 1"
+            *ngIf="media.presignedUrls && media.presignedUrls.length > 1"
           >
             <!-- Previous Button -->
             <button
-              (click)="prevImage(media.id, media.presigned_urls.length, $event)"
+              (click)="prevImage(media.id, media.presignedUrls.length, $event)"
               class="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70"
             >
               <svg
@@ -272,7 +272,7 @@
 
             <!-- Next Button -->
             <button
-              (click)="nextImage(media.id, media.presigned_urls.length, $event)"
+              (click)="nextImage(media.id, media.presignedUrls.length, $event)"
               class="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 focus:outline-none hover:bg-black/70"
             >
               <svg
@@ -296,7 +296,7 @@
               class="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
             >
               <span
-                *ngFor="let url of media.presigned_urls; let i = index"
+                *ngFor="let url of media.presignedUrls; let i = index"
                 class="block h-2 w-2 rounded-full"
                 [class.bg-white]="(currentImageIndices[media.id] || 0) === i"
                 [class.bg-gray-400]="(currentImageIndices[media.id] || 0) !== i"

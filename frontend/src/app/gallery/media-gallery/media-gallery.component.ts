@@ -75,6 +75,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
       if (images) {
         this.images = images;
+        console.log('Images:', this.images);
         this.images.forEach(image => {
           if (this.currentImageIndices[image.id] === undefined) {
             this.currentImageIndices[image.id] = 0;
@@ -116,7 +117,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
 
   public getCurrentImageUrl(image: MediaItem): string {
     const index = this.currentImageIndices[image.id] || 0;
-    return image.presigned_urls?.[index] || '';
+    return image.presignedUrls?.[index] || '';
   }
 
   public nextImage(
@@ -149,13 +150,13 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   }
 
   public onMouseEnter(media: MediaItem): void {
-    if (media.mime_type === 'video/mp4') this.playVideo(media.id);
+    if (media.mimeType === 'video/mp4') this.playVideo(media.id);
 
     this.stopAutoSlide(media.id);
   }
 
   public onMouseLeave(media: MediaItem): void {
-    if (media.mime_type === 'video/mp4') this.stopVideo();
+    if (media.mimeType === 'video/mp4') this.stopVideo();
 
     this.startAutoSlide(media);
   }
@@ -204,12 +205,12 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   }
 
   public startAutoSlide(image: MediaItem): void {
-    if (image.presigned_urls && image.presigned_urls.length > 1) {
+    if (image.presignedUrls && image.presignedUrls.length > 1) {
       if (this.autoSlideIntervals[image.id]) {
         return;
       }
       this.autoSlideIntervals[image.id] = setInterval(() => {
-        this.nextImage(image.id, image.presigned_urls!.length);
+        this.nextImage(image.id, image.presignedUrls!.length);
       }, 3000);
     }
   }
@@ -250,10 +251,10 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   public searchTerm(): void {
     const filters: {[key: string]: string} = {};
     if (this.userEmailFilter) {
-      filters['user_email'] = this.userEmailFilter;
+      filters['userEmail'] = this.userEmailFilter;
     }
     if (this.mediaTypeFilter) {
-      filters['mime_type'] = this.mediaTypeFilter;
+      filters['mimeType'] = this.mediaTypeFilter;
     }
     if (this.generationModelFilter) {
       filters['model'] = this.generationModelFilter;

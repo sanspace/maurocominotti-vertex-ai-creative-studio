@@ -10,7 +10,7 @@
   <!-- Filter Input -->
   <mat-form-field appearance="outline" class="w-full mb-4"> <!-- Tailwind: width, margin -->
     <mat-label>Filter Users</mat-label>
-    <input matInput (keyup)="applyFilter($event)" placeholder="Search by username, email, etc." #input>
+    <input matInput (input)="applyFilter($event)" placeholder="Search by username, email, etc." #input>
     <mat-icon matSuffix>search</mat-icon>
   </mat-form-field>
 

@@ -111,7 +111,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
 
     // Filter by Media Type
     if (filter.mediaType) {
-      templates = templates.filter(t => t.mime_type === filter.mediaType);
+      templates = templates.filter(t => t.mimeType === filter.mediaType);
     }
 
     // Filter by Name (case-insensitive)
@@ -124,7 +124,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
     // Filter by Model (case-insensitive)
     if (filter.model) {
       templates = templates.filter(t =>
-        t.generation_parameters.model
+        t.generationParameters.model
           ?.toLowerCase()
           .includes(filter.model!.toLowerCase()),
       );
@@ -162,10 +162,10 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   useTemplate(template: Template): void {
     // Navigate to the homepage (or your generator page) and pass the parameters
     this.router.navigate(
-      [template.mime_type === MimeType.VIDEO ? '/video' : '/'],
+      [template.mimeType === MimeType.VIDEO ? '/video' : '/'],
       {
         state: {
-          templateParams: template.generation_parameters,
+          templateParams: template.generationParameters,
         },
       },
     );
@@ -219,7 +219,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   }
 
   public startAutoSlide(template: Template): void {
-    const urls = template.presigned_urls;
+    const urls = template.presignedUrls;
     if (urls && urls.length > 1) {
       if (this.autoSlideIntervals[template.id]) {
         return;

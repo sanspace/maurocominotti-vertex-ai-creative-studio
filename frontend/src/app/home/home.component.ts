@@ -266,9 +266,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchRequest.prompt = this.templateParams.prompt;
     }
 
-    if (this.templateParams.num_media) {
-      console.log('Setting number of images:', this.templateParams.num_media);
-      this.searchRequest.numberOfMedia = this.templateParams.num_media;
+    if (this.templateParams.numMedia) {
+      console.log('Setting number of images:', this.templateParams.numMedia);
+      this.searchRequest.numberOfMedia = this.templateParams.numMedia;
     }
 
     if (this.templateParams.model) {
@@ -282,8 +282,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    if (this.templateParams.aspect_ratio) {
-      const templateAspectRatio = this.templateParams.aspect_ratio;
+    if (this.templateParams.aspectRatio) {
+      const templateAspectRatio = this.templateParams.aspectRatio;
       const aspectRatioOption = this.aspectRatioOptions.find(
         r => r.value === templateAspectRatio,
       );
@@ -301,16 +301,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.searchRequest.lighting = this.templateParams.lighting;
     }
 
-    if (this.templateParams.color_and_tone) {
-      this.searchRequest.colorAndTone = this.templateParams.color_and_tone;
+    if (this.templateParams.colorAndTone) {
+      this.searchRequest.colorAndTone = this.templateParams.colorAndTone;
     }
 
     if (this.templateParams.composition) {
       this.searchRequest.composition = this.templateParams.composition;
     }
 
-    if (this.templateParams.negative_prompt) {
-      this.negativePhrases = this.templateParams.negative_prompt
+    if (this.templateParams.negativePrompt) {
+      this.negativePhrases = this.templateParams.negativePrompt
         .split(',')
         .map((p: string) => p.trim())
         .filter(Boolean);
