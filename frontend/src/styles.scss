@@ -28,7 +28,7 @@
 // Define the theme object.
 $creative-studio-theme: mat.define-theme((
   color: (
-    theme-type: light,
+    theme-type: dark,
     primary: mat.$azure-palette,
     tertiary: mat.$blue-palette,
   ),
@@ -296,6 +296,21 @@ textarea {
 svg {
   fill: white !important;
 }
+
+::ng-deep .mat-mdc-cell,
+::ng-deep .mat-mdc-header-cell,
+::ng-deep .mat-mdc-paginator-container,
+table {
+  background-color: #2e3031 !important;
+  color: white !important;
+}
+
+::ng-deep .mat-mdc-paginator-touch-target,
+::ng-deep .mat-mdc-select-value {
+  color: white !important;
+}
+
+
 
 // --- Media Queries for Mobile-First Responsive Design ---
 // Small devices (landscape phones, 576px and up)

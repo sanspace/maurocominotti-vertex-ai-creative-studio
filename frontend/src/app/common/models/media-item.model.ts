@@ -66,11 +66,16 @@ export interface MediaItem {
   rawData?: Record<string, any>;
 }
 
+
+export interface PaginatedResponse<T> {
+  count: number;
+  data: T[];
+  nextPageCursor?: string;
+}
+
 /**
  * Defines the response structure for a paginated gallery query,
  * mirroring the Pydantic model from the backend.
  */
-export interface PaginatedGalleryResponse {
-  items: MediaItem[];
-  nextPageCursor: string | null;
-}
+export interface PaginatedGalleryResponse
+  extends PaginatedResponse<MediaItem> {}

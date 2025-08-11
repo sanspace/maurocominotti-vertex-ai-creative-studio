@@ -1,4 +1,5 @@
 from typing import List, Optional
+from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.users.dto.user_create_dto import (
     UserUpdateRoleDto,
 )
@@ -46,7 +47,9 @@ class UserService:
         """Finds a single user by their document ID."""
         return self.user_repo.get_by_id(user_id)
 
-    def find_all_users(self, search_dto: UserSearchDto) -> List[User]:
+    def find_all_users(
+        self, search_dto: UserSearchDto
+    ) -> PaginationResponseDto[User]:
         """Retrieves a paginated list of all users."""
         return self.user_repo.query(search_dto)
 

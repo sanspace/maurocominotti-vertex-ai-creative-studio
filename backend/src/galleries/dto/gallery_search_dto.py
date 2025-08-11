@@ -12,5 +12,5 @@ class GallerySearchDto(BaseSearchDto):
 
 class PaginatedGalleryResponse(BaseDto):
     """Defines the response structure for a paginated gallery query."""
-    items: list[GalleryItemResponse]
+    data: list[GalleryItemResponse]
     next_page_cursor: Optional[str] = None

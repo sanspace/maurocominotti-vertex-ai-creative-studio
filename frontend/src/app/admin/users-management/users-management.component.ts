@@ -1,141 +1,196 @@
-import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit } from '@angular/core';
-import { MatTableDataSource } from '@angular/material/table';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatSort } from '@angular/material/sort';
-import { Subscription } from 'rxjs';
-import { UserWhitelist as User } from './user-whitelist.model';
-import { UserService } from './user.service';
-import { MatDialog } from '@angular/material/dialog'; // Import MatDialog
-import { UserFormComponent } from './user-form.component'; // Import UserFormComponent
-import { MatSnackBar } from '@angular/material/snack-bar'; // For notifications
+import {Component, OnInit, OnDestroy, ViewChild} from '@angular/core';
+import {MatTableDataSource} from '@angular/material/table';
+import {MatPaginator, PageEvent} from '@angular/material/paginator';
+import {MatSort} from '@angular/material/sort';
+import {Subject, firstValueFrom} from 'rxjs';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  takeUntil,
+  catchError,
+} from 'rxjs/operators';
+import {UserWhitelist as User} from './user-whitelist.model';
+import {UserService, PaginatedResponse} from './user.service';
+import {MatDialog} from '@angular/material/dialog';
+import {UserFormComponent} from './user-form.component';
+import {MatSnackBar} from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-users-management',
   templateUrl: './users-management.component.html',
-  styleUrls: ['./users-management.component.scss']
+  styleUrls: ['./users-management.component.scss'],
 })
-export class UsersManagementComponent implements OnInit, OnDestroy, AfterViewInit {
-  // displayedColumns: string[] = ['id', 'username', 'email', 'full_name', 'actions'];
-  // Adjust displayedColumns based on your UserWhitelist model.
-  // If UserWhitelist only has 'email' and 'id', then:
+export class UsersManagementComponent implements OnInit, OnDestroy {
   displayedColumns: string[] = ['id', 'email', 'name', 'roles', 'actions'];
   dataSource: MatTableDataSource<User> = new MatTableDataSource<User>();
-  private usersSubscription: Subscription | undefined;
-  private dialogSubscription: Subscription | undefined;
-
   isLoading = true;
   errorLoadingUsers: string | null = null;
+  lastResponse: PaginatedResponse | undefined;
+
+
+  // --- Pagination State ---
+  totalUsers = 0;
+  limit = 25;
+  currentPageIndex = 0;
+  // Stores the cursor for the START of each page.
+  // pageCursors[0] is null
+  // pageCursors[i] is the last document of page i-1
+  private pageCursors: Array<string | null | undefined> = [null];
+
+  // --- Filtering & Destroy State ---
+  private filterSubject = new Subject<string>();
+  private destroy$ = new Subject<void>();
+  currentFilter = '';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
     private userService: UserService,
-    public dialog: MatDialog, // Inject MatDialog
-    private _snackBar: MatSnackBar // Inject MatSnackBar
+    public dialog: MatDialog,
+    private _snackBar: MatSnackBar,
   ) {}
 
   ngOnInit(): void {
-    this.loadUsers();
+    this.fetchPage(0);
+
+    // Debounce filter input to avoid excessive Firestore reads
+    this.filterSubject
+      .pipe(debounceTime(500), distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe(filterValue => {
+        this.currentFilter = filterValue;
+        this.resetPaginationAndFetch();
+      });
   }
 
-  ngAfterViewInit(): void {
-    if (this.dataSource) {
-        this.dataSource.paginator = this.paginator;
-        this.dataSource.sort = this.sort;
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  handlePageEvent(event: PageEvent) {
+    // If page size changes, we must reset everything.
+    if (this.limit !== event.pageSize) {
+      this.limit = event.pageSize;
+      this.resetPaginationAndFetch();
+      return;
     }
+    this.fetchPage(event.pageIndex);
   }
 
-  loadUsers(): void {
+  async fetchPage(targetPageIndex: number) {
     this.isLoading = true;
-    this.errorLoadingUsers = null;
-    if (this.usersSubscription) {
-      this.usersSubscription.unsubscribe();
-    }
-    this.usersSubscription = this.userService.getUsers().subscribe({
-      next: (users) => {
-        this.dataSource.data = users;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Error fetching users:', err);
-        this.errorLoadingUsers = 'Failed to load users. Please try again later.';
-        this.isLoading = false;
-        this._snackBar.open(this.errorLoadingUsers, 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
+
+    // Find the most recent page we have a cursor for that is before our target.
+    let startPageIndex = 0;
+    for (let i = targetPageIndex; i >= 0; i--) {
+      if (this.pageCursors[i] !== undefined) {
+        startPageIndex = i;
+        break;
       }
-    });
+    }
+
+    // Get the cursor for our starting point.
+    let cursor: string | null | undefined = this.pageCursors[startPageIndex];
+
+    try {
+      // Walk from the known page to the target page, fetching and discarding pages
+      for (let i = startPageIndex; i < targetPageIndex; i++) {
+        this.lastResponse = await firstValueFrom(
+          this.userService.getUsers(
+            this.limit,
+            this.currentFilter,
+            cursor ?? undefined,
+          ),
+        );
+
+        if (!this.lastResponse || this.lastResponse.data.length === 0) {
+          this.isLoading = false;
+          this.dataSource.data = []; // Show empty table
+          return;
+        }
+        cursor = this.lastResponse.nextPageCursor ?? null;
+        this.pageCursors[i + 1] = cursor; // Cache the new cursor
+      }
+
+      // Now we have the correct cursor to fetch the target page
+      const finalResponse = await firstValueFrom(
+        this.userService.getUsers(
+          this.limit,
+          this.currentFilter,
+          cursor ?? undefined,
+        ),
+      );
+
+      this.dataSource.data = finalResponse.data;
+      this.totalUsers = finalResponse.count;
+      this.currentPageIndex = targetPageIndex;
+
+      // Cache the cursor for the *next* page if it exists and we don't have it
+      if (
+        finalResponse.nextPageCursor &&
+        this.pageCursors[targetPageIndex + 1] === undefined
+      ) {
+        this.pageCursors[targetPageIndex + 1] = finalResponse.nextPageCursor;
+      }
+    } catch (err) {
+      this.errorLoadingUsers = 'Failed to load users.';
+      console.error(err);
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   applyFilter(event: Event): void {
     const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.filterSubject.next(filterValue.trim().toLowerCase());
+  }
 
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
+  private resetPaginationAndFetch() {
+    this.currentPageIndex = 0;
+    if (this.paginator) {
+      this.paginator.pageIndex = 0;
     }
+    this.pageCursors = [null];
+    this.fetchPage(0);
   }
 
   openUserForm(user?: User): void {
     const dialogRef = this.dialog.open(UserFormComponent, {
       width: '450px',
-      data: user ? { ...user } : {} // Pass a copy for editing, or empty for new
+      data: {user: user, isEditMode: !!user},
     });
 
-    if (this.dialogSubscription) {
-        this.dialogSubscription.unsubscribe();
-    }
-
-    this.dialogSubscription = dialogRef.afterClosed().subscribe(result => {
-      if (result) { // If the form was submitted (not cancelled)
-        if (user && user.id) { // Edit mode
-          this.userService.updateUser({ ...user, ...result }).subscribe({ // Merge original user data with form result
-            next: () => {
-              this.loadUsers();
-              this._snackBar.open('User updated successfully!', 'Close', { duration: 3000, panelClass: ['success-snackbar'] });
-            },
-            error: (err) => {
-              console.error('Error updating user:', err);
-              this._snackBar.open('Failed to update user.', 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
-            }
-          });
-        } else { // Add mode
-          this.userService.addUser(result).subscribe({
-            next: () => {
-              this.loadUsers();
-              this._snackBar.open('User added successfully!', 'Close', { duration: 3000, panelClass: ['success-snackbar'] });
-            },
-            error: (err) => {
-              console.error('Error adding user:', err);
-              this._snackBar.open('Failed to add user.', 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
-            }
-          });
-        }
-      }
-    });
-  }
-
-  deleteUser(userId: number | string): void {
-    // Simple confirmation, consider using a MatDialog for a better UX
-    if (confirm(`Are you sure you want to delete user with ID: ${userId}?`)) {
-      this.userService.deleteUser(userId).subscribe({
-        next: () => {
-          this.loadUsers(); // Refresh the table
-          this._snackBar.open('User deleted successfully!', 'Close', { duration: 3000, panelClass: ['success-snackbar'] });
-        },
-        error: (err) => {
-          console.error(`Error deleting user ${userId}:`, err);
-          this._snackBar.open('Failed to delete user.', 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        if (result) {
+          // For simplicity, we just refetch the first page on any add/edit.
+          // A more advanced implementation could try to stay on the current page.
+          this.resetPaginationAndFetch();
         }
       });
-    }
   }
 
-  ngOnDestroy(): void {
-    if (this.usersSubscription) {
-      this.usersSubscription.unsubscribe();
-    }
-    if (this.dialogSubscription) {
-        this.dialogSubscription.unsubscribe();
+  async deleteUser(userId: string): Promise<void> {
+    // Simple confirmation, consider using a MatDialog for a better UX
+    if (confirm(`Are you sure you want to delete user with ID: ${userId}?`)) {
+      this.isLoading = true;
+      try {
+        await firstValueFrom(this.userService.deleteUser(userId));
+        this._snackBar.open('User deleted successfully!', 'Close', {
+          duration: 3000,
+        });
+        this.resetPaginationAndFetch();
+      } catch (err) {
+        console.error(`Error deleting user ${userId}:`, err);
+        this._snackBar.open('Failed to delete user.', 'Close', {
+          duration: 5000,
+        });
+      } finally {
+        this.isLoading = false;
+      }
     }
   }
 }

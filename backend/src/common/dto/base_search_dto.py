@@ -20,5 +20,5 @@ class BaseSearchDto(BaseDto):
     # It's optional because the first request will not have a cursor.
     start_after: Optional[str] = Field(
         default=None,
-        description="The document ID to start the query after for pagination."
+        description="The document ID to start the query after for pagination.",
     )

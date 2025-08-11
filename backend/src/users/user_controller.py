@@ -1,6 +1,6 @@
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.users.dto.user_create_dto import (
     UserCreateDto,
     UserUpdateRoleDto,
@@ -42,7 +42,7 @@ async def get_my_profile(
 # --- Admin-Only Endpoints ---
 @router.get(
     "/",
-    response_model=List[User],
+    response_model=PaginationResponseDto[User],
     summary="List All Users (Admin Only)",
     dependencies=[admin_only],
 )

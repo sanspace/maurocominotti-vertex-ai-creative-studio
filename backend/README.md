@@ -27,6 +27,7 @@ This will create a new Firestore database in Native Mode.
 Our application uses specific queries that require custom composite indexes to function correctly.
 
 ```bash
+# For MediaItems
 # Command for Index 1: user_email and created_at
 # This index allows you to query for a specific user's media and sort it by the most recent.
 gcloud firestore indexes composite create \
@@ -49,8 +50,21 @@ gcloud firestore indexes composite create \
   --collection-group=media_library \
   --query-scope=COLLECTION \
   --field-config=field-path=model,order=ASCENDING \
-  --field-config=field-path=created_at,order=DESCENDING
+  --field-config=field-path=created_at,order=DESCENDING \
 
+
+# For Users
+gcloud firestore indexes composite create \
+  --collection-group=users \
+  --query-scope=COLLECTION \
+  --field-config=field-path=role,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+
+gcloud firestore indexes composite create \
+  --collection-group=users \
+  --query-scope=COLLECTION \
+  --field-config=field-path=email,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
 
 # After a while you can check with
 gcloud beta firestore indexes composite list

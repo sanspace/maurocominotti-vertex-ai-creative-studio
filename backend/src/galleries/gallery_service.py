@@ -83,8 +83,7 @@ class GalleryService:
             next_page_cursor = media_items[-1].id
 
         return PaginatedGalleryResponse(
-            items=enriched_items,
-            next_page_cursor=next_page_cursor
+            data=enriched_items, next_page_cursor=next_page_cursor
         )
 
     async def get_media_by_id(self, item_id: str) -> Optional[GalleryItemResponse]:
