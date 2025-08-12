@@ -75,8 +75,8 @@ async def get_user_by_id(user_id: str, user_service: UserService = Depends()):
     return user
 
 
-@router.patch(
-    "/{user_id}/role",
+@router.put(
+    "/{user_id}",
     response_model=User,
     summary="Update a User's Role (Admin Only)",
     dependencies=[admin_only],

@@ -1,10 +1,6 @@
 <div class="p-4">
   <div class="flex justify-between items-center mb-4">
     <h1 class="text-3xl font-semibold">User Management</h1>
-    <button mat-raised-button color="primary" (click)="openUserForm()">
-      <mat-icon>add</mat-icon>
-      Add User
-    </button>
   </div>
 
   <!-- Filter Input -->
@@ -29,10 +25,16 @@
   <div *ngIf="!isLoading && !errorLoadingUsers" class="mat-elevation-z8 rounded-lg overflow-auto">
     <table mat-table [dataSource]="dataSource" matSort class="w-full">
 
-      <!-- ID Column -->
-      <ng-container matColumnDef="id">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
-        <td mat-cell *matCellDef="let user"> {{user.id}} </td>
+      <!-- Picture Column -->
+      <ng-container matColumnDef="picture">
+        <th mat-header-cell *matHeaderCellDef class="!pl-4"> Picture </th>
+        <td mat-cell *matCellDef="let user" class="!pl-4">
+          <img
+            [src]="user?.picture || 'assets/images/default-avatar.png'"
+            alt="User Picture"
+            class="w-10 h-10 rounded-full object-cover"
+          />
+        </td>
       </ng-container>
 
       <!-- Name Column -->
@@ -55,8 +57,8 @@
             <mat-chip
               *ngFor="let role of user.roles"
               [ngClass]="{
-                '!bg-blue-500/20 !text-blue-300': role.toLowerCase() === 'admin',
-                '!bg-gray-500/20 !text-gray-300': role.toLowerCase() === 'user'
+                '!bg-amber-500/20 !text-amber-300': role.toLowerCase() === 'admin',
+                '!bg-blue-500/20 !text-blue-300': role.toLowerCase() === 'user'
               }">
               {{role | titlecase}}
             </mat-chip>
@@ -64,29 +66,25 @@
         </td>
       </ng-container>
 
-      <!-- Full Name Column -->
-      <!-- <ng-container matColumnDef="full_name">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Full Name </th>
-        <td mat-cell *matCellDef="let user"> {{user.full_name || '-'}} </td>
-      </ng-container> -->
+      <!-- Created At Column -->
+      <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Created At </th>
+        <td mat-cell *matCellDef="let user"> {{user.createdAt | date:'medium'}} </td>
+      </ng-container>
 
-      <!-- Active Status Column -->
-      <!-- <ng-container matColumnDef="is_active">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header> Active </th>
-        <td mat-cell *matCellDef="let user">
-          <mat-icon [ngClass]="user.is_active ? 'text-green-500' : 'text-red-500'">
-            {{ user.is_active ? 'check_circle' : 'cancel' }}
-          </mat-icon>
-        </td>
-      </ng-container> -->
+      <!-- Updated At Column -->
+      <ng-container matColumnDef="updatedAt">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header> Updated At </th>
+        <td mat-cell *matCellDef="let user"> {{user.updatedAt | date:'medium'}} </td>
+      </ng-container>
 
       <!-- Actions Column -->
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef class="!text-white-700 font-medium text-right pr-4"> Actions </th>
+        <th mat-header-cell *matHeaderCellDef class="!text-right !pr-4"> Actions </th>
         <td mat-cell *matCellDef="let user" class="text-right pr-2">
-          <!-- <button mat-icon-button color="primary" (click)="openUserForm(user)" matTooltip="Edit User">
+          <button mat-icon-button color="primary" (click)="openUserForm(user)" matTooltip="Edit User">
             <mat-icon>edit</mat-icon>
-          </button> -->
+          </button>
           <button mat-icon-button color="warn" (click)="deleteUser(user.id!)" matTooltip="Delete User">
             <mat-icon>delete</mat-icon>
           </button>
@@ -94,7 +92,7 @@
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="hover:bg-blue-100 dark:hover:bg-gray-700 cursor-pointer"></tr>
 
       <!-- Row shown when there is no matching data. -->
       <tr class="mat-row" *matNoDataRow>

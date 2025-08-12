@@ -7,7 +7,7 @@ import {
 } from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError, tap} from 'rxjs/operators';
-import {UserWhitelist as User} from './user-whitelist.model'; // Adjust path if you placed it elsewhere
+import {UserModel as User} from './user.model'; // Adjust path if you placed it elsewhere
 import {environment} from '../../../environments/environment'; // To get backendURL
 
 export interface PaginatedResponse {

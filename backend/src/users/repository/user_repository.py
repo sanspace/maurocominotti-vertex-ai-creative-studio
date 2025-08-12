@@ -40,30 +40,6 @@ class UserRepository(BaseRepository[User]):
 
         return user
 
-    def update(
-        self, user_id: str, update_data: Dict[str, Any]
-    ) -> Optional[User]:
-        """
-        Updates an existing user document.
-
-        Args:
-            user_id: The ID of the user document to update.
-            update_data: A dictionary containing the fields to update.
-
-        Returns:
-            The updated User model, or None if the user was not found.
-        """
-        doc_ref = self.collection_ref.document(user_id)
-        if not doc_ref.get().exists:
-            return None
-
-        # Automatically update the 'updated_at' timestamp on every update
-        update_data["updated_at"] = datetime.datetime.now(datetime.timezone.utc)
-        doc_ref.update(update_data)
-
-        # Fetch the updated document to return the complete, validated model
-        return self.get_by_id(user_id)
-
     def delete(self, user_id: str) -> bool:
         """
         Deletes a user document from Firestore.

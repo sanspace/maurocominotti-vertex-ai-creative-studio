@@ -1,31 +1,31 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { UserWhitelist as User } from './user-whitelist.model';
-import { environment } from '../../../environments/environment';
+import {UserModel as User} from './user.model';
 
 @Component({
   selector: 'app-user-form',
   templateUrl: './user-form.component.html',
-  // Add styleUrls if you need specific styles for the form
+  styleUrls: ['./user-form.component.scss'],
 })
 export class UserFormComponent implements OnInit {
   userForm: FormGroup;
-  isEditMode: boolean = false;
-  emailRegex = environment.EMAIL_REGEX;
+  isEditMode: boolean;
+  availableRoles: string[] = ['admin', 'user'];
 
   constructor(
     public dialogRef: MatDialogRef<UserFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: User, // Data passed to the dialog (user object for editing)
-    private fb: FormBuilder
+    @Inject(MAT_DIALOG_DATA)
+    public data: {user: User; isEditMode: boolean}, // Data passed to the dialog
+    private fb: FormBuilder,
   ) {
-    this.isEditMode = !!data?.id; // If data has an id, it's edit mode
+    this.isEditMode = data.isEditMode;
+    const user = data.user;
 
     this.userForm = this.fb.group({
-      id: [data?.id || null], // Keep id for updates, null for new
-      email: [data?.email || '', [Validators.required, Validators.pattern(this.emailRegex)]],
-      // Add other form controls based on your UserWhitelist model if needed
-      // e.g., username: [data?.username || '', Validators.required],
+      id: [user?.id],
+      email: [{value: user?.email || '', disabled: true}, Validators.required],
+      roles: [user?.roles || [], Validators.required],
     });
   }
 
@@ -37,7 +37,7 @@ export class UserFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.userForm.valid) {
-      this.dialogRef.close(this.userForm.value); // Pass the form value back
+      this.dialogRef.close(this.userForm.getRawValue()); // Pass the raw form value back to include disabled fields
     } else {
       this.userForm.markAllAsTouched(); // Show validation errors
     }

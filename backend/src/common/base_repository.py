@@ -1,5 +1,5 @@
 import datetime
-from typing import Generic, TypeVar, Optional, List
+from typing import Any, Dict, Generic, TypeVar, Optional, List
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 from google.cloud import firestore
@@ -57,3 +57,28 @@ class BaseRepository(Generic[T]):
         # Use .model_dump() for Pydantic v2
         doc_ref.set(item.model_dump(exclude_none=True))
         return item.id
+
+    def update(self, item_id: str, update_data: Dict[str, Any]) -> Optional[T]:
+        """
+        Performs a partial update on a document, automatically updating the timestamp.
+
+        Args:
+            item_id: The ID of the document to update.
+            update_data: A dictionary of fields to change.
+
+        Returns:
+            The updated model instance, or None if not found.
+        """
+        # 1. Automatically add/update the 'updated_at' timestamp to the update payload.
+        update_data["updated_at"] = datetime.datetime.now(datetime.timezone.utc)
+
+        doc_ref = self.collection_ref.document(item_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return None
+
+        # 2. Perform the partial update.
+        doc_ref.update(update_data)
+
+        # 3. Return the full, updated document.
+        return self.get_by_id(item_id)

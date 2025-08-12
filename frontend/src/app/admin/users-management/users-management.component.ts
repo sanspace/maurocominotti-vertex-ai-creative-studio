@@ -9,7 +9,7 @@ import {
   takeUntil,
   catchError,
 } from 'rxjs/operators';
-import {UserWhitelist as User} from './user-whitelist.model';
+import {UserModel as User} from './user.model';
 import {UserService, PaginatedResponse} from './user.service';
 import {MatDialog} from '@angular/material/dialog';
 import {UserFormComponent} from './user-form.component';
@@ -21,12 +21,19 @@ import {MatSnackBar} from '@angular/material/snack-bar';
   styleUrls: ['./users-management.component.scss'],
 })
 export class UsersManagementComponent implements OnInit, OnDestroy {
-  displayedColumns: string[] = ['id', 'email', 'name', 'roles', 'actions'];
+  displayedColumns: string[] = [
+    'picture',
+    'name',
+    'email',
+    'roles',
+    'createdAt',
+    'updatedAt',
+    'actions',
+  ];
   dataSource: MatTableDataSource<User> = new MatTableDataSource<User>();
   isLoading = true;
   errorLoadingUsers: string | null = null;
   lastResponse: PaginatedResponse | undefined;
-
 
   // --- Pagination State ---
   totalUsers = 0;
@@ -155,20 +162,34 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
     this.fetchPage(0);
   }
 
-  openUserForm(user?: User): void {
+  openUserForm(user: User): void {
     const dialogRef = this.dialog.open(UserFormComponent, {
       width: '450px',
-      data: {user: user, isEditMode: !!user},
+      data: {user: user, isEditMode: true},
     });
 
     dialogRef
       .afterClosed()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(result => {
+      .subscribe(async (result: User | undefined) => {
         if (result) {
-          // For simplicity, we just refetch the first page on any add/edit.
-          // A more advanced implementation could try to stay on the current page.
-          this.resetPaginationAndFetch();
+          this.isLoading = true;
+          try {
+            // The form returns the full user object with updated roles
+            await firstValueFrom(this.userService.updateUser(result));
+            this._snackBar.open('User updated successfully!', 'Close', {
+              duration: 3000,
+            });
+            // Refetch to show updated data on the current page.
+            this.fetchPage(this.currentPageIndex);
+          } catch (err) {
+            console.error(`Error updating user ${result.id}:`, err);
+            this._snackBar.open('Failed to update user.', 'Close', {
+              duration: 5000,
+            });
+          } finally {
+            this.isLoading = false;
+          }
         }
       });
   }

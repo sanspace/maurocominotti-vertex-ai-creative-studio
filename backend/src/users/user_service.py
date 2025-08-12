@@ -57,8 +57,11 @@ class UserService:
         self, user_id: str, role_data: UserUpdateRoleDto
     ) -> Optional[User]:
         """Updates the role of a specific user."""
+        # Convert the list of enums to a list of strings for Firestore
+        roles_as_strings = [role.value for role in role_data.roles]
+
         # The update method in the repository would handle updating the 'role' field
-        return self.user_repo.update(user_id, {"role": role_data.role})
+        return self.user_repo.update(user_id, {"roles": roles_as_strings})
 
     def delete_user_by_id(self, user_id: str) -> bool:
         """Deletes a user from the system."""

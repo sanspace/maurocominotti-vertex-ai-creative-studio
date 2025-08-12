@@ -12,8 +12,8 @@ class BaseSearchDto(BaseDto):
     limit: int = Field(
         default=12,
         ge=1,
-        le=48,
-        description="Number of items to return per page."
+        le=100,
+        description="Number of items to return per page.",
     )
 
     # The cursor is the ID of the last document from the previous page.
