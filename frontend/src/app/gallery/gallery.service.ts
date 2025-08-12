@@ -112,4 +112,15 @@ export class GalleryService {
     const detailUrl = `${environment.backendURL}/gallery/item/${id}`;
     return this.http.get<MediaItem>(detailUrl);
   }
+
+  /**
+   * Creates a new template based on a media item.
+   * @param mediaItemId The ID of the media item to base the template on.
+   */
+  createTemplateFromMediaItem(mediaItemId: string): Observable<{id: string}> {
+    return this.http.post<{id: string}>(
+      `${environment.backendURL}/media-templates/from-media-item/${mediaItemId}`,
+      {},
+    );
+  }
 }

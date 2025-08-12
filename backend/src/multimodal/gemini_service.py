@@ -90,6 +90,7 @@ class GeminiService:
         target_type: PromptTargetEnum,
         prompt_template: str,
         response_mime_type: ResponseMimeTypeEnum = ResponseMimeTypeEnum.JSON,
+        response_schema: Type[BaseModel] | None = None,
     ) -> str:
         """
         Rewrites a user prompt using Gemini into a structured JSON format.
@@ -103,7 +104,9 @@ class GeminiService:
             A dictionary parsed from Gemini's JSON response.
         """
         full_prompt = f"{prompt_template} {original_prompt}"
-        response_schema = self._get_response_schema(target_type)
+        response_schema = response_schema or self._get_response_schema(
+            target_type
+        )
 
         try:
             response = None

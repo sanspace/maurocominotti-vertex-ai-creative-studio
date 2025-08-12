@@ -1,6 +1,10 @@
 from typing import List, Optional
 import re
 
+from src.common.base_dto import MimeTypeEnum
+from src.media_templates.dto.create_prompt_template_dto import (
+    CreatePromptTemplateDto,
+)
 from src.images.repository.media_item_repository import MediaRepository
 from src.media_templates.repository.media_template_repository import (
     MediaTemplateRepository,
@@ -13,7 +17,11 @@ from src.media_templates.dto.template_search_dto import TemplateSearchDto
 from src.media_templates.dto.update_template_dto import UpdateTemplateDto
 
 # We need Gemini to auto-generate names and descriptions
-from src.multimodal.gemini_service import GeminiService
+from src.multimodal.gemini_service import (
+    GeminiService,
+    PromptTargetEnum,
+    ResponseMimeTypeEnum,
+)
 
 
 class MediaTemplateService:
@@ -66,43 +74,38 @@ class MediaTemplateService:
             return None  # MediaItem not found
 
         # --- Use Gemini to generate a name and description ---
-        prompt_for_gemini = (
-            f"Based on the following creative prompt, generate a short, catchy 'Name' and a one-sentence 'Description' "
-            f"for a new template. The original prompt is: '{media_item.prompt}'.\n\n"
-            f"Format your response exactly like this:\n"
-            f"Name: [Your Generated Name]\n"
-            f"Description: [Your Generated Description]"
+        prompt_for_gemini = f"""
+          Based on the following creative prompt, generate a short, catchy 'Name', a one-sentence 'Description',
+          generate a relevant industry, a fictional but plausible brand name, and a list of 5-7 relevant tags
+          for a new template. The original prompt is: '{media_item.prompt}'.\n
+        """
+        target_type = (
+            PromptTargetEnum.VIDEO
+            if media_item.mime_type == MimeTypeEnum.VIDEO_MP4
+            else PromptTargetEnum.IMAGE
         )
-        generated_text = self.gemini_service.generate_text(prompt_for_gemini)
 
-        # Parse the generated text
-        name_match = re.search(r"Name: (.*)", generated_text)
-        desc_match = re.search(r"Description: (.*)", generated_text)
-
-        generated_name = (
-            name_match.group(1).strip()
-            if name_match
-            else f"Template based on {media_item.id}"
+        generated_text = self.gemini_service.generate_structured_prompt(
+            original_prompt="",
+            target_type=target_type,
+            prompt_template=prompt_for_gemini,
+            response_mime_type=ResponseMimeTypeEnum.JSON,
+            response_schema=CreatePromptTemplateDto,
         )
-        generated_desc = (
-            desc_match.group(1).strip()
-            if desc_match
-            else f"A creative template derived from prompt: {media_item.prompt}"
-        )
-        # --- End of Gemini logic ---
+        metadata = CreatePromptTemplateDto.model_validate_json(generated_text)
 
         # Create the new template by mapping fields
         new_template = MediaTemplateModel(
-            name=generated_name,
-            description=generated_desc,
+            name=metadata.name,
+            description=metadata.description,
             mime_type=media_item.mime_type,
-            # industry=media_item.industry or "Other",  # Default if not present
-            # brand=media_item.brand,
-            # tags=media_item.tags or [],
+            industry=metadata.industry,
+            brand=metadata.brand,
+            tags=metadata.tags or [],
             gcs_uris=media_item.gcs_uris,
             thumbnail_uris=media_item.thumbnail_uris,
             generation_parameters=GenerationParameters(
-                prompt=media_item.prompt,
+                prompt=media_item.original_prompt,
                 model=media_item.model,
                 aspect_ratio=media_item.aspect_ratio,
                 style=media_item.style,

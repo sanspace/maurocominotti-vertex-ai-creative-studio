@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Location} from '@angular/common';
-import {Subscription} from 'rxjs';
+import {first, Subscription} from 'rxjs';
 import {LightGallery} from 'lightgallery/lightgallery';
 import lgZoom from 'lightgallery/plugins/zoom';
 import lgThumbnail from 'lightgallery/plugins/thumbnail';
@@ -23,6 +23,7 @@ import {GalleryItem} from 'lightgallery/lg-utils';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
 import {CreatePromptMediaDto} from '../../common/models/prompt.model';
+import {AuthService} from '../../common/services/auth.service';
 
 @Component({
   selector: 'app-media-detail',
@@ -40,6 +41,7 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
   private lightGalleryInstance?: LightGallery;
   public isLoading = true;
   public mediaItem: MediaItem | undefined;
+  public isAdmin = false;
   private initialSlideIndex = 0;
   promptJson: CreatePromptMediaDto | undefined;
 
@@ -50,7 +52,11 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
     private galleryService: GalleryService,
     private loadingService: LoadingService,
     private _snackBar: MatSnackBar,
+    private authService: AuthService,
   ) {
+    // Check if user is admin
+    this.isAdmin = this.authService.isUserAdmin() ?? false;
+
     // Get the media item from the router state
     this.mediaItem =
       this.router.getCurrentNavigation()?.extras.state?.['mediaItem'];
@@ -309,5 +315,50 @@ export class MediaDetailComponent implements OnDestroy, AfterViewInit {
       return '#';
     }
     return `https://console.cloud.google.com/storage/browser/${uri.substring(5)}`;
+  }
+
+  /**
+   * Creates a new template from the current media item.
+   * This is intended for admin users.
+   */
+  createTemplateFromMediaItem(): void {
+    if (!this.mediaItem?.id) {
+      return;
+    }
+
+    this.loadingService.show();
+
+    // Note: The 'createTemplateFromMediaItem' method should be implemented in a relevant service (e.g., TemplateService or GalleryService).
+    // It should perform a POST request to the `/from-media-item/{media_item_id}` endpoint.
+    this.galleryService
+      .createTemplateFromMediaItem(this.mediaItem.id)
+      .pipe(first())
+      .subscribe({
+        next: (newTemplate: {id: string}) => {
+          this.loadingService.hide();
+          this._snackBar.openFromComponent(ToastMessageComponent, {
+            panelClass: ['green-toast'],
+            verticalPosition: 'top',
+            horizontalPosition: 'right',
+            duration: 6000,
+            data: {text: 'Template created successfully!', matIcon: 'check_small'},
+          });
+          this.router.navigate(['/templates/edit', newTemplate.id]);
+        },
+        error: err => {
+          this.loadingService.hide();
+          console.error('Failed to create template from media item', err);
+          this._snackBar.openFromComponent(ToastMessageComponent, {
+            panelClass: ['red-toast'],
+            verticalPosition: 'top',
+            horizontalPosition: 'right',
+            duration: 6000,
+            data: {
+              text: 'Failed to create template. Please try again.',
+              matIcon: 'error',
+            },
+          });
+        },
+      });
   }
 }

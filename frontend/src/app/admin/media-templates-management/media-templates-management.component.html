@@ -26,8 +26,20 @@
   </div>
 
   <!-- Table -->
-  <div class="mat-elevation-z8 rounded-lg overflow-auto">
+  <div *ngIf="!isLoading && !errorLoading" class="mat-elevation-z8 rounded-lg overflow-auto">
     <table mat-table [dataSource]="dataSource" matSort class="w-full">
+
+      <!-- Thumbnail Column -->
+      <!-- <ng-container matColumnDef="thumbnail">
+        <th mat-header-cell *matHeaderCellDef class="!pl-4"> Thumbnail </th>
+        <td mat-cell *matCellDef="let user" class="!pl-4">
+          <img
+            [src]="user?.thumbnailUris?.[0] || 'assets/images/default-avatar.png'"
+            alt="Media Template Thumbnail"
+            class="w-10 h-10 rounded-full object-cover"
+          />
+        </td>
+      </ng-container> -->
 
       <!-- Name Column -->
       <ng-container matColumnDef="name">
@@ -51,7 +63,7 @@
             '!bg-blue-500/20 !text-blue-300': template.mimeType === 'video/mp4',
             '!bg-purple-500/20 !text-purple-300': template.mimeType === 'image/png'
           }">
-            {{template.mimeType | titlecase}}
+            {{template.mimeType}}
           </mat-chip>
         </td>
       </ng-container>

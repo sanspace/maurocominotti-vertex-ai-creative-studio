@@ -32,28 +32,6 @@ class MediaTemplateRepository(BaseRepository[MediaTemplateModel]):
         doc_ref.set(template_data)
         return template
 
-    def update(self, template_id: str, update_data: Dict[str, Any]) -> Optional[MediaTemplateModel]:
-        """
-        Updates an existing template document in Firestore.
-
-        Args:
-            template_id: The ID of the document to update.
-            update_data: A dictionary with the fields to update.
-
-        Returns:
-            The updated template model, or None if not found.
-        """
-        doc_ref = self.collection_ref.document(template_id)
-        if not doc_ref.get().exists:
-            return None
-
-        # Automatically add/update the 'updated_at' timestamp
-        update_data["updated_at"] = datetime.datetime.now(datetime.timezone.utc)
-        doc_ref.update(update_data)
-
-        # Return the updated document by fetching it again
-        return self.get_by_id(template_id)
-
     def delete(self, template_id: str) -> bool:
         """
         Deletes a template document from Firestore.
