@@ -20,6 +20,7 @@ from fastapi import HTTPException, status
 import google.auth
 from google.auth.exceptions import RefreshError
 from google.cloud import resourcemanager_v3
+from google.cloud.firestore import Client
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class FirebaseClient:
 
 
 firebase_client = FirebaseClient()
-firestore_db = firebase_client.db
+firestore_db: Client = firebase_client.db
 
 
 def create_firebase_user(email: str, password: str):

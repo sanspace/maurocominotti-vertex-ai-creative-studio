@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Annotated, Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from src.common.base_repository import BaseDocument
 from src.common.base_dto import (
     AspectRatioEnum,
@@ -10,6 +10,7 @@ from src.common.base_dto import (
     ColorAndToneEnum,
     CompositionEnum,
 )
+from pydantic.alias_generators import to_camel
 
 class IndustryEnum(str, Enum):
     """Enum for categorizing templates by industry."""
@@ -43,6 +44,14 @@ class GenerationParameters(BaseModel):
     color_and_tone: Optional[ColorAndToneEnum] = None
     composition: Optional[CompositionEnum] = None
     negative_prompt: Optional[str] = None
+
+    model_config = ConfigDict(
+        use_enum_values=True,  # Allows passing enum members like StyleEnum.MODERN
+        extra="forbid",  # Prevents accidental extra fields
+        populate_by_name=True,
+        from_attributes=True,
+        alias_generator=to_camel,
+    )
 
 
 # --- The Main Unified Template Model ---

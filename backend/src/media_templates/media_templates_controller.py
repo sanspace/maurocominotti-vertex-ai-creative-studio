@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
+from src.users.user_model import UserRoleEnum
 from src.media_templates.media_templates_service import MediaTemplateService
 from src.auth.auth_guard import RoleChecker
 
@@ -9,8 +10,12 @@ from src.media_templates.dto.template_search_dto import TemplateSearchDto
 from src.media_templates.dto.update_template_dto import UpdateTemplateDto
 
 # Define role checkers for convenience
-admin_only = Depends(RoleChecker(allowed_roles=["admin"]))
-any_user = Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+admin_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN.value]))
+any_user = Depends(
+    RoleChecker(
+        allowed_roles=[UserRoleEnum.ADMIN.value, UserRoleEnum.USER.value]
+    )
+)
 
 router = APIRouter(
     prefix="/api/media-templates",
@@ -70,8 +75,8 @@ def get_template(
     service: MediaTemplateService = Depends(),
 ):
     """
-    h    Retrieves a single media template by its unique ID.
-        (Any authenticated user)
+    Retrieves a single media template by its unique ID.
+    (Any authenticated user)
     """
     template = service.get_template_by_id(template_id)
     if not template:
@@ -111,7 +116,6 @@ def delete_template(
     service: MediaTemplateService = Depends(),
 ):
     """
-
     Permanently deletes a media template.
     (Admin role required)
     """

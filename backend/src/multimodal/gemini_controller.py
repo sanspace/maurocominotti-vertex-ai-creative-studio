@@ -15,6 +15,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.users.user_model import UserRoleEnum
 from src.multimodal.dto.gemini_prompt_enhancer_dto import (
     RandomPromptRequestDto,
     RewritePromptRequestDto,
@@ -30,7 +31,14 @@ router = APIRouter(
     tags=["Gemini APIs"],
     responses={404: {"description": "Not found"}},
     dependencies=[
-        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+        Depends(
+            RoleChecker(
+                allowed_roles=[
+                    UserRoleEnum.ADMIN.value,
+                    UserRoleEnum.USER.value,
+                ]
+            )
+        )
     ],
 )
 

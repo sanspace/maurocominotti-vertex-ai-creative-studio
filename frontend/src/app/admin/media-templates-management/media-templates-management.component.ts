@@ -4,6 +4,9 @@ import {MatPaginator} from '@angular/material/paginator';
 import {MatSort} from '@angular/material/sort';
 import {MediaTemplate} from './media-template.model';
 import {MediaTemplatesService} from './media-templates.service';
+import {MatDialog} from '@angular/material/dialog';
+import {MediaTemplateFormComponent} from './media-template-form/media-template-form.component';
+import {of} from 'rxjs';
 
 @Component({
   selector: 'app-media-templates-management',
@@ -29,7 +32,10 @@ export class MediaTemplatesManagementComponent
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
-  constructor(private mediaTemplatesService: MediaTemplatesService) {
+  constructor(
+    private mediaTemplatesService: MediaTemplatesService,
+    public dialog: MatDialog,
+  ) {
     this.dataSource = new MatTableDataSource<MediaTemplate>([]);
   }
 
@@ -68,9 +74,49 @@ export class MediaTemplatesManagementComponent
     }
   }
 
+  openTemplateDialog(template?: MediaTemplate): void {
+    const dialogRef = this.dialog.open(MediaTemplateFormComponent, {
+      width: '800px',
+      data: {template: template ? {...template} : {}},
+      disableClose: true,
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        const saveObservable = result.id
+          ? this.mediaTemplatesService.updateMediaTemplate(result)
+          : this.mediaTemplatesService.createMediaTemplate(result);
+
+        // TODO: Replace with actual service call
+        // For now, just simulating a successful save.
+        // saveObservable = of(result);
+
+        saveObservable.subscribe({
+          next: () => {
+            console.log(
+              `Template ${result.id ? 'updated' : 'created'} successfully`,
+            );
+            this.fetchTemplates();
+            // TODO: Add snackbar for user feedback
+          },
+          error: (err: Error) => {
+            console.error(
+              `Error ${result.id ? 'updating' : 'creating'} template`,
+              err,
+            );
+            // TODO: Add snackbar for user feedback
+          },
+        });
+      }
+    });
+  }
+
+  createTemplate(): void {
+    this.openTemplateDialog();
+  }
+
   editTemplate(template: MediaTemplate): void {
-    // TODO: Implement edit functionality, e.g., open a dialog
-    console.log('Editing template:', template);
+    this.openTemplateDialog(template);
   }
 
   deleteTemplate(template: MediaTemplate): void {

@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends
 from src.videos.schema.veo_result_model import VeoGenerationResult
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.videos.veo_service import VeoService
-from src.users.user_model import User
+from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 
 router = APIRouter(
@@ -28,7 +28,14 @@ router = APIRouter(
     tags=["Google Video APIs"],
     responses={404: {"description": "Not found"}},
     dependencies=[
-        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+        Depends(
+            RoleChecker(
+                allowed_roles=[
+                    UserRoleEnum.ADMIN.value,
+                    UserRoleEnum.USER.value,
+                ]
+            )
+        )
     ],
 )
 

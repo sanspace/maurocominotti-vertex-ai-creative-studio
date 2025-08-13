@@ -31,6 +31,7 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatCardModule} from '@angular/material/card';
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
+import {MediaTemplateFormComponent} from './media-templates-management/media-template-form/media-template-form.component';
 
 @NgModule({
   declarations: [
@@ -38,6 +39,7 @@ import {MatProgressBarModule} from '@angular/material/progress-bar';
     UsersManagementComponent,
     MediaTemplatesManagementComponent,
     UserFormComponent,
+    MediaTemplateFormComponent,
   ],
   imports: [
     CommonModule,

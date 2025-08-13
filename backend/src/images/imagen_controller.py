@@ -14,7 +14,7 @@
 
 from fastapi import APIRouter, HTTPException, status as Status
 
-from src.users.user_model import User
+from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
@@ -27,7 +27,14 @@ router = APIRouter(
     tags=["Google Imagen APIs"],
     responses={404: {"description": "Not found"}},
     dependencies=[
-        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+        Depends(
+            RoleChecker(
+                allowed_roles=[
+                    UserRoleEnum.ADMIN.value,
+                    UserRoleEnum.USER.value,
+                ]
+            )
+        )
     ],
 )
 
