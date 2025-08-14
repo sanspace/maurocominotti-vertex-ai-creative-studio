@@ -41,7 +41,7 @@ import {Subscription} from 'rxjs';
 import {additionalShareOptions} from '../utils/lightgallery-share-options';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {GenerationParameters} from '../fun-templates/template.model';
+import {GenerationParameters} from '../fun-templates/media-template.model';
 
 @Component({
   selector: 'app-home',

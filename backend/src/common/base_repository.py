@@ -18,7 +18,7 @@ class BaseDocument(BaseModel):
     # Pydantic v2 configuration for this sub-model
     model_config = ConfigDict(
         use_enum_values=True,  # Allows passing enum members like StyleEnum.MODERN
-        extra="forbid",  # Prevents accidental extra fields
+        extra="ignore",  # Prevents accidental extra fields
         populate_by_name=True,
         from_attributes=True,
         alias_generator=to_camel,

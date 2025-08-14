@@ -2,9 +2,9 @@ import { Injectable } from '@angular/core';
 import {HttpClient, HttpErrorResponse} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError} from 'rxjs/operators';
-import { MediaTemplate } from './media-template.model';
-import { environment } from '../../../environments/environment';
+import {environment} from '../../../environments/environment';
 import {PaginatedResponse} from '../../common/models/paginated-response.model';
+import {MediaTemplate} from '../../fun-templates/media-template.model';
 
 @Injectable({
   providedIn: 'root',

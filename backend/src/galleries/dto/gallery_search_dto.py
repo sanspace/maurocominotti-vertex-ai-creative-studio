@@ -8,9 +8,3 @@ class GallerySearchDto(BaseSearchDto):
     user_email: Optional[str] = None
     mime_type: Optional[str] = None
     model: Optional[str] = None
-
-
-class PaginatedGalleryResponse(BaseDto):
-    """Defines the response structure for a paginated gallery query."""
-    data: list[GalleryItemResponse]
-    next_page_cursor: Optional[str] = None

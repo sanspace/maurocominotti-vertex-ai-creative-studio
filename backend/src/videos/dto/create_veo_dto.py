@@ -19,7 +19,7 @@ class CreateVeoDto(BaseDto):
     contract explicit and self-documenting.
     """
 
-    prompt: Annotated[str, Query(max_length=1500)] = Field(
+    prompt: Annotated[str, Query(max_length=10000)] = Field(
         description="Prompt term to be passed to the model"
     )
     generation_model: GenerationModelEnum = Field(

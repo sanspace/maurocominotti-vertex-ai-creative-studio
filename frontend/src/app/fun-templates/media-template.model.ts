@@ -1,7 +1,23 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export enum MimeTypeEnum {
-  IMAGE_PNG = 'image/png',
-  VIDEO_MP4 = 'video/mp4',
-  AUDIO_MPEG = 'audio/mpeg',
+  IMAGE = 'image/png',
+  VIDEO = 'video/mp4',
+  AUDIO = 'audio/mpeg',
 }
 
 export enum IndustryEnum {
@@ -95,29 +111,41 @@ export enum GenerationModelEnum {
   VEO_2_QUALITY = 'veo-2.0-fast-generate-001',
 }
 
+
+// The parameters that can be passed to the generator
 export interface GenerationParameters {
   prompt?: string;
-  /**
-   * The model can be a value from the enum or a custom string.
-   */
-  model?: GenerationModelEnum;
+  originalPrompt?: string;
+  model?: string;
   aspectRatio?: AspectRatioEnum;
   style?: StyleEnum;
   lighting?: LightingEnum;
-  colorAndTone?: ColorAndToneEnum;
-  composition?: CompositionEnum;
+  colorAndTone?: string;
+  composition?: string;
   negativePrompt?: string;
+  numMedia?: number;
+  durationSeconds?: number;
 }
 
 export interface MediaTemplate {
-  id?: string;
+  id: string; // Unique identifier for the template
   name: string;
   description: string;
   mimeType: MimeTypeEnum;
-  industry?: IndustryEnum;
+  industry: IndustryEnum;
   brand?: string;
-  tags?: string[];
-  gcsUris: string[];
+  tags: string[];
+  gcsUris?: string[];
   thumbnailUris?: string[];
-  generationParameters: GenerationParameters;
+  presignedUrls: string[];
+  presignedThumbnailUrls?: string[];
+  generationParameters: GenerationParameters; // All generator settings bundled
+}
+
+export interface TemplateFilter {
+  industry: string | null;
+  mediaType: MimeTypeEnum | null;
+  tags: string | null;
+  model: string | null;
+  name: string | null;
 }

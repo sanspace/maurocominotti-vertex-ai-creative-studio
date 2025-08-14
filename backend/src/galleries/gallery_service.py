@@ -15,7 +15,8 @@
 import asyncio
 from typing import Optional
 
-from src.galleries.dto.gallery_search_dto import GallerySearchDto, PaginatedGalleryResponse
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.galleries.dto.gallery_response_dto import GalleryItemResponse
 from src.images.repository.media_item_repository import MediaRepository
@@ -53,7 +54,7 @@ class GalleryService:
             asyncio.to_thread(
                 self.iam_signer_credentials.generate_presigned_url, uri
             )
-            for uri in item.thumbnail_uris
+            for uri in (item.thumbnail_uris or "")
             if uri
         ]
         presigned_thumbnail_urls = await asyncio.gather(*thumbnail_tasks)
@@ -65,25 +66,26 @@ class GalleryService:
             presigned_thumbnail_urls=presigned_thumbnail_urls
         )
 
-    async def get_paginated_gallery(self, search_dto: GallerySearchDto) -> PaginatedGalleryResponse:
+    async def get_paginated_gallery(
+        self, search_dto: GallerySearchDto
+    ) -> PaginationResponseDto[GalleryItemResponse]:
         """
         Performs a paginated and filtered search for media items.
         """
         # Run the synchronous database query in a separate thread
-        media_items = await asyncio.to_thread(self.media_repo.query, search_dto)
+        media_items_query = await asyncio.to_thread(
+            self.media_repo.query, search_dto
+        )
+        media_items = media_items_query.data or []
 
         # Convert each MediaItem to a GalleryItemResponse in parallel
         response_tasks = [self._create_gallery_response(item) for item in media_items]
         enriched_items = await asyncio.gather(*response_tasks)
 
-        # Determine the cursor for the next page
-        next_page_cursor = None
-        if len(media_items) == search_dto.limit:
-            # If we received a full page of results, the last item is the next cursor
-            next_page_cursor = media_items[-1].id
-
-        return PaginatedGalleryResponse(
-            data=enriched_items, next_page_cursor=next_page_cursor
+        return PaginationResponseDto[GalleryItemResponse](
+            count=media_items_query.count,
+            next_page_cursor=media_items_query.next_page_cursor,
+            data=enriched_items,
         )
 
     async def get_media_by_id(self, item_id: str) -> Optional[GalleryItemResponse]:

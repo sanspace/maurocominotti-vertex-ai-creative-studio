@@ -87,7 +87,7 @@ class MediaTemplateRepository(BaseRepository[MediaTemplateModel]):
         data_query = data_query.limit(search_dto.limit)
 
         # Stream results and validate with the Pydantic model
-        documents = list(base_query.stream())
+        documents = list(data_query.stream())
         media_template_data = [
             self.model.model_validate(doc.to_dict()) for doc in documents
         ]

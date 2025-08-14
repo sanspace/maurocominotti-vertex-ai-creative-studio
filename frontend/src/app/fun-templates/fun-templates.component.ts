@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-import {Component, inject, OnDestroy, OnInit, PLATFORM_ID} from '@angular/core';
+import {Component, inject, OnDestroy, OnInit} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {MimeType, Template, TemplateFilter} from './template.model';
+import {
+  IndustryEnum,
+  MimeTypeEnum,
+  MediaTemplate,
+  TemplateFilter,
+} from './media-template.model';
 import {Router} from '@angular/router';
-import {INDUSTRIES, TEMPLATES} from './templates.data';
-import {isPlatformBrowser} from '@angular/common';
+import {MediaTemplatesService} from '../admin/media-templates-management/media-templates.service';
 
 @Component({
   selector: 'app-fun-templates',
@@ -28,10 +32,9 @@ import {isPlatformBrowser} from '@angular/common';
   styleUrl: './fun-templates.component.scss',
 })
 export class FunTemplatesComponent implements OnInit, OnDestroy {
-  private isBrowser: boolean;
   public isLoading = true;
-  public allTemplates: Template[] = [];
-  public filteredTemplates: Template[] = [];
+  public allTemplates: MediaTemplate[] = [];
+  public filteredTemplates: MediaTemplate[] = [];
   public templateFilter: TemplateFilter = {
     industry: null,
     mediaType: null,
@@ -39,18 +42,19 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
     model: null,
     name: null,
   };
-  public readonly industries: string[] = INDUSTRIES;
-  public readonly mediaTypes = Object.values(MimeType);
+  public industries: string[] = [];
+  public readonly mediaTypes = Object.values(MimeTypeEnum);
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
+  public hoveredVideoId: string | null = null;
 
   // Services using inject() for modern Angular
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
   public matIconRegistry = inject(MatIconRegistry);
+  private mediaTemplatesService = inject(MediaTemplatesService);
 
   constructor() {
-    this.isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
     const iconPath = '../../assets/images';
     this.matIconRegistry
       .addSvgIcon(
@@ -64,26 +68,40 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    if (this.isBrowser) {
-      // Simulate fetching data only on the browser to avoid SSR timeouts
-      this.isLoading = true;
-      setTimeout(() => {
-        this.allTemplates = TEMPLATES;
-        this.allTemplates.forEach(t => {
-          this.currentImageIndices[t.id] = 0;
-        });
-        this.applyFilters(); // This will also start the intervals
+    this.fetchTemplates();
+  }
+
+  fetchTemplates(): void {
+    this.isLoading = true;
+    this.mediaTemplatesService.getMediaTemplates().subscribe({
+      next: response => {
+        this.allTemplates = response.data
+          .filter(t => t.id)
+          .map((mediaTemplate: MediaTemplate) => {
+            return {
+              ...mediaTemplate,
+              id: mediaTemplate.id!,
+              mimeType: mediaTemplate.mimeType as unknown as MimeTypeEnum,
+              presignedUrls: mediaTemplate.presignedUrls,
+              tags: mediaTemplate.tags || [],
+              thumbnailUris: mediaTemplate.thumbnailUris || [],
+              industry: mediaTemplate.industry || IndustryEnum.OTHER,
+            } as MediaTemplate;
+          });
+
+        this.industries = [
+          ...new Set(this.allTemplates.map(t => t.industry)),
+        ].sort();
+
+        this.allTemplates.forEach(t => (this.currentImageIndices[t.id] = 0));
+        this.applyFilters();
         this.isLoading = false;
-      }, 500); // Simulate 0.5 second network delay
-    } else {
-      // For SSR, load the data synchronously
-      this.allTemplates = TEMPLATES;
-      this.filteredTemplates = [...this.allTemplates];
-      this.allTemplates.forEach(t => {
-        this.currentImageIndices[t.id] = 0;
-      });
-      this.isLoading = false;
-    }
+      },
+      error: err => {
+        console.error('Error fetching fun templates', err);
+        this.isLoading = false;
+      },
+    });
   }
 
   /**
@@ -93,7 +111,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
    * @param template The template object itself.
    * @returns The unique ID of the template.
    */
-  public trackById(index: number, template: Template): string {
+  public trackById(index: number, template: MediaTemplate): string {
     return template.id;
   }
 
@@ -159,10 +177,10 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
    * generation parameters in the router state.
    * @param template The template object that was clicked.
    */
-  useTemplate(template: Template): void {
+  useTemplate(template: MediaTemplate): void {
     // Navigate to the homepage (or your generator page) and pass the parameters
     this.router.navigate(
-      [template.mimeType === MimeType.VIDEO ? '/video' : '/'],
+      [template.mimeType === MimeTypeEnum.VIDEO ? '/video' : '/'],
       {
         state: {
           templateParams: template.generationParameters,
@@ -218,7 +236,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
       (currentIndex - 1 + urlsLength) % urlsLength;
   }
 
-  public startAutoSlide(template: Template): void {
+  public startAutoSlide(template: MediaTemplate): void {
     const urls = template.presignedUrls;
     if (urls && urls.length > 1) {
       if (this.autoSlideIntervals[template.id]) {
@@ -235,6 +253,20 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
       clearInterval(this.autoSlideIntervals[imageId]);
       delete this.autoSlideIntervals[imageId];
     }
+  }
+
+  public onMouseEnter(template: MediaTemplate): void {
+    if (template.mimeType === MimeTypeEnum.VIDEO) {
+      this.hoveredVideoId = template.id;
+    }
+    this.stopAutoSlide(template.id);
+  }
+
+  public onMouseLeave(template: MediaTemplate): void {
+    if (template.mimeType === MimeTypeEnum.VIDEO) {
+      this.hoveredVideoId = null;
+    }
+    this.startAutoSlide(template);
   }
 
   ngOnDestroy(): void {

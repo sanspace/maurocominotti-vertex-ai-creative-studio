@@ -11,9 +11,9 @@ import {
   ColorAndToneEnum,
   CompositionEnum,
   GenerationModelEnum,
-} from '../media-template.model';
-import { MatChipInputEvent } from '@angular/material/chips';
-import { Subscription } from 'rxjs';
+} from '../../../fun-templates/media-template.model';
+import {MatChipInputEvent} from '@angular/material/chips';
+import {Subscription} from 'rxjs';
 
 @Component({
   selector: 'app-media-template-form',
@@ -30,20 +30,20 @@ export class MediaTemplateFormComponent implements OnInit, OnDestroy {
   colorsAndTones = Object.values(ColorAndToneEnum);
   compositions = Object.values(CompositionEnum);
 
-  imageModels: GenerationModelEnum[] = Object.values(GenerationModelEnum).filter(
-    model => model.startsWith('imagen') || model.startsWith('imagegen')
-  );
-  videoModels: GenerationModelEnum[] = Object.values(GenerationModelEnum).filter(
-    model => model.startsWith('veo')
-  );
+  imageModels: GenerationModelEnum[] = Object.values(
+    GenerationModelEnum,
+  ).filter(model => model.startsWith('imagen') || model.startsWith('imagegen'));
+  videoModels: GenerationModelEnum[] = Object.values(
+    GenerationModelEnum,
+  ).filter(model => model.startsWith('veo'));
 
   filteredGenerationModels: GenerationModelEnum[] = [];
   private mimeTypeSubscription!: Subscription;
 
   constructor(
     public dialogRef: MatDialogRef<MediaTemplateFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { template: MediaTemplate },
-    private fb: FormBuilder
+    @Inject(MAT_DIALOG_DATA) public data: {template: MediaTemplate},
+    private fb: FormBuilder,
   ) {
     // This initialization is necessary to prevent template errors.
     this.form = this.fb.group({});
@@ -62,10 +62,12 @@ export class MediaTemplateFormComponent implements OnInit, OnDestroy {
       brand: [template.brand],
       tags: this.fb.array(template.tags || []),
       gcsUris: this.fb.array(
-        (template.gcsUris || []).map(uri => this.fb.control(uri, Validators.required))
+        (template.gcsUris || []).map(uri =>
+          this.fb.control(uri, Validators.required),
+        ),
       ),
       thumbnailUris: this.fb.array(
-        (template.thumbnailUris || []).map(uri => this.fb.control(uri))
+        (template.thumbnailUris || []).map(uri => this.fb.control(uri)),
       ),
       generationParameters: this.fb.group({
         prompt: [params.prompt],
@@ -95,9 +97,9 @@ export class MediaTemplateFormComponent implements OnInit, OnDestroy {
 
   updateFilteredModels(): void {
     const mimeType = this.form.get('mimeType')?.value;
-    if (mimeType === MimeTypeEnum.IMAGE_PNG) {
+    if (mimeType === MimeTypeEnum.IMAGE) {
       this.filteredGenerationModels = this.imageModels;
-    } else if (mimeType === MimeTypeEnum.VIDEO_MP4) {
+    } else if (mimeType === MimeTypeEnum.VIDEO) {
       this.filteredGenerationModels = this.videoModels;
     } else {
       // For other types like audio, there are no models yet.

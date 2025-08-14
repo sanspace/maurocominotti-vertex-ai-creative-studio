@@ -33,7 +33,7 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {GalleryItem} from 'lightgallery/lg-utils';
 import lgVideo from 'lightgallery/plugins/video';
-import {GenerationParameters} from '../fun-templates/template.model';
+import {GenerationParameters} from '../fun-templates/media-template.model';
 
 @Component({
   selector: 'app-video',

@@ -149,13 +149,15 @@
         <div
           *ngFor="let template of filteredTemplates; trackBy: trackById"
           class="template-card group"
+          (mouseenter)="onMouseEnter(template)"
+          (mouseleave)="onMouseLeave(template)"
         >
           <div class="relative overflow-hidden rounded-t-lg">
             <ng-container [ngSwitch]="template.mimeType">
               <ng-container *ngSwitchCase="'image/png'">
                 <img
                   *ngFor="let url of template.presignedUrls; let i = index"
-                  class="absolute top-0 left-0 object-cover w-full h-48 transition-opacity duration-500"
+                  class="absolute top-0 left-0 object-cover w-full h-full transition-opacity duration-500"
                   [src]="url"
                   [alt]="template.name"
                   [style.opacity]="
@@ -163,12 +165,16 @@
                   "
                 />
                 <!-- Spacer for aspect ratio -->
-                <div class="h-48"></div>
+                <div
+                  class="w-full"
+                  [style.aspect-ratio]="(template.generationParameters.aspectRatio || '1:1').replace(':', ' / ')"
+                ></div>
               </ng-container>
 
               <ng-container *ngSwitchCase="'video/mp4'">
                 <!-- Video on hover -->
-                <ng-container>
+                <ng-container *ngIf="hoveredVideoId === template.id">
+                  <!-- TODO: Show Controls and allow fullscreen to see example better -->
                   <video
                     *ngFor="let url of template.presignedUrls; let i = index"
                     class="absolute top-0 left-0 object-cover w-full h-full transition-opacity duration-500"
@@ -181,15 +187,54 @@
                     playsinline
                     loop
                     autoplay
-                    preload="auto"
-                    controls="true"
+                    controls
                   >
                     <source [src]="url" [type]="template.mimeType" />
                   </video>
                 </ng-container>
 
+                <!-- Show thumbnail by default -->
+                <ng-container *ngIf="hoveredVideoId !== template.id">
+                  <ng-container
+                    *ngIf="template.presignedThumbnailUrls && template.presignedThumbnailUrls.length > 0; else videoFallback"
+                  >
+                    <img
+                      *ngFor="let url of template.presignedThumbnailUrls; let i = index"
+                      class="absolute top-0 left-0 h-full w-full cursor-pointer object-cover transition-opacity duration-500"
+                      [src]="url"
+                      [alt]="template.name"
+                      [style.opacity]="(currentImageIndices[template.id] || 0) === i ? 1 : 0"
+                    />
+                    <!-- Play Button Overlay -->
+                    <div
+                      class="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 opacity-50 transition-opacity duration-300 group-hover:opacity-0"
+                    >
+                      <svg class="h-16 w-16 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    </div>
+                  </ng-container>
+                  <ng-template #videoFallback>
+                    <video
+                      *ngFor="let url of template.presignedUrls; let i = index"
+                      class="absolute top-0 left-0 object-cover w-full h-full transition-opacity duration-500"
+                      [style.opacity]="(currentImageIndices[template.id] || 0) === i ? 1 : 0"
+                      oncanplay="this.play()"
+                      onloadedmetadata="this.muted = true"
+                      muted
+                      playsinline
+                      loop
+                      autoplay
+                      controls
+                    >
+                      <source [src]="url" [type]="template.mimeType" />
+                    </video>
+                  </ng-template>
+                </ng-container>
+
                 <!-- Spacer for aspect ratio -->
-                <div class="h-48"></div>
+                <div
+                  class="w-full"
+                  [style.aspect-ratio]="(template.generationParameters.aspectRatio || '16:9').replace(':', ' / ')"
+                ></div>
               </ng-container>
             </ng-container>
 
@@ -213,10 +258,10 @@
           </div>
 
           <div class="p-4">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between">
               <h3 class="text-lg font-bold text-white">{{ template.name }}</h3>
               <span
-                class="px-2 py-1 text-xs font-semibold rounded-full"
+                class="mb-2 px-2 py-1 text-xs font-semibold rounded-full"
                 [ngClass]="{
                   'bg-blue-500/20 text-blue-300':
                     template.mimeType === 'video/mp4',

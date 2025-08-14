@@ -2,11 +2,11 @@ import {AfterViewInit, Component, OnInit, ViewChild} from '@angular/core';
 import {MatTableDataSource} from '@angular/material/table';
 import {MatPaginator} from '@angular/material/paginator';
 import {MatSort} from '@angular/material/sort';
-import {MediaTemplate} from './media-template.model';
 import {MediaTemplatesService} from './media-templates.service';
 import {MatDialog} from '@angular/material/dialog';
 import {MediaTemplateFormComponent} from './media-template-form/media-template-form.component';
 import {of} from 'rxjs';
+import {MediaTemplate} from '../../fun-templates/media-template.model';
 
 @Component({
   selector: 'app-media-templates-management',
