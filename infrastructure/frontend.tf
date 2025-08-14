@@ -99,7 +99,7 @@ resource "google_artifact_registry_repository_iam_member" "fe_ar_writer_binding"
   location   = google_artifact_registry_repository.frontend_repo.location
   repository = google_artifact_registry_repository.frontend_repo.name
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${local.cloudbuild_sa}"
+  member     = "serviceAccount:${google_service_account.frontend_trigger_sa.email}"
 
   depends_on = [google_project_service.apis]
 }
@@ -108,7 +108,7 @@ resource "google_cloud_run_v2_service_iam_member" "fe_run_developer_binding" {
   name     = google_cloud_run_v2_service.frontend_service.name
   location = google_cloud_run_v2_service.frontend_service.location
   role     = "roles/run.developer"
-  member   = "serviceAccount:${local.cloudbuild_sa}"
+  member   = "serviceAccount:${google_service_account.frontend_trigger_sa.email}"
 
   depends_on = [google_project_service.apis]
 }
