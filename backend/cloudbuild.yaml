@@ -48,8 +48,8 @@ images:
 # Substitutions will be passed in from the Cloud Build trigger.
 # You can override these for manual runs.
 substitutions:
-  _SERVICE_NAME: 'backend-service'
-  _REPO_NAME: 'backend-service-repo' # This matches local.artifact_repo_id
+  _SERVICE_NAME: 'creative-studio-backend'
+  _REPO_NAME: 'cs-be-development-repo' # This matches local.artifact_repo_id
   _REGION: 'us-central1'
 
 options:
