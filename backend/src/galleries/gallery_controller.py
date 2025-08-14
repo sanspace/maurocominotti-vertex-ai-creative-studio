@@ -29,8 +29,8 @@ router = APIRouter(
         Depends(
             RoleChecker(
                 allowed_roles=[
-                    UserRoleEnum.ADMIN.value,
-                    UserRoleEnum.USER.value,
+                    UserRoleEnum.ADMIN,
+                    UserRoleEnum.USER,
                 ]
             )
         )

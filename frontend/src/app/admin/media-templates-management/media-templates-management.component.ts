@@ -53,7 +53,7 @@ export class MediaTemplatesManagementComponent
     this.errorLoading = null;
     this.mediaTemplatesService.getMediaTemplates().subscribe({
       next: templates => {
-        this.dataSource.data = templates;
+        this.dataSource.data = templates.data;
         this.isLoading = false;
       },
       error: err => {

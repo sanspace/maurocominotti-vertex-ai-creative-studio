@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
-from src.users.user_model import User
+from src.users.user_model import User, UserRoleEnum
 from src.users.user_service import UserService
 
 # Initialize the service once to be used by dependencies.
@@ -66,7 +66,7 @@ class RoleChecker:
     Dependency that checks if the authenticated user has the required roles.
     It depends on `get_current_user` to ensure the user is authenticated first.
     """
-    def __init__(self, allowed_roles: List[str]):
+    def __init__(self, allowed_roles: List[UserRoleEnum]):
         self.allowed_roles = allowed_roles
 
     def __call__(self, user: User = Depends(get_current_user)):

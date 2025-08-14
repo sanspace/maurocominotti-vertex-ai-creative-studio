@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import {PaginatedResponse} from './paginated-response.model';
+
 /**
  * Represents a single media item, mirroring the Pydantic model from the backend.
  */
@@ -64,13 +66,6 @@ export interface MediaItem {
 
   // Debugging field
   rawData?: Record<string, any>;
-}
-
-
-export interface PaginatedResponse<T> {
-  count: number;
-  data: T[];
-  nextPageCursor?: string;
 }
 
 /**

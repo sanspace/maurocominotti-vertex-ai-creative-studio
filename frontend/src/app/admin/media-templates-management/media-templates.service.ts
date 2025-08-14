@@ -4,30 +4,33 @@ import {Observable, throwError} from 'rxjs';
 import {catchError} from 'rxjs/operators';
 import { MediaTemplate } from './media-template.model';
 import { environment } from '../../../environments/environment';
+import {PaginatedResponse} from '../../common/models/paginated-response.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class MediaTemplatesService {
   private apiUrl = `${environment.backendURL}/media-templates`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
-  getMediaTemplates(): Observable<MediaTemplate[]> {
-    return this.http.get<MediaTemplate[]>(this.apiUrl).pipe(catchError(this.handleError));
+  getMediaTemplates(): Observable<PaginatedResponse<MediaTemplate>> {
+    return this.http
+      .get<PaginatedResponse<MediaTemplate>>(this.apiUrl)
+      .pipe(catchError(this.handleError));
   }
 
   createMediaTemplate(template: MediaTemplate): Observable<MediaTemplate> {
-    return this.http.post<MediaTemplate>(this.apiUrl, template).pipe(
-      catchError(this.handleError)
-    );
+    return this.http
+      .post<MediaTemplate>(this.apiUrl, template)
+      .pipe(catchError(this.handleError));
   }
 
   updateMediaTemplate(template: MediaTemplate): Observable<MediaTemplate> {
     const url = `${this.apiUrl}/${template.id}`;
-    return this.http.put<MediaTemplate>(url, template).pipe(
-      catchError(this.handleError)
-    );
+    return this.http
+      .put<MediaTemplate>(url, template)
+      .pipe(catchError(this.handleError));
   }
 
   private handleError(error: HttpErrorResponse) {
@@ -39,7 +42,11 @@ export class MediaTemplatesService {
       // The backend returned an unsuccessful response code.
       // The response body may contain clues as to what went wrong.
       errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
-      if (error.error && typeof error.error === 'object' && error.error.detail) {
+      if (
+        error.error &&
+        typeof error.error === 'object' &&
+        error.error.detail
+      ) {
         // FastAPI validation errors often come in this format
         errorMessage += `\nDetails: ${JSON.stringify(error.error.detail)}`;
       } else if (error.error) {

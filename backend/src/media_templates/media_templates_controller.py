@@ -1,6 +1,9 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.media_templates.dto.media_template_response_dto import (
+    MediaTemplateResponse,
+)
+from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.users.user_model import UserRoleEnum
 from src.media_templates.media_templates_service import MediaTemplateService
 from src.auth.auth_guard import RoleChecker
@@ -10,11 +13,9 @@ from src.media_templates.dto.template_search_dto import TemplateSearchDto
 from src.media_templates.dto.update_template_dto import UpdateTemplateDto
 
 # Define role checkers for convenience
-admin_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN.value]))
+admin_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN]))
 any_user = Depends(
-    RoleChecker(
-        allowed_roles=[UserRoleEnum.ADMIN.value, UserRoleEnum.USER.value]
-    )
+    RoleChecker(allowed_roles=[UserRoleEnum.ADMIN, UserRoleEnum.USER])
 )
 
 router = APIRouter(
@@ -49,11 +50,11 @@ def create_template(
 
 @router.get(
     "/",
-    response_model=List[MediaTemplateModel],
+    response_model=PaginationResponseDto[MediaTemplateResponse],
     summary="Find All Templates",
     dependencies=[any_user],
 )
-def find_templates(
+async def find_templates(
     search_params: TemplateSearchDto = Depends(),
     service: MediaTemplateService = Depends(),
 ):
@@ -61,7 +62,7 @@ def find_templates(
     Finds and retrieves a paginated list of media templates based on search criteria.
     (Any authenticated user)
     """
-    return service.find_all_templates(search_params)
+    return await service.find_all_templates(search_params)
 
 
 @router.get(
@@ -84,7 +85,7 @@ def get_template(
     return template
 
 
-@router.patch(
+@router.put(
     "/{template_id}",
     response_model=MediaTemplateModel,
     summary="Update a Template",

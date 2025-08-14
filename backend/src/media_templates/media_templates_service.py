@@ -1,6 +1,11 @@
-from typing import List, Optional
-import re
+import asyncio
+from typing import Optional
 
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.auth.iam_signer_credentials_service import IamSignerCredentials
+from src.media_templates.dto.media_template_response_dto import (
+    MediaTemplateResponse,
+)
 from src.common.base_dto import MimeTypeEnum
 from src.media_templates.dto.create_prompt_template_dto import (
     CreatePromptTemplateDto,
@@ -32,6 +37,44 @@ class MediaTemplateService:
         self.template_repo = MediaTemplateRepository()
         self.media_item_repo = MediaRepository()
         self.gemini_service = GeminiService()
+        self.iam_signer_credentials = IamSignerCredentials()
+
+    async def _create_media_template_response(
+        self, item: MediaTemplateModel
+    ) -> MediaTemplateResponse:
+        """
+        Helper function to convert a MediaItem into a GalleryItemResponse
+        by generating presigned URLs in parallel for its GCS URIs.
+        """
+        all_gcs_uris = item.gcs_uris or []
+
+        # Create a list of tasks to run the synchronous URL generation in parallel threads
+        tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in all_gcs_uris
+            if uri
+        ]
+
+        # Await all URL generation tasks to complete concurrently
+        presigned_urls = await asyncio.gather(*tasks)
+
+        thumbnail_tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in (item.thumbnail_uris or "")
+            if uri
+        ]
+        presigned_thumbnail_urls = await asyncio.gather(*thumbnail_tasks)
+
+        # Create the response DTO, copying all original data and adding the new URLs
+        return MediaTemplateResponse(
+            **item.model_dump(),
+            presigned_urls=presigned_urls,
+            presigned_thumbnail_urls=presigned_thumbnail_urls,
+        )
 
     def get_template_by_id(
         self, template_id: str
@@ -39,11 +82,28 @@ class MediaTemplateService:
         """Fetches a single template by its ID."""
         return self.template_repo.get_by_id(template_id)
 
-    def find_all_templates(
+    async def find_all_templates(
         self, search_dto: TemplateSearchDto
-    ) -> List[MediaTemplateModel]:
+    ) -> PaginationResponseDto[MediaTemplateResponse]:
         """Finds all templates with optional filtering and pagination."""
-        return self.template_repo.query(search_dto)
+        # Run the synchronous database query in a separate thread
+        media_templates_query = await asyncio.to_thread(
+            self.template_repo.query, search_dto
+        )
+        media_templates = media_templates_query.data or []
+
+        # Convert each MediaItem to a GalleryItemResponse in parallel
+        response_tasks = [
+            self._create_media_template_response(item)
+            for item in media_templates
+        ]
+        enriched_items = await asyncio.gather(*response_tasks)
+
+        return PaginationResponseDto[MediaTemplateResponse](
+            count=media_templates_query.count,
+            next_page_cursor=media_templates_query.next_page_cursor,
+            data=enriched_items,
+        )
 
     def delete_template(self, template_id: str) -> bool:
         """Deletes a template by its ID. (Admin only)"""
@@ -116,4 +176,5 @@ class MediaTemplateService:
             ),
         )
 
-        return self.template_repo.create(new_template)
+        self.template_repo.save(new_template)
+        return new_template

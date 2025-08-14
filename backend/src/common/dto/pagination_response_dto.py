@@ -15,7 +15,9 @@ class PaginationResponseDto(BaseDto, Generic[T]):
     and a cursor to fetch the next page.
     """
 
-    data: List[T]= Field(description="The list of documents for the current page.")
+    data: Optional[List[T]] = Field(
+        description="The list of documents for the current page."
+    )
     count: int = Field(
         description="Total number of documents matching the query."
     )
@@ -23,10 +25,3 @@ class PaginationResponseDto(BaseDto, Generic[T]):
         None,
         description="The cursor for fetching the next page.",
     )
-
-    # class Config:
-    #     # Allows creating the model using snake_case but exporting as camelCase (due to alias)
-    #     allow_population_by_field_name = True
-    #     # Ensures that the JSON response uses the alias 'nextPageCursor'
-    #     by_alias = True
-    #     extra="forbid"

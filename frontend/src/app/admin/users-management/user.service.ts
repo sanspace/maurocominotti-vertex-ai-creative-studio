@@ -41,8 +41,7 @@ export class UserService {
       .set('limit', limit.toString())
       .set('email', filter);
 
-    if (startAfter)
-      params = params.set('startAfter', startAfter);
+    if (startAfter) params = params.set('startAfter', startAfter);
 
     return this.http
       .get<PaginatedResponse>(this.usersApiUrl, {params, ...this.httpOptions})
