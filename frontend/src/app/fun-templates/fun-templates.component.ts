@@ -25,6 +25,12 @@ import {
 } from './media-template.model';
 import {Router} from '@angular/router';
 import {MediaTemplatesService} from '../admin/media-templates-management/media-templates.service';
+import {LightGallery} from 'lightgallery/lightgallery';
+import {GalleryItem} from 'lightgallery/lg-utils';
+import lightGallery from 'lightgallery';
+import lgZoom from 'lightgallery/plugins/zoom';
+import lgThumbnail from 'lightgallery/plugins/thumbnail';
+import lgVideo from 'lightgallery/plugins/video';
 
 @Component({
   selector: 'app-fun-templates',
@@ -47,6 +53,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
   public hoveredVideoId: string | null = null;
+  private lightGalleryInstance?: LightGallery;
 
   // Services using inject() for modern Angular
   private router = inject(Router);
@@ -269,7 +276,52 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
     this.startAutoSlide(template);
   }
 
+  public openGallery(template: MediaTemplate, index: number): void {
+    const dynamicEl: GalleryItem[] = template.presignedUrls.map((url, i) => {
+      if (template.mimeType === MimeTypeEnum.VIDEO) {
+        return {
+          src: '', // For lg-video, src should be empty
+          thumb: template.presignedThumbnailUrls?.[i] || '',
+          subHtml: `<div class="lightGallery-captions"><h4>${
+            template.name
+          } - Variation ${i + 1}</h4><p>${template.description}</p></div>`,
+          downloadUrl: url,
+          video: {
+            source: [{src: url, type: template.mimeType}],
+            tracks: [],
+            attributes: {preload: 'metadata', controls: true} as any,
+          },
+        };
+      } else {
+        // Image
+        return {
+          src: url,
+          thumb: url,
+          subHtml: `<div class="lightGallery-captions"><h4>${
+            template.name
+          } - Variation ${i + 1}</h4><p>${template.description}</p></div>`,
+          downloadUrl: url,
+        };
+      }
+    });
+
+    // We need a dummy element to initialize lightgallery on.
+    const container = document.createElement('div');
+
+    this.lightGalleryInstance = lightGallery(container, {
+      dynamic: true,
+      dynamicEl: dynamicEl,
+      index: index,
+      plugins: [lgZoom, lgThumbnail, lgVideo],
+      speed: 500,
+      download: true,
+      closable: true,
+    });
+    this.lightGalleryInstance.openGallery();
+  }
+
   ngOnDestroy(): void {
     Object.values(this.autoSlideIntervals).forEach(clearInterval);
+    this.lightGalleryInstance?.destroy();
   }
 }

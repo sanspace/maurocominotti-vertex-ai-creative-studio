@@ -34,6 +34,7 @@ import {ToastMessageComponent} from '../common/components/toast-message/toast-me
 import {GalleryItem} from 'lightgallery/lg-utils';
 import lgVideo from 'lightgallery/plugins/video';
 import {GenerationParameters} from '../fun-templates/media-template.model';
+import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 
 @Component({
   selector: 'app-video',
@@ -399,7 +400,7 @@ export class VideoComponent {
           this.searchRequest.prompt = response.prompt;
         },
         error: error => {
-          this.handleError(error, 'Rewrite prompt');
+          handleErrorSnackbar(this._snackBar, error, 'Rewrite prompt');
         },
       });
   }
@@ -415,7 +416,7 @@ export class VideoComponent {
           this.searchRequest.prompt = response.prompt;
         },
         error: error => {
-          this.handleError(error, 'Get random prompt');
+          handleErrorSnackbar(this._snackBar, error, 'Get random prompt');
         },
       });
   }

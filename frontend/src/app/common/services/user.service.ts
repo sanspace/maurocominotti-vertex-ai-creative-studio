@@ -24,7 +24,7 @@ import {
   setDoc,
   updateDoc,
 } from '@angular/fire/firestore';
-import {UserData} from '../models/user.model';
+import {UserModel} from '../models/user.model';
 import {environment} from '../../../environments/environment';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
@@ -58,10 +58,10 @@ export class UserService {
 
   constructor(private http: HttpClient) {}
 
-  async get(uid: string): Promise<UserData> {
+  async get(uid: string): Promise<UserModel> {
     const userRef = doc(this.firestore, USER_COLLECTION, uid);
     const userDoc = await getDoc(userRef);
-    return userDoc.data() as UserData;
+    return userDoc.data() as UserModel;
   }
 
   async delete(uid: string) {

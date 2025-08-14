@@ -17,7 +17,7 @@ export class MediaTemplatesManagementComponent
   implements OnInit, AfterViewInit
 {
   displayedColumns: string[] = [
-    // 'thumbnail',
+    'thumbnail',
     'name',
     'description',
     'mimeType',

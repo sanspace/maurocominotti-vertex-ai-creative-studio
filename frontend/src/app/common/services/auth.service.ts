@@ -16,7 +16,7 @@
 
 import {Injectable, PLATFORM_ID, inject} from '@angular/core';
 import {Router} from '@angular/router';
-import {UserData} from '../models/user.model';
+import {UserModel} from '../models/user.model';
 import {HttpClient, HttpHeaders, HttpErrorResponse} from '@angular/common/http';
 import {environment} from '../../../environments/environment';
 import {Auth, IdTokenResult} from '@angular/fire/auth';
@@ -152,12 +152,12 @@ export class AuthService {
     return of(this.firebaseIdToken!);
   }
 
-  private syncUserWithBackend$(token: string): Observable<UserData> {
+  private syncUserWithBackend$(token: string): Observable<UserModel> {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     return this.httpClient
-      .get<UserData>(`${environment.backendURL}/users/me`, {headers})
+      .get<UserModel>(`${environment.backendURL}/users/me`, {headers})
       .pipe(
-        tap((userDetails: UserData) => {
+        tap((userDetails: UserModel) => {
           // The backend is the source of truth. Save the returned profile to local storage.
           localStorage.setItem(USER_DETAILS, JSON.stringify(userDetails));
           console.log('User profile successfully synced with backend.');

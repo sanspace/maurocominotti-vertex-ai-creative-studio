@@ -152,7 +152,16 @@
           (mouseenter)="onMouseEnter(template)"
           (mouseleave)="onMouseLeave(template)"
         >
-          <div class="relative overflow-hidden rounded-t-lg">
+          <div
+            class="relative overflow-hidden rounded-t-lg cursor-pointer"
+            (click)="openGallery(template, currentImageIndices[template.id] || 0)"
+          >
+            <div class="absolute top-2 right-2 z-40 p-1.5 text-white bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1v4m0 0h-4m4 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5 5" />
+                </svg>
+            </div>
+
             <ng-container [ngSwitch]="template.mimeType">
               <ng-container *ngSwitchCase="'image/png'">
                 <img
@@ -174,7 +183,6 @@
               <ng-container *ngSwitchCase="'video/mp4'">
                 <!-- Video on hover -->
                 <ng-container *ngIf="hoveredVideoId === template.id">
-                  <!-- TODO: Show Controls and allow fullscreen to see example better -->
                   <video
                     *ngFor="let url of template.presignedUrls; let i = index"
                     class="absolute top-0 left-0 object-cover w-full h-full transition-opacity duration-500"
@@ -187,7 +195,6 @@
                     playsinline
                     loop
                     autoplay
-                    controls
                   >
                     <source [src]="url" [type]="template.mimeType" />
                   </video>
@@ -223,7 +230,6 @@
                       playsinline
                       loop
                       autoplay
-                      controls
                     >
                       <source [src]="url" [type]="template.mimeType" />
                     </video>

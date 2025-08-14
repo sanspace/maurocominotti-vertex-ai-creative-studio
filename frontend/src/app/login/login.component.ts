@@ -18,7 +18,7 @@ import {Component, NgZone} from '@angular/core';
 import {GoogleAuthProvider} from '@angular/fire/auth';
 import {Router} from '@angular/router';
 import {AuthService} from './../common/services/auth.service';
-import {UserData} from './../common/models/user.model';
+import {UserModel} from './../common/models/user.model';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from './../common/components/toast-message/toast-message.component';
 
@@ -100,7 +100,7 @@ export class LoginComponent {
     }
   }
 
-  redirect(user: UserData) {
+  redirect(user: UserModel) {
     localStorage.setItem('USER_DETAILS', JSON.stringify(user));
     this.loader = false;
     void this.router.navigate([HOME_ROUTE]);

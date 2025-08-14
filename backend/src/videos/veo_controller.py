@@ -23,20 +23,14 @@ from src.videos.veo_service import VeoService
 from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 
+# Define role checkers for convenience
+creator_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.CREATOR, UserRoleEnum.ADMIN]))
+
 router = APIRouter(
     prefix="/api/videos",
     tags=["Google Video APIs"],
     responses={404: {"description": "Not found"}},
-    dependencies=[
-        Depends(
-            RoleChecker(
-                allowed_roles=[
-                    UserRoleEnum.ADMIN,
-                    UserRoleEnum.USER,
-                ]
-            )
-        )
-    ],
+    dependencies=[creator_only],
 )
 
 

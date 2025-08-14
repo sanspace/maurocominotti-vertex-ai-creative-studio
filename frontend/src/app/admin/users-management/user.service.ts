@@ -7,12 +7,12 @@ import {
 } from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
 import {catchError, tap} from 'rxjs/operators';
-import {UserModel as User} from './user.model'; // Adjust path if you placed it elsewhere
 import {environment} from '../../../environments/environment'; // To get backendURL
+import {UserModel} from '../../common/models/user.model';
 
 export interface PaginatedResponse {
   count: number;
-  data: User[];
+  data: UserModel[];
   nextPageCursor?: string;
 }
 
@@ -49,22 +49,22 @@ export class UserService {
   }
 
   // GET: Fetch a single user by ID
-  getUser(id: number | string): Observable<User> {
+  getUser(id: number | string): Observable<UserModel> {
     const url = `${this.usersApiUrl}/${id}`;
     return this.http
-      .get<User>(url, this.httpOptions)
+      .get<UserModel>(url, this.httpOptions)
       .pipe(catchError(this.handleError));
   }
 
   // POST: Add a new user
-  addUser(user: User): Observable<User> {
+  addUser(user: UserModel): Observable<UserModel> {
     return this.http
-      .post<User>(this.usersApiUrl, user, this.httpOptions)
+      .post<UserModel>(this.usersApiUrl, user, this.httpOptions)
       .pipe(catchError(this.handleError));
   }
 
   // PUT: Update an existing user
-  updateUser(user: User): Observable<any> {
+  updateUser(user: UserModel): Observable<any> {
     // FastAPI might return the updated user or just a success status
     const url = `${this.usersApiUrl}/${user.id}`;
     return this.http
@@ -73,11 +73,11 @@ export class UserService {
   }
 
   // DELETE: Delete a user
-  deleteUser(id: number | string): Observable<User> {
+  deleteUser(id: number | string): Observable<UserModel> {
     // Or Observable<{}> if backend returns empty on delete
     const url = `${this.usersApiUrl}/${id}`;
     return this.http
-      .delete<User>(url, this.httpOptions)
+      .delete<UserModel>(url, this.httpOptions)
       .pipe(catchError(this.handleError));
   }
 

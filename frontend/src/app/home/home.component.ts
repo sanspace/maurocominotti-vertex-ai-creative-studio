@@ -42,6 +42,7 @@ import {additionalShareOptions} from '../utils/lightgallery-share-options';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {GenerationParameters} from '../fun-templates/media-template.model';
+import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 
 @Component({
   selector: 'app-home',
@@ -447,7 +448,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           this.processSearchResults(searchResponse);
         },
         error: error => {
-          this.handleError(error, 'Search');
+          handleErrorSnackbar(this._snackBar, error, 'Search');
         },
       });
   }
@@ -469,7 +470,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           this.searchRequest.prompt = response.prompt;
         },
         error: error => {
-          this.handleError(error, 'Rewrite prompt');
+          handleErrorSnackbar(this._snackBar, error, 'Rewrite prompt');
         },
       });
   }
@@ -485,7 +486,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           this.searchRequest.prompt = response.prompt;
         },
         error: error => {
-          this.handleError(error, 'Get random prompt');
+          handleErrorSnackbar(this._snackBar, error, 'Get random prompt');
         },
       });
   }
@@ -503,24 +504,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       addWatermark: false,
       negativePrompt: '',
     };
-  }
-
-  private handleError(error: any, context: string) {
-    console.error(`${context} error:`, error);
-    const errorMessage =
-      error?.error?.detail?.[0]?.msg ||
-      error?.message ||
-      'Something went wrong';
-    this._snackBar.openFromComponent(ToastMessageComponent, {
-      panelClass: ['red-toast'],
-      verticalPosition: 'top',
-      horizontalPosition: 'right',
-      duration: 6000,
-      data: {
-        text: errorMessage,
-        icon: 'cross-in-circle-white',
-      },
-    });
   }
 
   private onMouseMove = (event: MouseEvent) => {

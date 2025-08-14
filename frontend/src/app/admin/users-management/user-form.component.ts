@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import {UserModel as User} from './user.model';
+import {UserModel, UserRolesEnum} from '../../common/models/user.model';
 
 @Component({
   selector: 'app-user-form',
@@ -11,12 +11,12 @@ import {UserModel as User} from './user.model';
 export class UserFormComponent implements OnInit {
   userForm: FormGroup;
   isEditMode: boolean;
-  availableRoles: string[] = ['admin', 'user'];
+  availableRoles: UserRolesEnum[] = Object.values(UserRolesEnum);
 
   constructor(
     public dialogRef: MatDialogRef<UserFormComponent>,
     @Inject(MAT_DIALOG_DATA)
-    public data: {user: User; isEditMode: boolean}, // Data passed to the dialog
+    public data: {user: UserModel; isEditMode: boolean}, // Data passed to the dialog
     private fb: FormBuilder,
   ) {
     this.isEditMode = data.isEditMode;

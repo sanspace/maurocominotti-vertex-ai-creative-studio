@@ -9,11 +9,11 @@ import {
   takeUntil,
   catchError,
 } from 'rxjs/operators';
-import {UserModel as User} from './user.model';
 import {UserService, PaginatedResponse} from './user.service';
 import {MatDialog} from '@angular/material/dialog';
 import {UserFormComponent} from './user-form.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
+import {UserModel, UserRolesEnum} from '../../common/models/user.model';
 
 @Component({
   selector: 'app-users-management',
@@ -30,14 +30,15 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
     'updatedAt',
     'actions',
   ];
-  dataSource: MatTableDataSource<User> = new MatTableDataSource<User>();
+  dataSource: MatTableDataSource<UserModel> =
+    new MatTableDataSource<UserModel>();
   isLoading = true;
   errorLoadingUsers: string | null = null;
   lastResponse: PaginatedResponse | undefined;
 
   // --- Pagination State ---
   totalUsers = 0;
-  limit = 25;
+  limit = 10;
   currentPageIndex = 0;
   // Stores the cursor for the START of each page.
   // pageCursors[0] is null
@@ -162,7 +163,7 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
     this.fetchPage(0);
   }
 
-  openUserForm(user: User): void {
+  openUserForm(user: UserModel): void {
     const dialogRef = this.dialog.open(UserFormComponent, {
       width: '450px',
       data: {user: user, isEditMode: true},
@@ -171,13 +172,13 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
     dialogRef
       .afterClosed()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(async (result: User | undefined) => {
+      .subscribe(async (result: UserModel | undefined) => {
         if (result) {
           this.isLoading = true;
           try {
             // The form returns the full user object with updated roles
             await firstValueFrom(this.userService.updateUser(result));
-            this._snackBar.open('User updated successfully!', 'Close', {
+            this._snackBar.open('UserModel updated successfully!', 'Close', {
               duration: 3000,
             });
             // Refetch to show updated data on the current page.
@@ -200,7 +201,7 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
       this.isLoading = true;
       try {
         await firstValueFrom(this.userService.deleteUser(userId));
-        this._snackBar.open('User deleted successfully!', 'Close', {
+        this._snackBar.open('UserModel deleted successfully!', 'Close', {
           duration: 3000,
         });
         this.resetPaginationAndFetch();
@@ -212,6 +213,23 @@ export class UsersManagementComponent implements OnInit, OnDestroy {
       } finally {
         this.isLoading = false;
       }
+    }
+  }
+
+  public getRoleChipClass(role: string): string {
+    const roleLower = role.toLowerCase();
+
+    // Using a switch statement makes it easy to add more roles later
+    switch (roleLower) {
+      case UserRolesEnum.ADMIN.toLowerCase():
+        return '!bg-amber-500/20 !text-amber-300';
+      case UserRolesEnum.USER.toLowerCase():
+        return '!bg-blue-500/20 !text-blue-300';
+      case UserRolesEnum.CREATOR.toLowerCase():
+        return '!bg-purple-500/20 !text-purple-300';
+      default:
+        // It's good practice to have a default style
+        return '!bg-gray-500/20 !text-gray-300';
     }
   }
 }

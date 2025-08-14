@@ -30,16 +30,16 @@
     <table mat-table [dataSource]="dataSource" matSort class="w-full">
 
       <!-- Thumbnail Column -->
-      <!-- <ng-container matColumnDef="thumbnail">
+      <ng-container matColumnDef="thumbnail">
         <th mat-header-cell *matHeaderCellDef class="!pl-4"> Thumbnail </th>
-        <td mat-cell *matCellDef="let user" class="!pl-4">
+        <td mat-cell *matCellDef="let template" class="!pl-4">
           <img
-            [src]="user?.thumbnailUris?.[0] || 'assets/images/default-avatar.png'"
+            [src]="template?.presignedThumbnailUrls?.[0] || 'assets/images/default-avatar.png'"
             alt="Media Template Thumbnail"
             class="w-10 h-10 rounded-full object-cover"
           />
         </td>
-      </ng-container> -->
+      </ng-container>
 
       <!-- Name Column -->
       <ng-container matColumnDef="name">
@@ -104,6 +104,6 @@
       </tr>
     </table>
 
-    <mat-paginator [pageSizeOptions]="[25, 100]" aria-label="Select page of templates"></mat-paginator>
+    <mat-paginator [pageSizeOptions]="[10, 25, 100]" aria-label="Select page of templates"></mat-paginator>
   </div>
 </div>
