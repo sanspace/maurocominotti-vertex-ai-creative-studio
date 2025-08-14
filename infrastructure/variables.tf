@@ -24,10 +24,16 @@ variable "apis_to_enable" {
   ]
 }
 
-variable "service_name" {
+variable "backend_service_name" {
   type        = string
   description = "The name of the backend service."
-  default     = "backend-service"
+  default     = "creative-studio-backend"
+}
+
+variable "frontend_service_name" {
+  type        = string
+  description = "The name of the frontend service."
+  default     = "creative-studio"
 }
 
 variable "github_repo_owner" {
@@ -49,12 +55,12 @@ variable "github_branch_name" {
 }
 
 variable "environment" {
-  description = "The deployment environment (e.g., 'development', 'production')."
+  description = "The deployment environment (e.g., 'development', 'staging', 'production')."
   type        = string
   default     = "development"
   validation {
-    condition     = contains(["development", "production"], var.environment)
-    error_message = "The environment must be either 'development' or 'production'."
+    condition     = contains(["development", "staging", "production"], var.environment)
+    error_message = "The environment must be either 'development', 'staging' or 'production'."
   }
 }
 

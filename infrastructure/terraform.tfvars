@@ -27,8 +27,6 @@ apis_to_enable = [
 # [OPTIONAL] The GCP region. Overrides the default "us-central1".
 gcp_region = "us-central1"
 
-# [OPTIONAL] The name for your Cloud Run service and related resources.
-service_name = "backend-service" # TODO: creative-studio-backend 
 
 env_vars = {
   # Keep the default common and development variables...
@@ -55,4 +53,4 @@ environment = "development"
 # [OPTIONAL] GitHub repository details.
 github_repo_owner  = "sanspace"
 github_repo_name   = "maurocominotti-vertex-ai-creative-studio"
-github_branch_name = "feat/infra"
+github_branch_name = "feat/add-fe"
