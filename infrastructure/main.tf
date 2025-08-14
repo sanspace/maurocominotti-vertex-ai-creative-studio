@@ -19,6 +19,11 @@ provider "google-beta" {
   region  = var.gcp_region
 }
 
+locals {
+  region_code   = join("", [for s in split("-", var.gcp_region) : substr(s, 0, 1)])
+  cloudbuild_sa = "${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+}
+
 # --- Enable the required Google Cloud APIs ---
 resource "google_project_service" "apis" {
   # Use a for_each loop to enable each API from the variable list
@@ -33,7 +38,7 @@ resource "google_project_service" "apis" {
 
 data "google_project" "project" {}
 
-data "google_client_openid_userinfo" "me" {}
+
 
 
 

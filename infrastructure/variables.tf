@@ -64,7 +64,7 @@ variable "environment" {
   }
 }
 
-variable "env_vars" {
+variable "be_env_vars" {
   description = "A map of environment variables for different deployment environments."
   type        = map(map(string))
   default = {
@@ -79,6 +79,24 @@ variable "env_vars" {
       FRONTEND_URL = "https://your-production-frontend.com"
       CORS_ORIGINS = "[\"https://your-production-frontend.com\"]"
       LOG_LEVEL    = "WARN"
+    }
+  }
+}
+
+variable "fe_env_vars" {
+  description = "A map of environment variables for different deployment environments."
+  type        = map(map(string))
+  default = {
+    common = {
+      LOG_LEVEL = "INFO"
+    }
+    development = {
+      BACKEND_URL = "http://localhost:4200"
+
+    }
+    production = {
+      BACKEND_URL = "https://your-production-frontend.com"
+      LOG_LEVEL   = "WARN"
     }
   }
 }

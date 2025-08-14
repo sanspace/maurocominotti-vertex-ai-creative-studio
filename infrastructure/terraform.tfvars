@@ -28,7 +28,7 @@ apis_to_enable = [
 gcp_region = "us-central1"
 
 
-env_vars = {
+be_env_vars = {
   # Keep the default common and development variables...
   common = {
     LOG_LEVEL = "INFO"
