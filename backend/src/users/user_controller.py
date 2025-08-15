@@ -41,7 +41,7 @@ async def get_my_profile(
 
 # --- Admin-Only Endpoints ---
 @router.get(
-    "/",
+    "",
     response_model=PaginationResponseDto[User],
     summary="List All Users (Admin Only)",
     dependencies=[admin_only],

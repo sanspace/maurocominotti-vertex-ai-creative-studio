@@ -49,7 +49,7 @@ def create_template(
 
 
 @router.get(
-    "/",
+    "",
     response_model=PaginationResponseDto[MediaTemplateResponse],
     summary="Find All Templates",
     dependencies=[any_user],
