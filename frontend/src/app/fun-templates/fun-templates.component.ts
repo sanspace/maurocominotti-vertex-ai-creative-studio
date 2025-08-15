@@ -60,6 +60,21 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   public matIconRegistry = inject(MatIconRegistry);
   private mediaTemplatesService = inject(MediaTemplatesService);
+  private industryColorMap: Map<string, string> = new Map([
+    [IndustryEnum.AUTOMOTIVE, '!bg-blue-500/20 !text-blue-300'],
+    [IndustryEnum.CONSUMER_GOODS, '!bg-green-500/20 !text-green-300'],
+    [IndustryEnum.ART_AND_DESIGN, '!bg-purple-500/20 !text-purple-300'],
+    [IndustryEnum.ENTERTAINMENT, '!bg-red-500/20 !text-red-300'],
+    [IndustryEnum.HOME_APPLIANCES, '!bg-yellow-500/20 !text-yellow-300'],
+    [IndustryEnum.FASHION_AND_APPAREL, '!bg-pink-500/20 !text-pink-300'],
+    [IndustryEnum.FOOD_AND_BEVERAGE, '!bg-orange-500/20 !text-orange-300'],
+    [IndustryEnum.HEALTH_AND_WELLNESS, '!bg-teal-500/20 !text-teal-300'],
+    [IndustryEnum.LUXURY_GOODS, '!bg-indigo-500/20 !text-indigo-300'],
+    [IndustryEnum.TECHNOLOGY, '!bg-sky-500/20 !text-sky-300'],
+    [IndustryEnum.TRAVEL_AND_HOSPITALITY, '!bg-lime-500/20 !text-lime-300'],
+    [IndustryEnum.PET_SUPPLIES, '!bg-fuchsia-500/20 !text-fuchsia-300'],
+    [IndustryEnum.OTHER, '!bg-gray-500/20 !text-gray-300'],
+  ]);
 
   constructor() {
     const iconPath = '../../assets/images';
@@ -76,6 +91,12 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.fetchTemplates();
+  }
+
+  getIndustryColor(industry: IndustryEnum): string {
+    return (
+      this.industryColorMap.get(industry) || 'bg-gray-500/20 text-gray-300'
+    );
   }
 
   fetchTemplates(): void {
