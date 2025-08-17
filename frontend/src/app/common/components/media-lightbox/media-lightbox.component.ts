@@ -10,7 +10,6 @@ import {MediaItem} from '../../models/media-item.model';
 import PhotoSwipeLightbox from 'photoswipe/lightbox';
 import {Clipboard} from '@angular/cdk/clipboard';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import 'photoswipe/style.css';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Location} from '@angular/common';
 

@@ -49,7 +49,8 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/photoswipe/src/photoswipe.css"
             ],
             "scripts": [],
             "server": "src/main.server.ts",
