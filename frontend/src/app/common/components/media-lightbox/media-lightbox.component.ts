@@ -132,7 +132,9 @@ export class MediaLightboxComponent
     }, 200);
   }
 
-  getShareUrl(platform: 'facebook' | 'twitter' | 'pinterest'): string {
+  getShareUrl(
+    platform: 'facebook' | 'twitter' | 'pinterest' | 'reddit' | 'whatsapp' | 'linkedin' | 'telegram',
+  ): string {
     const url = encodeURIComponent(this.currentImageUrl);
     const text = encodeURIComponent(
       this.mediaItem?.originalPrompt || 'Check out this image!',
@@ -144,6 +146,14 @@ export class MediaLightboxComponent
         return `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
       case 'pinterest':
         return `https://pinterest.com/pin/create/button/?url=${window.location.href}&media=${url}&description=${text}`;
+      case 'reddit':
+        return `https://reddit.com/submit?url=${url}&title=${text}`;
+      case 'whatsapp':
+        return `https://api.whatsapp.com/send?text=${text}%20${url}`;
+      case 'linkedin':
+        return `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+      case 'telegram':
+        return `https://t.me/share/url?url=${url}&text=${text}`;
     }
   }
 
