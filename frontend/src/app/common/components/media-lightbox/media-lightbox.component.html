@@ -2,7 +2,8 @@
   <!-- Main Media Display -->
   <div
     class="main-media-container"
-    [ngClass]="aspectRatioClass"
+    [ngClass]="[aspectRatioClass, !isVideo ? 'zoomable' : '']"
+    (click)="!isVideo && openPhotoSwipe(selectedIndex)"
   >
     <ng-container *ngIf="!isVideo && selectedUrl">
       <img

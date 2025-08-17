@@ -20,6 +20,10 @@
   overflow: hidden;
   position: relative;
 
+  &.zoomable {
+    cursor: zoom-in;
+  }
+
   .main-media {
     width: 100%;
     height: 100%;
