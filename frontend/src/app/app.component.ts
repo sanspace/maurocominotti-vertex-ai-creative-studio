@@ -18,7 +18,6 @@ import {Component} from '@angular/core';
 import {
   Router,
   NavigationEnd,
-  NavigationStart,
   Event as NavigationEvent,
 } from '@angular/router';
 import {trigger, transition, style, query, animate} from '@angular/animations';
