@@ -69,11 +69,11 @@ import {FunTemplatesComponent} from './fun-templates/fun-templates.component';
 import {VideoComponent} from './video/video.component';
 import {ArenaComponent} from './arena/arena.component';
 import {NgOptimizedImage} from '@angular/common';
-import {LightgalleryModule} from 'lightgallery/angular';
 import {MediaGalleryComponent} from './gallery/media-gallery/media-gallery.component';
 import {MediaDetailComponent} from './gallery/media-detail/media-detail.component';
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
+import { MediaLightboxComponent } from './common/components/media-lightbox/media-lightbox.component';
 
 @NgModule({
   declarations: [
@@ -89,6 +89,7 @@ import {MatProgressBarModule} from '@angular/material/progress-bar';
     ArenaComponent,
     MediaGalleryComponent,
     MediaDetailComponent,
+    MediaLightboxComponent,
   ],
   imports: [
     BrowserModule,
@@ -112,7 +113,6 @@ import {MatProgressBarModule} from '@angular/material/progress-bar';
     MatCardModule,
     MatTableModule,
     FormsModule,
-    LightgalleryModule,
     ScrollingModule,
     MatProgressBarModule,
     MatExpansionModule,

@@ -1,0 +1,49 @@
+<div *ngIf="mediaItem" class="media-lightbox-container">
+  <!-- Main Media Display -->
+  <div
+    class="main-media-container"
+    [ngClass]="aspectRatioClass"
+  >
+    <ng-container *ngIf="!isVideo && selectedUrl">
+      <img
+        [ngSrc]="selectedUrl"
+        [alt]="mediaItem.originalPrompt"
+        [width]="imageWidth"
+        [height]="imageHeight"
+        priority
+        class="main-media"
+      />
+    </ng-container>
+    <ng-container *ngIf="isVideo && selectedUrl">
+      <video
+        [src]="selectedUrl"
+        [poster]="posterUrl"
+        class="main-media"
+        controls
+        autoplay
+        muted
+        loop
+      ></video>
+    </ng-container>
+  </div>
+
+  <!-- Thumbnails -->
+  <div
+    *ngIf="mediaItem.presignedUrls && mediaItem.presignedUrls.length > 1"
+    class="thumbnails-container"
+  >
+    <div
+      *ngFor="
+        let url of (mediaItem.presignedThumbnailUrls?.length
+          ? mediaItem.presignedThumbnailUrls
+          : mediaItem.presignedUrls);
+        let i = index
+      "
+      class="thumbnail"
+      [class.active]="i === selectedIndex"
+      (click)="selectMedia(i)"
+    >
+      <img [src]="url" [alt]="'Thumbnail ' + (i + 1)" />
+    </div>
+  </div>
+</div>

@@ -12,7 +12,9 @@ describe('MediaTemplatesManagementComponent', () => {
 
   beforeEach(async () => {
     mockMediaTemplatesService = jasmine.createSpyObj('MediaTemplatesService', ['getMediaTemplates']);
-    mockMediaTemplatesService.getMediaTemplates.and.returnValue(of([]));
+    mockMediaTemplatesService.getMediaTemplates.and.returnValue(
+      of({data: [], count: 0}),
+    );
 
     await TestBed.configureTestingModule({
       imports: [MediaTemplatesManagementComponent, NoopAnimationsModule],

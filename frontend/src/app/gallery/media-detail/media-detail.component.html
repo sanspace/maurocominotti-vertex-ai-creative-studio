@@ -30,8 +30,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <!-- Left Column: The Image/Video -->
     <div class="lg:col-span-2">
-      <!-- This container will be used by lightGallery to render the inline carousel -->
-      <div #lightGalleryCarousel class="inline-gallery-container"></div>
+      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" style="max-height: 80vh;"></app-media-lightbox>
     </div>
 
     <!-- Right Column: The Metadata -->

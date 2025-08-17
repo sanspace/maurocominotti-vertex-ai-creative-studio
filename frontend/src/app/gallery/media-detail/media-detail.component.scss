@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 :host {
   // Increase specificity to override default Material styles for mat-tab labels.
   // This makes the tab labels lighter and more readable against the dark background.
@@ -32,9 +31,4 @@
   ::ng-deep .mat-mdc-chip-action-label {
       color: white !important;
   }
-}
-
-
-.inline-gallery-container {
-  height: 70vh;
 }
