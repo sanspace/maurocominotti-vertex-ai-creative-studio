@@ -8,6 +8,8 @@ import {
 } from '@angular/core';
 import {MediaItem} from '../../models/media-item.model';
 import PhotoSwipeLightbox from 'photoswipe/lightbox';
+import {Clipboard} from '@angular/cdk/clipboard';
+import {MatSnackBar} from '@angular/material/snack-bar';
 import 'photoswipe/style.css';
 
 @Component({
@@ -28,7 +30,14 @@ export class MediaLightboxComponent
   imageWidth = 1920; // A sensible default max width
   imageHeight = 1920;
 
+  public isShareMenuOpen = false;
+  public isDownloading = false;
   private lightbox: PhotoSwipeLightbox | undefined;
+
+  constructor(
+    private clipboard: Clipboard,
+    private snackBar: MatSnackBar,
+  ) {}
 
   ngAfterViewInit(): void {
     this.initializePhotoSwipe();
@@ -74,6 +83,11 @@ export class MediaLightboxComponent
         })),
         pswpModule: () => import('photoswipe'),
       });
+
+      this.lightbox.on('close', () => {
+        this.isShareMenuOpen = false;
+      });
+
       this.lightbox.init();
     } else {
       this.lightbox?.destroy();
@@ -87,6 +101,56 @@ export class MediaLightboxComponent
       const [w, h] = aspectRatioStr.split(':').map(Number);
       this.imageHeight = (h / w) * this.imageWidth;
     }
+  }
+
+  toggleShareMenu(): void {
+    this.isShareMenuOpen = !this.isShareMenuOpen;
+  }
+
+  get currentImageUrl(): string {
+    return this.selectedUrl || '';
+  }
+
+  openInNewTab(): void {
+    if (!this.selectedUrl || this.isDownloading) {
+      return;
+    }
+
+    this.isDownloading = true;
+
+    const link = document.createElement('a');
+    link.href = this.selectedUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      this.isDownloading = false;
+    }, 200);
+  }
+
+  getShareUrl(platform: 'facebook' | 'twitter' | 'pinterest'): string {
+    const url = encodeURIComponent(this.currentImageUrl);
+    const text = encodeURIComponent(
+      this.mediaItem?.originalPrompt || 'Check out this image!',
+    );
+    switch (platform) {
+      case 'facebook':
+        return `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+      case 'twitter':
+        return `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+      case 'pinterest':
+        return `https://pinterest.com/pin/create/button/?url=${window.location.href}&media=${url}&description=${text}`;
+    }
+  }
+
+  copyLink(): void {
+    this.clipboard.copy(window.location.href);
+    this.snackBar.open('Link copied to clipboard!', 'OK', {duration: 3000});
+    this.isShareMenuOpen = false;
   }
 
   openPhotoSwipe(index: number): void {

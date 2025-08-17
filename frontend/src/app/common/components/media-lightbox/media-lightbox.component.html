@@ -23,28 +23,92 @@
         controls
         autoplay
         muted
-        loop
       ></video>
     </ng-container>
   </div>
 
-  <!-- Thumbnails -->
+  <!-- Bottom Controls: Thumbnails and Actions -->
   <div
     *ngIf="mediaItem.presignedUrls && mediaItem.presignedUrls.length > 1"
-    class="thumbnails-container"
+    class="bottom-controls"
   >
-    <div
-      *ngFor="
-        let url of (mediaItem.presignedThumbnailUrls?.length
-          ? mediaItem.presignedThumbnailUrls
-          : mediaItem.presignedUrls);
-        let i = index
-      "
-      class="thumbnail"
-      [class.active]="i === selectedIndex"
-      (click)="selectMedia(i)"
-    >
-      <img [src]="url" [alt]="'Thumbnail ' + (i + 1)" />
+    <!-- Thumbnails on the left -->
+    <div class="thumbnails-container">
+      <div
+        *ngFor="
+          let url of (mediaItem.presignedThumbnailUrls?.length
+            ? mediaItem.presignedThumbnailUrls
+            : mediaItem.presignedUrls);
+          let i = index
+        "
+        class="thumbnail"
+        [class.active]="i === selectedIndex"
+        (click)="selectMedia(i)"
+      >
+        <img [src]="url" [alt]="'Thumbnail ' + (i + 1)" />
+      </div>
     </div>
+
+    <!-- Actions Toolbar on the right -->
+    <div class="media-actions-toolbar" *ngIf="mediaItem && !isVideo">
+      <button class="action-button" (click)="toggleShareMenu()" title="Share">
+        <mat-icon>share</mat-icon>
+        <span>Share</span>
+      </button>
+      <button
+        class="action-button"
+        (click)="openInNewTab()"
+        title="Open in new tab"
+        [disabled]="isDownloading"
+      >
+        <mat-spinner *ngIf="isDownloading" [diameter]="20"></mat-spinner>
+        <mat-icon *ngIf="!isDownloading">download</mat-icon>
+        <span *ngIf="!isDownloading">Download</span>
+        <span *ngIf="isDownloading">Opening...</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Share Menu -->
+<div
+  *ngIf="isShareMenuOpen"
+  class="share-menu-overlay"
+  (click)="toggleShareMenu()"
+>
+  <div class="share-menu" (click)="$event.stopPropagation()">
+    <div class="share-menu-header">
+      <h3>Share</h3>
+      <button class="close-button" (click)="toggleShareMenu()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <ul class="share-menu-list">
+      <li>
+        <a [href]="getShareUrl('facebook')" target="_blank" rel="noopener">
+          <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M13.397 20.997v-8.196h2.765l.411-3.209h-3.176V7.548c0-.926.258-1.555 1.587-1.555h1.684V3.127A22.336 22.336 0 0 0 14.201 3c-2.444 0-4.122 1.492-4.122 4.231v2.355H7.332v3.209h2.753v8.202h3.312z"></path></svg>
+          <span>Facebook</span>
+        </a>
+      </li>
+      <li>
+        <a [href]="getShareUrl('twitter')" target="_blank" rel="noopener">
+          <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.46 6c-.77.35-1.6.58-2.46.67.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98-3.54-.18-6.69-1.86-8.79-4.46-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.22-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21c7.35 0 11.37-6.08 11.37-11.37 0-.17 0-.34-.01-.51.78-.57 1.45-1.28 1.98-2.08z"></path></svg>
+          <span>Twitter</span>
+        </a>
+      </li>
+      <li>
+        <a [href]="getShareUrl('pinterest')" target="_blank" rel="noopener">
+          <svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 .992.371 1.931.82 2.452.212.242.243.282.112.637-.152.8-.243 1.149-.374 1.624-.145.522-.121.57-.325.363-1.03-1.211-1.67-2.875-1.67-4.826 0-3.779 2.737-7.252 7.85-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.627-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.495 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"></path></svg>
+          <span>Pinterest</span>
+        </a>
+      </li>
+      <li>
+        <button (click)="copyLink()">
+          <mat-icon>link</mat-icon>
+          <span>Copy Link</span>
+        </button>
+      </li>
+    </ul>
   </div>
 </div>
