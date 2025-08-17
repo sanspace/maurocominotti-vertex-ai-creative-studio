@@ -28,7 +28,7 @@
       </div>
     </ng-container>
     <ng-template #videoOrGallery>
-      <ng-container *ngIf="imagenDocuments.length === 0; else imageGallery">
+      <ng-container *ngIf="(imagenDocuments?.presignedUrls?.length || 0) === 0; else imageGallery">
         <div class="video-container">
           <!-- Text for Tablet and beyond -->
           <div
@@ -90,9 +90,11 @@
           </div>
         </div>
       </ng-container>
-      <!-- LightGallery Carousel Images Gallery -->
+      <!-- Image Gallery -->
       <ng-template #imageGallery>
-        <div #lightGallery class="inline-gallery-container"></div>
+        <div class="grid grid-cols-1 gap-4">
+          <app-media-lightbox *ngIf="imagenDocuments" [mediaItem]="imagenDocuments" [initialIndex]="0" [showSeeMoreInfoButton]="true" style="max-height: 80vh;"></app-media-lightbox>
+        </div>
       </ng-template>
     </ng-template>
 

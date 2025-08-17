@@ -16,24 +16,15 @@
 import asyncio
 import logging
 import os
-import pathlib
 import shutil
 import subprocess
 import time
 from typing import List
 from google.genai import types
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from src.common.base_dto import MimeTypeEnum
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.common.storage_service import GcsService
 from src.common.schema.genai_model_setup import GenAIModelSetup
-from src.videos.schema.veo_result_model import (
-    CustomVeoResult,
-    VeoGenerationResult,
-)
 from src.common.schema.media_item_model import MediaItemModel
 from src.images.repository.media_item_repository import MediaRepository
 from src.videos.dto.create_veo_dto import CreateVeoDto
@@ -100,7 +91,7 @@ class VeoService:
 
     async def generate_videos(
         self, request_dto: CreateVeoDto, user_email: str
-    ) -> list[VeoGenerationResult]:
+    ) -> MediaItemResponse | None:
         """
         Generates a batch of videos and saves them as a single MediaItem document.
         """
@@ -148,7 +139,7 @@ class VeoService:
                 or not operation.response
                 or not operation.response.generated_videos
             ):
-                return []
+                return None
 
             # Download the generated video and create thumbnail
             thumbnail_path = ""
@@ -224,10 +215,12 @@ class VeoService:
                 for img in valid_generated_videos
                 if img.video and img.video.uri
             ]
-            mime_type: str = (
-                valid_generated_videos[0].video.mime_type or "video/png"
+            mime_type: MimeTypeEnum = (
+                MimeTypeEnum.VIDEO_MP4
                 if valid_generated_videos[0].video
-                else "video/png"
+                and valid_generated_videos[0].video.mime_type
+                == MimeTypeEnum.VIDEO_MP4
+                else MimeTypeEnum.VIDEO_MP4
             )
 
             # 2. Create and run tasks to generate all presigned URLs in parallel
@@ -274,29 +267,11 @@ class VeoService:
             )
             self.media_repo.save(media_post_to_save)
 
-            response_video: list[VeoGenerationResult] = []
-            for gen_video, presigned_url, presigned_thumbnail_url in zip(
-                valid_generated_videos,
-                presigned_urls,
-                all_presigned_thumbnail_urls,
-            ):
-                if gen_video.video:
-                    response_video.append(
-                        VeoGenerationResult(
-                            enhanced_prompt=rewritten_prompt or "",
-                            original_prompt=original_prompt or "",
-                            rai_filtered_reason=rai_filtered_reason,
-                            video=CustomVeoResult(
-                                gcs_uri=gen_video.video.uri,
-                                presigned_url=presigned_url,
-                                presigned_thumbnail_url=presigned_thumbnail_url,
-                                encoded_video="",
-                                mime_type=gen_video.video.mime_type or "",
-                            ),
-                        )
-                    )
-
-            return response_video
+            return MediaItemResponse(
+                **media_post_to_save.model_dump(),
+                presigned_urls=presigned_urls,
+                presigned_thumbnail_urls=all_presigned_thumbnail_urls,
+            )
 
         except Exception as e:
             logger.error(f"Image generation API call failed: {e}")

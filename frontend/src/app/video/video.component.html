@@ -28,7 +28,7 @@
       </div>
     </ng-container>
     <ng-template #videoOrGallery>
-      <ng-container *ngIf="videoDocuments.length === 0; else videoGallery">
+      <ng-container *ngIf="(videoDocuments?.presignedUrls?.length || 0) === 0; else videoGallery">
         <div class="video-container">
           <video
             class="w-full rounded-xl"
@@ -47,13 +47,15 @@
           <div
             class="top-[40%] md:top-[20%] lg:top-[30%] xl:top-[40%] absolute w-full text-center justify-center text-3xl md:text-6xl font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent"
           >
-            Generate Video Ad
+            Generate Video Ads
           </div>
         </div>
       </ng-container>
-      <!-- LightGallery Carousel Videos Gallery -->
+      <!-- Video Gallery -->
       <ng-template #videoGallery>
-        <div #lightGalleryVideos class="inline-gallery-container"></div>
+        <div class="grid grid-cols-1 gap-4">
+          <app-media-lightbox *ngIf="videoDocuments" [mediaItem]="videoDocuments" [initialIndex]="0" [showSeeMoreInfoButton]="true" style="max-height: 80vh;"></app-media-lightbox>
+        </div>
       </ng-template>
     </ng-template>
 

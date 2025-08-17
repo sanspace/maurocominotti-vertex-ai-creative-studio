@@ -11,6 +11,8 @@ import PhotoSwipeLightbox from 'photoswipe/lightbox';
 import {Clipboard} from '@angular/cdk/clipboard';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import 'photoswipe/style.css';
+import {ActivatedRoute, Router} from '@angular/router';
+import {Location} from '@angular/common';
 
 @Component({
   selector: 'app-media-lightbox',
@@ -22,6 +24,7 @@ export class MediaLightboxComponent
 {
   @Input() mediaItem: MediaItem | undefined;
   @Input() initialIndex = 0;
+  @Input() showSeeMoreInfoButton = false;
 
   selectedIndex = 0;
   selectedUrl: string | undefined;
@@ -37,6 +40,9 @@ export class MediaLightboxComponent
   constructor(
     private clipboard: Clipboard,
     private snackBar: MatSnackBar,
+    private router: Router,
+    private location: Location,
+    private route: ActivatedRoute,
   ) {}
 
   ngAfterViewInit(): void {
@@ -60,10 +66,16 @@ export class MediaLightboxComponent
 
   private initialize(): void {
     if (this.mediaItem?.presignedUrls?.length) {
+      const indexFromQuery = this.route.snapshot.queryParamMap.get('img_index');
+      const queryIndex = indexFromQuery ? parseInt(indexFromQuery, 10) : -1;
+
+      let startIndex = this.initialIndex;
+      if (queryIndex >= 0 && queryIndex < this.mediaItem.presignedUrls.length) {
+        startIndex = queryIndex;
+      }
+
       this.selectedIndex =
-        this.initialIndex < this.mediaItem.presignedUrls.length
-          ? this.initialIndex
-          : 0;
+        startIndex < this.mediaItem.presignedUrls.length ? startIndex : 0;
       this.selectedUrl = this.mediaItem.presignedUrls[this.selectedIndex];
       this.updateImageDimensions();
     } else {
@@ -86,6 +98,12 @@ export class MediaLightboxComponent
 
       this.lightbox.on('close', () => {
         this.isShareMenuOpen = false;
+      });
+
+      this.lightbox.on('change', () => {
+        if (this.lightbox?.pswp) {
+          this.selectMedia(this.lightbox.pswp.currIndex);
+        }
       });
 
       this.lightbox.init();
@@ -133,7 +151,14 @@ export class MediaLightboxComponent
   }
 
   getShareUrl(
-    platform: 'facebook' | 'twitter' | 'pinterest' | 'reddit' | 'whatsapp' | 'linkedin' | 'telegram',
+    platform:
+      | 'facebook'
+      | 'twitter'
+      | 'pinterest'
+      | 'reddit'
+      | 'whatsapp'
+      | 'linkedin'
+      | 'telegram',
   ): string {
     const url = encodeURIComponent(this.currentImageUrl);
     const text = encodeURIComponent(
@@ -158,7 +183,28 @@ export class MediaLightboxComponent
   }
 
   copyLink(): void {
-    this.clipboard.copy(window.location.href);
+    if (!this.mediaItem?.id) {
+      this.snackBar.open('Cannot generate link: Media item has no ID.', 'OK', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Create a URL tree with the path and query parameters for the specific image
+    const urlTree = this.router.createUrlTree(
+      ['/gallery', this.mediaItem.id],
+      {
+        queryParams: {
+          img_index: this.selectedIndex > 0 ? this.selectedIndex : null,
+        },
+      },
+    );
+    // Serialize the tree to a relative path string (e.g., /gallery/123?img_index=2)
+    const relativeUrl = this.router.serializeUrl(urlTree);
+    // Combine with the window's origin to get the full, absolute URL
+    const fullUrl = `${window.location.origin}${relativeUrl}`;
+
+    this.clipboard.copy(fullUrl);
     this.snackBar.open('Link copied to clipboard!', 'OK', {duration: 3000});
     this.isShareMenuOpen = false;
   }
@@ -173,6 +219,29 @@ export class MediaLightboxComponent
     if (this.mediaItem?.presignedUrls) {
       this.selectedIndex = index;
       this.selectedUrl = this.mediaItem.presignedUrls[index];
+      this.updateUrlWithImageIndex(index);
+    }
+  }
+
+  private updateUrlWithImageIndex(index: number): void {
+    const url = this.router
+      .createUrlTree([], {
+        relativeTo: this.route,
+        // If index is 0, we can remove the query param.
+        queryParams: {img_index: index > 0 ? index : null},
+        queryParamsHandling: 'merge',
+      })
+      .toString();
+
+    this.location.replaceState(url);
+  }
+
+  seeMoreInfo(): void {
+    if (this.mediaItem?.id) {
+      const url = this.router.serializeUrl(
+        this.router.createUrlTree(['/gallery', this.mediaItem.id]),
+      );
+      window.open(url, '_blank');
     }
   }
 

@@ -8,7 +8,6 @@ import {
 } from '../common/models/media-item.model';
 import {environment} from '../../environments/environment';
 import {GallerySearchDto} from '../common/models/search.model';
-import {LoadingService} from '../common/services/loading.service';
 
 export interface GalleryFilters {
   userEmail?: string;
@@ -27,10 +26,7 @@ export class GalleryService {
   private allFetchedImages: MediaItem[] = [];
   private filters$ = new BehaviorSubject<GalleryFilters>({});
 
-  constructor(
-    private http: HttpClient,
-    private loadingService: LoadingService,
-  ) {}
+  constructor(private http: HttpClient) {}
 
   get images$(): Observable<MediaItem[]> {
     return this.imagesCache$.asObservable();
@@ -55,7 +51,6 @@ export class GalleryService {
       this.allFetchedImages = [];
       this.nextPageCursor = null;
       this.allImagesLoaded$.next(false);
-      this.loadingService.hide();
     }
 
     // Do not try to load more if all items have already been loaded
@@ -75,22 +70,19 @@ export class GalleryService {
             this.allImagesLoaded$.next(true);
           }
           this.isLoading$.next(false);
-          this.loadingService.hide();
         }),
-        catchError(err => {
-          console.error('Failed to fetch gallery images', err);
-          this.isLoading$.next(false);
-          this.loadingService.hide();
-          this.allImagesLoaded$.next(true); // prevent loading more
-          return of([]); // Return an empty array observable to prevent breaking the stream
-        }),
+          catchError(err => {
+            console.error('Failed to fetch gallery images', err);
+            this.isLoading$.next(false);
+            this.allImagesLoaded$.next(true); // prevent loading more
+            return of([]); // Return an empty array observable to prevent breaking the stream
+          })
       )
       .subscribe();
   }
 
   private fetchImages(): Observable<PaginatedGalleryResponse> {
     this.isLoading$.next(true);
-    this.loadingService.show();
     const galleryUrl = `${environment.backendURL}/gallery`;
     const currentFilters = this.filters$.value;
 
@@ -108,7 +100,6 @@ export class GalleryService {
   }
 
   getMedia(id: string): Observable<MediaItem> {
-    this.loadingService.show();
     const detailUrl = `${environment.backendURL}/gallery/item/${id}`;
     return this.http.get<MediaItem>(detailUrl);
   }

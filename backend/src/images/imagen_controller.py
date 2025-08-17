@@ -14,6 +14,7 @@
 
 from fastapi import APIRouter, HTTPException, status as Status
 
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.images.dto.create_imagen_dto import CreateImagenDto
@@ -37,7 +38,7 @@ router = APIRouter(
 async def generate_images(
     image_request: CreateImagenDto,
     current_user: User = Depends(get_current_user),
-) -> list[ImageGenerationResult]:
+) -> MediaItemResponse | None:
     try:
         service = ImagenService()
         return await service.generate_images(
@@ -54,33 +55,6 @@ async def generate_images(
         raise HTTPException(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
-
-
-@router.post("/generate-images-from-prompt")
-async def generate_images_from_prompt(
-    image_request: CreateImagenDto,
-    current_user: User = Depends(get_current_user),
-) -> list[ImageGenerationResult]:
-    try:
-        service = ImagenService()
-        return await service.generate_images_from_prompt(
-            image_request, current_user.email
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-
-@router.post("/generate-images-from-gemini")
-async def generate_images_from_gemini(image_request: CreateImagenDto) -> list[ImageGenerationResult]:
-    try:
-        service = ImagenService()
-        return await service.generate_images_from_gemini(image_request)
-    except Exception as e:
-        raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 

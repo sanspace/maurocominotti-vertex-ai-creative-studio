@@ -19,11 +19,8 @@ import {Injectable} from '@angular/core';
 import {environment} from '../../../environments/environment';
 import {map} from 'rxjs/operators';
 import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
-import {
-  GeneratedImage,
-  GeneratedVideo,
-} from '../../common/models/generated-image.model';
 import {Observable} from 'rxjs';
+import {MediaItem} from '../../common/models/media-item.model';
 
 @Injectable({
   providedIn: 'root',
@@ -35,14 +32,14 @@ export class SearchService {
     const searchURL = `${environment.backendURL}/images/generate-images`;
     return this.http
       .post(searchURL, searchRequest)
-      .pipe(map(response => response as GeneratedImage[]));
+      .pipe(map(response => response as MediaItem));
   }
 
   searchVeo(searchRequest: VeoRequest) {
     const searchURL = `${environment.backendURL}/videos/generate-videos`;
     return this.http
       .post(searchURL, searchRequest)
-      .pipe(map(response => response as GeneratedVideo[]));
+      .pipe(map(response => response as MediaItem));
   }
 
   rewritePrompt(payload: {

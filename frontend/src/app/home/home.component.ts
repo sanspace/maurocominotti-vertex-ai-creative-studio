@@ -19,8 +19,6 @@ import {
   OnInit,
   OnDestroy,
   AfterViewInit,
-  ViewChildren,
-  QueryList,
   ElementRef,
   ViewChild,
 } from '@angular/core';
@@ -30,19 +28,11 @@ import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {finalize} from 'rxjs/operators';
 import {SearchService} from '../services/search/search.service';
-import {GeneratedImage} from '../common/models/generated-image.model';
 import {ImagenRequest} from '../common/models/search.model';
-import lightGallery from 'lightgallery';
-import {LightGallery} from 'lightgallery/lightgallery';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgZoom from 'lightgallery/plugins/zoom';
-import lgShare from 'lightgallery/plugins/share';
-import {Subscription} from 'rxjs';
-import {additionalShareOptions} from '../utils/lightgallery-share-options';
-import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import {MediaItem} from '../common/models/media-item.model';
 
 @Component({
   selector: 'app-home',
@@ -51,7 +41,7 @@ import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 })
 export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // --- Component State ---
-  imagenDocuments: GeneratedImage[] = [];
+  imagenDocuments: MediaItem | null = null;
   isLoading = false;
   templateParams: GenerationParameters | undefined;
   showDefaultDocuments = false;
@@ -165,9 +155,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private tgY = 0;
   private animationFrameId: number | undefined;
 
-  @ViewChildren('lightGallery') lightGalleryElements?: QueryList<ElementRef>;
-  private lightGalleryInstance?: LightGallery;
-  private galleryElementsSub?: Subscription;
   @ViewChild('interactiveBubble') interBubble!: ElementRef<HTMLDivElement>;
 
   constructor(
@@ -215,17 +202,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // The gallery will be initialized when images are loaded for the first time.
-    // We subscribe to changes in the QueryList to know when the #lightGallery element is rendered.
-    this.galleryElementsSub = this.lightGalleryElements?.changes.subscribe(
-      (list: QueryList<ElementRef>) => {
-        if (list.first) {
-          // The element is now in the DOM, we can initialize the gallery.
-          this.initLightGallery();
-        }
-      },
-    );
-
     // This hook is called after the component's view has been initialized.
     // Now we can be sure that 'interBubble' is available.
     if (this.interBubble && this.interBubble.nativeElement) {
@@ -238,9 +214,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.lightGalleryInstance?.destroy();
-    this.galleryElementsSub?.unsubscribe();
-
     if (typeof window !== 'undefined')
       window.removeEventListener('mousemove', this.onMouseMove);
 
@@ -324,62 +297,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     window.open(url, '_blank');
   }
 
-  private initLightGallery(): void {
-    const galleryElement = this.lightGalleryElements?.first?.nativeElement;
+  private processSearchResults(searchResponse: MediaItem) {
+    this.imagenDocuments = searchResponse;
 
-    if (galleryElement) {
-      const dynamicElements = this.imagenDocuments.map((doc, index) => ({
-        src: doc?.image?.presignedUrl || '',
-        thumb: doc?.image?.presignedUrl || '',
-        subHtml: `<div class="lightGallery-captions"><h4>Image ${index + 1}</h4><p>Generated with ${doc.source || 'Imagen 4 Model'}</p></div>`,
-        // Add data-src attribute for sharing image url
-        // TODO: We should create a creative studio url for that particular image
-        'data-src': doc?.image?.presignedUrl || '',
-        facebookShareUrl: doc?.image?.presignedUrl || '',
-        twitterShareUrl: doc?.image?.presignedUrl || '',
-        tweetText: 'Try Google Creative Studio now!!',
-        pinterestText: 'Try Google Creative Studio now!!',
-      }));
-
-      this.lightGalleryInstance = lightGallery(galleryElement, {
-        container: galleryElement,
-        dynamic: true,
-        plugins: [lgZoom, lgThumbnail, lgShare],
-        speed: 200,
-        download: true,
-        share: true,
-        additionalShareOptions: additionalShareOptions,
-        hash: false,
-        // Do not allow users to close the gallery
-        closable: false,
-        // Add maximize icon to enlarge the gallery
-        showMaximizeIcon: true,
-        // Append caption inside the slide item
-        // to apply some animation for the captions (Optional)
-        appendSubHtmlTo: '.lg-item',
-        // Delay slide transition to complete captions animations
-        // before navigating to different slides (Optional)
-        // You can find caption animation demo on the captions demo page
-        slideDelay: 200,
-        dynamicEl: dynamicElements,
-      });
-
-      // Since we are using dynamic mode, we need to programmatically open lightGallery
-      this.lightGalleryInstance.openGallery();
-    }
-  }
-
-  private processSearchResults(searchResponse: GeneratedImage[]) {
-    this.imagenDocuments = (searchResponse || []).map(img => ({
-      ...img,
-      source: 'Imagen 4 Model',
-    }));
-
-    const hasImagenResults = this.imagenDocuments.length > 0;
+    const hasImagenResults =
+      (this.imagenDocuments?.presignedUrls?.length || 0) > 0;
 
     if (hasImagenResults) {
       this.showDefaultDocuments = false;
-      // The QueryList subscription in ngAfterViewInit will handle the gallery initialization.
     } else {
       this.showDefaultDocuments = true;
     }
@@ -437,14 +362,13 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
     this.isLoading = true;
-    this.imagenDocuments = [];
-    this.lightGalleryInstance?.destroy();
+    this.imagenDocuments = null;
 
     this.service
       .searchImagen(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: GeneratedImage[]) => {
+        next: (searchResponse: MediaItem) => {
           this.processSearchResults(searchResponse);
         },
         error: error => {

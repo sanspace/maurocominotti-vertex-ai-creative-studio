@@ -277,7 +277,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     // just before the user hits the absolute bottom.
     if (
       window.innerHeight + window.scrollY >=
-      document.documentElement.scrollHeight - 200
+      document.documentElement.scrollHeight - 800
     ) {
       this.galleryService.loadGallery();
     }

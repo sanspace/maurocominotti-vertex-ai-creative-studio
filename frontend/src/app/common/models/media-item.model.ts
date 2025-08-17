@@ -37,7 +37,7 @@ export interface MediaItem {
 
   // URI and URL fields
   gcsUris: string[];
-  sourceImagesGcs: string[];
+  sourceImagesGcs?: string[];
   presignedUrls?: string[];
   presignedThumbnailUrls?: string[];
 
@@ -50,7 +50,7 @@ export interface MediaItem {
   comment?: string;
 
   // Image specific
-  modifiers: string[];
+  modifiers?: string[];
   aspectRatio?: string;
   style?: string;
   lighting?: string;

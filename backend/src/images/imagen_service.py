@@ -25,8 +25,9 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.common.schema.genai_model_setup import GenAIModelSetup
-from src.common.base_dto import GenerationModelEnum
+from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
 from src.common.schema.media_item_model import MediaItemModel
 from src.images.repository.media_item_repository import MediaRepository
 from src.images.dto.create_imagen_dto import CreateImagenDto
@@ -66,7 +67,7 @@ class ImagenService:
     )
     async def generate_images(
         self, request_dto: CreateImagenDto, user_email: str
-    ) -> list[ImageGenerationResult]:
+    ) -> MediaItemResponse | None:
         """
         Generates a batch of images and saves them as a single MediaItem document.
         """
@@ -127,7 +128,7 @@ class ImagenService:
                 )
 
             if not all_generated_images:
-                return []
+                return None
 
             end_time = time.monotonic()
             generation_time = end_time - start_time
@@ -144,10 +145,12 @@ class ImagenService:
                 for img in valid_generated_images
                 if img.image and img.image.gcs_uri
             ]
-            mime_type: str = (
-                valid_generated_images[0].image.mime_type or "image/png"
+            mime_type: MimeTypeEnum = (
+                MimeTypeEnum.IMAGE_PNG
                 if valid_generated_images[0].image
-                else "image/png"
+                and valid_generated_images[0].image.mime_type
+                == MimeTypeEnum.IMAGE_PNG
+                else MimeTypeEnum.IMAGE_JPEG
             )
 
             # 2. Create and run tasks to generate all presigned URLs in parallel
@@ -182,25 +185,10 @@ class ImagenService:
             )
             self.media_repo.save(media_post_to_save)
 
-            response_imagen: list[ImageGenerationResult] = []
-            for gen_image, presigned_url in zip(
-                valid_generated_images, presigned_urls
-            ):
-                if gen_image.image:
-                    response_imagen.append(
-                        ImageGenerationResult(
-                            enhanced_prompt=gen_image.enhanced_prompt or "",
-                            rai_filtered_reason=gen_image.rai_filtered_reason,
-                            image=CustomImagenResult(
-                                gcs_uri=gen_image.image.gcs_uri,
-                                presigned_url=presigned_url,
-                                encoded_image="",
-                                mime_type=gen_image.image.mime_type or "",
-                            ),
-                        )
-                    )
-
-            return response_imagen
+            return MediaItemResponse(
+                **media_post_to_save.model_dump(),
+                presigned_urls=presigned_urls,
+            )
 
         except Exception as e:
             logger.error(f"Image generation API call failed: {e}")
@@ -300,47 +288,6 @@ class ImagenService:
         except Exception as e:
             logger.error(f"Error during Gemini generation: {e}")
             return []
-
-    async def generate_images_from_gemini(
-        self, request_dto: CreateImagenDto
-    ) -> list[ImageGenerationResult]:
-        client = GenAIModelSetup.init()
-        gemini_coroutine = self._generate_with_gemini(
-            client=client,
-            term=request_dto.prompt,
-            number_of_images=request_dto.number_of_media,
-            style=request_dto.style,
-        )
-        results = await asyncio.gather(gemini_coroutine, return_exceptions=True)
-
-        response_gemini: List[ImageGenerationResult] = []
-        gemini_result_index = request_dto.number_of_media
-        if gemini_result_index < len(results):
-            gemini_task_result = results[gemini_result_index]
-            if isinstance(gemini_task_result, Exception):
-                logger.error(
-                    f"Exception in Gemini generation task: {gemini_task_result}"
-                )
-            elif gemini_task_result is not None and isinstance(gemini_task_result, List):
-                response_gemini = gemini_task_result
-        else:
-            logger.info(
-                "Gemini task result not found in the expected position in results list."
-            )
-        return response_gemini
-
-    async def generate_images_from_prompt(
-        self, request_dto: CreateImagenDto, user_email: str
-    ) -> list[ImageGenerationResult]:
-        """
-        Generates images based on the input prompt and parameters.
-        Returns a list of image URIs. Does not directly modify PageState.
-        """
-        input_txt = ""
-        full_prompt = f"{input_txt}, {request_dto.prompt}"
-        request_dto.prompt = full_prompt
-
-        return await self.generate_images(request_dto, user_email)
 
     def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
         """Generates a single image and returns the image bytes."""

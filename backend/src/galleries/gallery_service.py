@@ -18,7 +18,7 @@ from typing import Optional
 from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.galleries.dto.gallery_response_dto import GalleryItemResponse
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.repository.media_item_repository import MediaRepository
 from src.common.schema.media_item_model import MediaItemModel
 
@@ -34,7 +34,7 @@ class GalleryService:
 
     async def _create_gallery_response(
         self, item: MediaItemModel
-    ) -> GalleryItemResponse:
+    ) -> MediaItemResponse:
         """
         Helper function to convert a MediaItem into a GalleryItemResponse
         by generating presigned URLs in parallel for its GCS URIs.
@@ -60,7 +60,7 @@ class GalleryService:
         presigned_thumbnail_urls = await asyncio.gather(*thumbnail_tasks)
 
         # Create the response DTO, copying all original data and adding the new URLs
-        return GalleryItemResponse(
+        return MediaItemResponse(
             **item.model_dump(),
             presigned_urls=presigned_urls,
             presigned_thumbnail_urls=presigned_thumbnail_urls
@@ -68,7 +68,7 @@ class GalleryService:
 
     async def get_paginated_gallery(
         self, search_dto: GallerySearchDto
-    ) -> PaginationResponseDto[GalleryItemResponse]:
+    ) -> PaginationResponseDto[MediaItemResponse]:
         """
         Performs a paginated and filtered search for media items.
         """
@@ -82,13 +82,15 @@ class GalleryService:
         response_tasks = [self._create_gallery_response(item) for item in media_items]
         enriched_items = await asyncio.gather(*response_tasks)
 
-        return PaginationResponseDto[GalleryItemResponse](
+        return PaginationResponseDto[MediaItemResponse](
             count=media_items_query.count,
             next_page_cursor=media_items_query.next_page_cursor,
             data=enriched_items,
         )
 
-    async def get_media_by_id(self, item_id: str) -> Optional[GalleryItemResponse]:
+    async def get_media_by_id(
+        self, item_id: str
+    ) -> Optional[MediaItemResponse]:
         """
         Retrieves a single media item and enriches it with presigned URLs.
         """

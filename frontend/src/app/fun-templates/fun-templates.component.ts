@@ -24,13 +24,8 @@ import {
   TemplateFilter,
 } from './media-template.model';
 import {Router} from '@angular/router';
+import {MediaItem} from '../common/models/media-item.model';
 import {MediaTemplatesService} from '../admin/media-templates-management/media-templates.service';
-import {LightGallery} from 'lightgallery/lightgallery';
-import {GalleryItem} from 'lightgallery/lg-utils';
-import lightGallery from 'lightgallery';
-import lgZoom from 'lightgallery/plugins/zoom';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgVideo from 'lightgallery/plugins/video';
 
 @Component({
   selector: 'app-fun-templates',
@@ -53,7 +48,8 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
   public hoveredVideoId: string | null = null;
-  private lightGalleryInstance?: LightGallery;
+  public selectedTemplateForLightbox: MediaItem | null = null;
+  public lightboxInitialIndex = 0;
 
   // Services using inject() for modern Angular
   private router = inject(Router);
@@ -298,51 +294,41 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
   }
 
   public openGallery(template: MediaTemplate, index: number): void {
-    const dynamicEl: GalleryItem[] = template.presignedUrls.map((url, i) => {
-      if (template.mimeType === MimeTypeEnum.VIDEO) {
-        return {
-          src: '', // For lg-video, src should be empty
-          thumb: template.presignedThumbnailUrls?.[i] || '',
-          subHtml: `<div class="lightGallery-captions"><h4>${
-            template.name
-          } - Variation ${i + 1}</h4><p>${template.description}</p></div>`,
-          downloadUrl: url,
-          video: {
-            source: [{src: url, type: template.mimeType}],
-            tracks: [],
-            attributes: {preload: 'metadata', controls: true} as any,
-          },
-        };
-      } else {
-        // Image
-        return {
-          src: url,
-          thumb: url,
-          subHtml: `<div class="lightGallery-captions"><h4>${
-            template.name
-          } - Variation ${i + 1}</h4><p>${template.description}</p></div>`,
-          downloadUrl: url,
-        };
+    this.stopAutoSlide(template.id);
+
+    // The `media-lightbox` component expects a `MediaItem` object. We can construct
+    // a compatible object by flattening the `generationParameters` and mapping
+    // the thumbnail URIs.
+    const mediaItem: MediaItem = {
+      ...template.generationParameters,
+      id: template.id,
+      mimeType: template.mimeType,
+      gcsUris: template.gcsUris || [],
+      presignedUrls: template.presignedUrls,
+      presignedThumbnailUrls: template.presignedThumbnailUrls, // Map to property expected by lightbox
+    };
+    // Remove the nested object to keep the state clean.
+    delete (mediaItem as any).generationParameters;
+    delete (mediaItem as any).thumbnailUris;
+
+    this.selectedTemplateForLightbox = mediaItem;
+    this.lightboxInitialIndex = index;
+  }
+
+  public closeLightbox(): void {
+    if (this.selectedTemplateForLightbox) {
+      // Find the original template to restart the slide show when the lightbox is closed
+      const template = this.allTemplates.find(
+        t => t.id === this.selectedTemplateForLightbox!.id,
+      );
+      if (template) {
+        this.startAutoSlide(template);
       }
-    });
-
-    // We need a dummy element to initialize lightgallery on.
-    const container = document.createElement('div');
-
-    this.lightGalleryInstance = lightGallery(container, {
-      dynamic: true,
-      dynamicEl: dynamicEl,
-      index: index,
-      plugins: [lgZoom, lgThumbnail, lgVideo],
-      speed: 500,
-      download: true,
-      closable: true,
-    });
-    this.lightGalleryInstance.openGallery();
+    }
+    this.selectedTemplateForLightbox = null;
   }
 
   ngOnDestroy(): void {
     Object.values(this.autoSlideIntervals).forEach(clearInterval);
-    this.lightGalleryInstance?.destroy();
   }
 }

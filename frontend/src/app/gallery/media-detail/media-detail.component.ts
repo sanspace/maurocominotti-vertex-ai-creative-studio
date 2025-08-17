@@ -1,30 +1,14 @@
-import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  OnDestroy,
-  QueryList,
-  ViewChildren,
-} from '@angular/core';
+import {Component, OnDestroy} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Location} from '@angular/common';
 import {first, Subscription} from 'rxjs';
-import {LightGallery} from 'lightgallery/lightgallery';
-import lgZoom from 'lightgallery/plugins/zoom';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgShare from 'lightgallery/plugins/share';
-import lgVideo from 'lightgallery/plugins/video';
-import {additionalShareOptions} from '../../utils/lightgallery-share-options';
 import {MediaItem} from '../../common/models/media-item.model';
 import {GalleryService} from '../gallery.service';
 import {LoadingService} from '../../common/services/loading.service';
-import lightGallery from 'lightgallery';
-import {GalleryItem} from 'lightgallery/lg-utils';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
 import {CreatePromptMediaDto} from '../../common/models/prompt.model';
 import {AuthService} from '../../common/services/auth.service';
-import PhotoSwipeLightbox, {DataSource} from 'photoswipe/lightbox';
 
 @Component({
   selector: 'app-media-detail',
@@ -43,7 +27,6 @@ export class MediaDetailComponent implements OnDestroy {
 
   constructor(
     private route: ActivatedRoute,
-    private location: Location,
     private router: Router,
     private galleryService: GalleryService,
     private loadingService: LoadingService,

@@ -1,40 +1,16 @@
-/**
- * Copyright 2025 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import {Component, ElementRef, QueryList, ViewChildren} from '@angular/core';
+import {Component} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {LightGallery} from 'lightgallery/lightgallery';
-import {finalize, Subscription} from 'rxjs';
+import {finalize} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
-import {GeneratedVideo} from '../common/models/generated-image.model';
 import {VeoRequest} from '../common/models/search.model';
-import lightGallery from 'lightgallery';
-import lgZoom from 'lightgallery/plugins/zoom';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgShare from 'lightgallery/plugins/share';
-import {additionalShareOptions} from '../utils/lightgallery-share-options';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
-import {GalleryItem} from 'lightgallery/lg-utils';
-import lgVideo from 'lightgallery/plugins/video';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import {MediaItem} from '../common/models/media-item.model';
 
 @Component({
   selector: 'app-video',
@@ -45,7 +21,7 @@ export class VideoComponent {
   templateParams: GenerationParameters | undefined;
 
   // --- Component State ---
-  videoDocuments: GeneratedVideo[] = [];
+  videoDocuments: MediaItem | null = null;
   isLoading = false;
   isAudioGenerationDisabled = false;
   showDefaultDocuments = false;
@@ -139,11 +115,6 @@ export class VideoComponent {
     'Wide angle',
   ];
 
-  @ViewChildren('lightGalleryVideos')
-  lightGalleryElements?: QueryList<ElementRef>;
-  private lightGalleryInstance?: LightGallery;
-  private galleryElementsSub?: Subscription;
-
   constructor(
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
@@ -180,90 +151,14 @@ export class VideoComponent {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
-  ngAfterViewInit(): void {
-    // The gallery will be initialized when videos are loaded for the first time.
-    // We subscribe to changes in the QueryList to know when the #lightGallery element is rendered.
-    this.galleryElementsSub = this.lightGalleryElements?.changes.subscribe(
-      (list: QueryList<ElementRef>) => {
-        if (list.first) {
-          // The element is now in the DOM, we can initialize the gallery.
-          this.initLightGallery();
-        }
-      },
-    );
-  }
+  private processSearchResults(searchResponse: MediaItem) {
+    this.videoDocuments = searchResponse;
 
-  ngOnDestroy(): void {
-    this.lightGalleryInstance?.destroy();
-    this.galleryElementsSub?.unsubscribe();
-  }
-
-  private initLightGallery(): void {
-    const galleryElement = this.lightGalleryElements?.first?.nativeElement;
-
-    if (galleryElement) {
-      const dynamicElements = this.videoDocuments.map((mediaItem, index) => {
-        const dynamicVideo: GalleryItem = {
-          src: '',
-          thumb: mediaItem?.video?.presignedThumbnailUrl || '',
-          subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1} of ${this.videoDocuments?.length}</h4><p>${mediaItem?.originalPrompt || ''}</p></div>`,
-          downloadUrl: mediaItem?.video?.presignedUrl,
-          video: {
-            source: [
-              {
-                src: mediaItem?.video?.presignedUrl || '',
-                type: mediaItem?.video?.mimeType || 'video/mp4',
-              },
-            ],
-            tracks: [],
-            // The type definition for 'attributes' is incorrectly expecting a full
-            // HTMLVideoElement object. We cast to 'any' to provide a plain object
-            // of attributes, which is what the library actually uses.
-            attributes: {preload: 'metadata', controls: true} as any,
-          },
-        };
-        return dynamicVideo;
-      });
-
-      this.lightGalleryInstance = lightGallery(galleryElement, {
-        container: galleryElement,
-        dynamic: true,
-        plugins: [lgZoom, lgShare, lgThumbnail, lgVideo],
-        speed: 200,
-        download: true,
-        share: true,
-        additionalShareOptions: additionalShareOptions,
-        hash: false,
-        // Do not allow users to close the gallery
-        closable: false,
-        // Add maximize icon to enlarge the gallery
-        showMaximizeIcon: true,
-        // Append caption inside the slide item
-        // to apply some animation for the captions (Optional)
-        appendSubHtmlTo: '.lg-item',
-        // Delay slide transition to complete captions animations
-        // before navigating to different slides (Optional)
-        // You can find caption animation demo on the captions demo page
-        slideDelay: 200,
-        dynamicEl: dynamicElements,
-      });
-
-      // Since we are using dynamic mode, we need to programmatically open lightGallery
-      this.lightGalleryInstance.openGallery();
-    }
-  }
-
-  private processSearchResults(searchResponse: GeneratedVideo[]) {
-    this.videoDocuments = (searchResponse || []).map(img => ({
-      ...img,
-      source: 'Video 3 Model',
-    }));
-
-    const hasVideonResults = this.videoDocuments.length > 0;
+    const hasVideonResults =
+      (this.videoDocuments?.presignedUrls?.length || 0) > 0;
 
     if (hasVideonResults) {
       this.showDefaultDocuments = false;
-      // The QueryList subscription in ngAfterViewInit will handle the gallery initialization.
     } else {
       this.showDefaultDocuments = true;
     }
@@ -356,14 +251,13 @@ export class VideoComponent {
     if (!this.searchRequest.prompt) return;
 
     this.isLoading = true;
-    this.videoDocuments = [];
-    this.lightGalleryInstance?.destroy();
+    this.videoDocuments = null;
 
     this.service
       .searchVeo(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: GeneratedVideo[]) => {
+        next: (searchResponse: MediaItem) => {
           this.processSearchResults(searchResponse);
         },
         error: error => {

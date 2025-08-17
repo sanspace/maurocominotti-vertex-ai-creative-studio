@@ -99,16 +99,6 @@ textarea {
   border-style: hidden;
 }
 
-// Import LightGallery styles
-@import 'lightgallery/css/lightgallery.css';
-@import 'lightgallery/css/lg-thumbnail.css';
-@import 'lightgallery/css/lg-zoom.css';
-@import 'lightgallery/css/lg-share.css';
-@import 'lightgallery/css/lg-video.css';
-@import 'lightgallery/css/lg-autoplay.css';
-@import 'lightgallery/css/lg-comments.css';
-@import 'lightgallery/css/lg-pager.css';
-
 .lg-backdrop {
   background-color: rgba(0, 0, 0, 0.8);
 }

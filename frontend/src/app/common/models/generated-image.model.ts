@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+// TODO: Check if this file is neccessary with the latest refactoring
 type Image = {
   gcsUri?: string;
   presignedUrl?: string;

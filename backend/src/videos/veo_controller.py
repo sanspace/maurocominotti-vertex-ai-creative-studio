@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, status as Status
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends
 
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.videos.schema.veo_result_model import VeoGenerationResult
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.videos.veo_service import VeoService
@@ -38,7 +39,7 @@ router = APIRouter(
 async def generate_videos(
     video_request: CreateVeoDto,
     current_user: User = Depends(get_current_user),
-) -> list[VeoGenerationResult]:
+) -> MediaItemResponse | None:
     try:
         service = VeoService()
         return await service.generate_videos(
