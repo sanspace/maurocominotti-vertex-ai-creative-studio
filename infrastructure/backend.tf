@@ -5,7 +5,7 @@ locals {
   be_prefix = "cs-be"
 
   # Construct the predictable URLs
-  frontend_url = "https://${var.frontend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
+  frontend_url = "https://${var.frontend_service_name}-${data.google_project.project.number}.${var.gcp_region}.run.app"
 
   # Merge backend-specific and common environment variables
   backend_container_env_vars = merge(
@@ -13,7 +13,7 @@ locals {
     {
       # The frontend URL is now passed in. It will be blank on the first apply.
       #   "CORS_ORIGINS"     = "[\"${google_cloud_run_v2_service.frontend_service.uri}\"]"
-      "CORS_ORIGINS"     = "[${local.frontend_url}]"
+      "CORS_ORIGINS"     = "[\"${local.frontend_url}\"]"
       "GENMEDIA_BUCKET"  = google_storage_bucket.genmedia.name
       "SIGNING_SA_EMAIL" = google_service_account.bucket_reader_sa.email
       "PROJECT_ID"       = var.gcp_project_id

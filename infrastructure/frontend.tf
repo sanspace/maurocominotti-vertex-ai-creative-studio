@@ -4,7 +4,7 @@ locals {
   # Short prefix for frontend resources
   fe_prefix = "cs-fe"
 
-  backend_url = "https://${var.backend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
+  backend_url = "https://${var.backend_service_name}-${data.google_project.project.number}.${var.gcp_region}.run.app"
 
   frontend_container_env_vars = merge(
     lookup(var.fe_env_vars, "common", {}),
