@@ -13,38 +13,128 @@
 # limitations under the License.
 
 import base64
+import logging
+import os
+import pathlib
+from typing import Optional
 
 from google.cloud import storage
+from google.api_core import exceptions
 
 from src.config.config_service import ConfigService
 
-cfg = ConfigService()
+logger = logging.getLogger(__name__)
 
-def store_to_gcs(
-    folder: str,
-    file_name: str,
-    mime_type: str,
-    contents: str | bytes,
-    decode: bool = False,
-    bucket_name: str | None = None,
-):
-    """store contents to GCS"""
-    actual_bucket_name = bucket_name if bucket_name else cfg.GENMEDIA_BUCKET
-    if not actual_bucket_name:
-        raise ValueError(
-            "GCS bucket name is not configured. Please set GENMEDIA_BUCKET environment variable or provide bucket_name."
+
+class GcsService:
+    """A service for interacting with Google Cloud Storage."""
+
+    def __init__(self, bucket_name: Optional[str] = None):
+        """Initializes the GCS client and bucket."""
+        self.cfg = ConfigService()
+        self.client = storage.Client(project=self.cfg.PROJECT_ID)
+        self.bucket_name = bucket_name or self.cfg.GENMEDIA_BUCKET
+        self.bucket = self.client.bucket(self.bucket_name)
+        logger.info(
+            f"GcsService initialized for bucket: gs://{self.bucket_name}"
         )
-    print(f"store_to_gcs: Target project {cfg.PROJECT_ID}, target bucket {actual_bucket_name}")
-    client = storage.Client(project=cfg.PROJECT_ID)
-    bucket = client.get_bucket(actual_bucket_name)
-    destination_blob_name = f"{folder}/{file_name}"
-    print(f"store_to_gcs: Destination {destination_blob_name}")
-    blob = bucket.blob(destination_blob_name)
-    if decode:
-        contents_bytes = base64.b64decode(contents)
-        blob.upload_from_string(contents_bytes, content_type=mime_type)
-    elif isinstance(contents, bytes):
-        blob.upload_from_string(contents, content_type=mime_type)
-    else:
-        blob.upload_from_string(contents, content_type=mime_type)
-    return f"gs://{actual_bucket_name}/{destination_blob_name}"  # Return full gsutil URI
+
+    def download_from_gcs(
+        self, gcs_uri_path: str, destination_file_path: str
+    ) -> str | None:
+        """
+        Downloads a blob from GCS and saves it to a local file path.
+
+        Args:
+            gcs_uri_path: The path to the file in the GCS bucket. Do not append
+            the bucket name, just the folder and file path.
+            Ex: '17025013387606323175/sample_0.mp4'
+
+            destination_file_path: The local path to save the file to.
+
+        Returns:
+            The local path of the downloaded file, or None on failure.
+        """
+        os.makedirs(os.path.dirname(destination_file_path), exist_ok=True)
+        blob = self.bucket.blob(gcs_uri_path)
+        try:
+            blob.download_to_filename(destination_file_path)
+            return destination_file_path
+        except exceptions.NotFound:
+            logger.error(
+                f"Blob '{gcs_uri_path}' not found in bucket '{self.bucket_name}'."
+            )
+            return None
+        except exceptions.GoogleAPICallError as e:
+            logger.error(f"Failed to download '{gcs_uri_path}' from GCS: {e}")
+            return None
+
+    def upload_file_to_gcs(
+        self, local_path: str, destination_blob_name: str, mime_type: str
+    ):
+        """
+        Checks if a local file exists and then uploads it to a GCS blob.
+
+        Args:
+            local_path: Path to the local file to upload.
+            destination_blob_name: The name for the object in GCS.
+
+        Raises:
+            FileNotFoundError: If the file at local_path does not exist.
+        """
+        try:
+            if not pathlib.Path(local_path).is_file():
+                raise FileNotFoundError(
+                    f"Cannot upload file, not found at: {local_path}"
+                )
+
+            blob = self.bucket.blob(destination_blob_name)
+            blob.upload_from_filename(local_path, content_type=mime_type)
+            return f"gs://{self.bucket_name}/{destination_blob_name}"
+        except exceptions.NotFound:
+            logger.error(f"Blob '{destination_blob_name}' not found.")
+            return None
+        except exceptions.GoogleAPICallError as e:
+            logger.error(f"Failed to upload '{destination_blob_name}': {e}")
+            return None
+
+    def store_to_gcs(
+        self,
+        folder: str,
+        file_name: str,
+        mime_type: str,
+        contents: str | bytes,
+        decode: bool = False,
+        bucket_name: str | None = None,
+    ):
+        """store contents to GCS"""
+        actual_bucket_name = bucket_name if bucket_name else self.bucket_name
+        logger.info(
+            f"Target project {self.cfg.PROJECT_ID}, target bucket {actual_bucket_name}"
+        )
+        destination_blob_name = f"{folder}/{file_name}"
+        logger.info(f"Destination {destination_blob_name}")
+        try:
+            blob = self.bucket.blob(destination_blob_name)
+
+            # Upload the file decoding it first
+            if decode:
+                contents_bytes = base64.b64decode(contents)
+                blob.upload_from_string(contents_bytes, content_type=mime_type)
+            # Upload the file as bytes
+            elif isinstance(contents, bytes):
+                blob.upload_from_string(contents, content_type=mime_type)
+            else:
+                return ""
+
+            return f"gs://{actual_bucket_name}/{destination_blob_name}"
+        except exceptions.NotFound:
+            logger.error(
+                f"Blob '{destination_blob_name}' not found in bucket '{self.bucket_name}'."
+            )
+            return None
+        except exceptions.GoogleAPICallError as e:
+            logger.error(
+                f"Failed to download '{destination_blob_name}' from GCS: {e}"
+            )
+            return None

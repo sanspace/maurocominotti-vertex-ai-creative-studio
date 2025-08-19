@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+// TODO: Check if this file is neccessary with the latest refactoring
 type Image = {
   gcsUri?: string;
   presignedUrl?: string;
@@ -32,6 +33,7 @@ export type GeneratedImage = {
 type Video = {
   gcsUri?: string;
   presignedUrl?: string;
+  presignedThumbnailUrl?: string;
   imageBytes?: ArrayBuffer;
   encodedImage?: string;
   mimeType?: string;
@@ -41,5 +43,6 @@ export type GeneratedVideo = {
   video?: Video;
   raiFilteredReason?: string;
   enhancedPrompt?: string;
+  originalPrompt?: string;
   source?: string;
 };

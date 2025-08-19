@@ -18,8 +18,8 @@ export type ImagenRequest = {
   prompt: string;
   generationModel: string;
   aspectRatio: string;
-  numberOfImages: number;
-  imageStyle: string;
+  numberOfMedia: number;
+  style: string;
   lighting: string;
   colorAndTone: string;
   composition: string;
@@ -31,13 +31,14 @@ export type VeoRequest = {
   prompt: string;
   generationModel: string;
   aspectRatio: string;
-  numberOfVideos?: number;
-  videoStyle: string;
+  numberOfMedia?: number;
+  style: string;
   lighting: string;
   colorAndTone: string;
   composition: string;
-  addWatermark: boolean;
   negativePrompt: string;
+  generateAudio: boolean;
+  durationSeconds: number;
 };
 
 export type SearchResponse = {
@@ -75,8 +76,8 @@ export type ImagesData = {
 
 export interface GallerySearchDto {
   limit: number;
-  start_after?: string;
-  user_email?: string;
-  mime_type?: string;
+  startAfter?: string;
+  userEmail?: string;
+  mimeType?: string;
   model?: string;
 }

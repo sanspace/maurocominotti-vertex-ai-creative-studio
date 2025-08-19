@@ -8,11 +8,10 @@ import {
 } from '../common/models/media-item.model';
 import {environment} from '../../environments/environment';
 import {GallerySearchDto} from '../common/models/search.model';
-import {LoadingService} from '../common/services/loading.service';
 
 export interface GalleryFilters {
-  user_email?: string;
-  mime_type?: string;
+  userEmail?: string;
+  mimeType?: string;
   model?: string;
 }
 
@@ -27,10 +26,7 @@ export class GalleryService {
   private allFetchedImages: MediaItem[] = [];
   private filters$ = new BehaviorSubject<GalleryFilters>({});
 
-  constructor(
-    private http: HttpClient,
-    private loadingService: LoadingService,
-  ) {}
+  constructor(private http: HttpClient) {}
 
   get images$(): Observable<MediaItem[]> {
     return this.imagesCache$.asObservable();
@@ -55,7 +51,6 @@ export class GalleryService {
       this.allFetchedImages = [];
       this.nextPageCursor = null;
       this.allImagesLoaded$.next(false);
-      this.loadingService.hide();
     }
 
     // Do not try to load more if all items have already been loaded
@@ -66,31 +61,28 @@ export class GalleryService {
     this.fetchImages()
       .pipe(
         tap(response => {
-          this.nextPageCursor = response.next_page_cursor;
+          this.nextPageCursor = response.nextPageCursor ?? null;
           // Accumulate images in our central cache and push the new list to subscribers
-          this.allFetchedImages = [...this.allFetchedImages, ...response.items];
+          this.allFetchedImages = [...this.allFetchedImages, ...response.data];
           this.imagesCache$.next(this.allFetchedImages);
 
           if (!this.nextPageCursor) {
             this.allImagesLoaded$.next(true);
           }
           this.isLoading$.next(false);
-          this.loadingService.hide();
         }),
-        catchError(err => {
-          console.error('Failed to fetch gallery images', err);
-          this.isLoading$.next(false);
-          this.loadingService.hide();
-          this.allImagesLoaded$.next(true); // prevent loading more
-          return of([]); // Return an empty array observable to prevent breaking the stream
-        }),
+          catchError(err => {
+            console.error('Failed to fetch gallery images', err);
+            this.isLoading$.next(false);
+            this.allImagesLoaded$.next(true); // prevent loading more
+            return of([]); // Return an empty array observable to prevent breaking the stream
+          })
       )
       .subscribe();
   }
 
   private fetchImages(): Observable<PaginatedGalleryResponse> {
     this.isLoading$.next(true);
-    this.loadingService.show();
     const galleryUrl = `${environment.backendURL}/gallery`;
     const currentFilters = this.filters$.value;
 
@@ -100,7 +92,7 @@ export class GalleryService {
     };
 
     if (this.nextPageCursor) {
-      body.start_after = this.nextPageCursor;
+      body.startAfter = this.nextPageCursor;
     }
     return this.http.post<PaginatedGalleryResponse>(galleryUrl, body).pipe(
       shareReplay(1), // important to cache the http get response
@@ -108,8 +100,18 @@ export class GalleryService {
   }
 
   getMedia(id: string): Observable<MediaItem> {
-    this.loadingService.show();
     const detailUrl = `${environment.backendURL}/gallery/item/${id}`;
     return this.http.get<MediaItem>(detailUrl);
+  }
+
+  /**
+   * Creates a new template based on a media item.
+   * @param mediaItemId The ID of the media item to base the template on.
+   */
+  createTemplateFromMediaItem(mediaItemId: string): Observable<{id: string}> {
+    return this.http.post<{id: string}>(
+      `${environment.backendURL}/media-templates/from-media-item/${mediaItemId}`,
+      {},
+    );
   }
 }

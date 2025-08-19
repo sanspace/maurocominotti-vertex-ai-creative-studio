@@ -10,209 +10,665 @@
 </div>
 
 <div *ngIf="mediaItem" class="lg:container lg:mx-auto py-8 px-4">
-  <button
-    [routerLink]="['/gallery']"
-    class="mb-8 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
-  >
-    &larr; Back to Gallery
-  </button>
+  <div class="flex justify-between items-center mb-8">
+    <button
+      [routerLink]="['/gallery']"
+      class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+    >
+      &larr; Go to Gallery
+    </button>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <button
+      *ngIf="isAdmin"
+      (click)="createTemplateFromMediaItem()"
+      class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
+    >
+      Create Template from Media
+    </button>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <!-- Left Column: The Image/Video -->
-    <div class="md:col-span-2">
-      <!-- This container will be used by lightGallery to render the inline carousel -->
-      <div #lightGalleryCarousel class="inline-gallery-container"></div>
+    <div class="lg:col-span-2">
+      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" style="max-height: 80vh;"></app-media-lightbox>
     </div>
 
     <!-- Right Column: The Metadata -->
-    <div class="md:col-span-1 text-white">
+    <div class="lg:col-span-1 text-white">
       <h2 class="text-3xl font-bold mb-4">Details</h2>
-      <div class="space-y-3">
-        <div *ngIf="mediaItem.original_prompt">
-          <strong class="font-semibold">Original Prompt:</strong>
-          <p>{{ mediaItem.original_prompt }}</p>
-        </div>
 
-        <div>
-          <div
-            class="flex cursor-pointer items-center justify-between"
-            (click)="isPromptVisible = !isPromptVisible"
-          >
-            <strong class="font-semibold">Prompt used for generation:</strong>
-            <button
-              type="button"
-              class="text-gray-400 hover:text-white focus:outline-none"
-              aria-label="Toggle prompt visibility"
+      <mat-tab-group mat-align-tabs="start" animationDuration="0ms">
+        <!-- Generation Details Tab -->
+        <mat-tab label="Details">
+          <div class="py-4 space-y-6">
+            <!-- Parameters Section -->
+            <section class="space-y-3">
+              <h3
+                class="text-lg font-semibold border-b border-gray-700 pb-2"
+              >
+                Parameters
+              </h3>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <strong class="font-semibold text-gray-400">Model:</strong>
+                <p class="text-right break-all">
+                  {{ mediaItem.model || 'N/A' }}
+                </p>
+
+                <strong class="font-semibold text-gray-400">Creator:</strong>
+                <p class="text-right break-all">
+                  {{ mediaItem.userEmail || 'N/A' }}
+                </p>
+
+                <strong class="font-semibold text-gray-400"
+                  >Created At:</strong
+                >
+                <p class="text-right">
+                  {{ mediaItem.createdAt | date: 'medium' }}
+                </p>
+
+                <div *ngIf="mediaItem.generationTime" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Generation Time:</strong
+                  >
+                  <p class="text-right">
+                    {{ mediaItem.generationTime | number: '1.0-2' }}s
+                  </p>
+                </div>
+
+                <div *ngIf="mediaItem.seed" class="contents">
+                  <strong class="font-semibold text-gray-400">Seed:</strong>
+                  <p class="text-right">{{ mediaItem.seed }}</p>
+                </div>
+
+                <div *ngIf="mediaItem.numMedia" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Number of Media:</strong
+                  >
+                  <p class="text-right">{{ mediaItem.numMedia }}</p>
+                </div>
+
+                <div *ngIf="mediaItem.duration" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Duration:</strong
+                  >
+                  <p class="text-right">{{ mediaItem.duration }}s</p>
+                </div>
+
+                <div
+                  *ngIf="mediaItem.aspectRatio || mediaItem.aspect"
+                  class="contents"
+                >
+                  <strong class="font-semibold text-gray-400"
+                    >Aspect Ratio:</strong
+                  >
+                  <p class="text-right">
+                    {{ mediaItem.aspectRatio || mediaItem.aspect }}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Style Section -->
+            <section
+              class="space-y-3"
+              *ngIf="
+                mediaItem.style ||
+                mediaItem.lighting ||
+                mediaItem.colorAndTone ||
+                mediaItem.composition ||
+                mediaItem.modifiers?.length
+              "
             >
-              <mat-icon>{{ isPromptVisible ? 'expand_less' : 'expand_more' }}</mat-icon>
-            </button>
+              <h3
+                class="text-lg font-semibold border-b border-gray-700 pb-2"
+              >
+                Style
+              </h3>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div *ngIf="mediaItem.style" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Image Style:</strong
+                  >
+                  <p class="text-right">{{ mediaItem.style }}</p>
+                </div>
+                <div *ngIf="mediaItem.lighting" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Lighting:</strong
+                  >
+                  <p class="text-right">{{ mediaItem.lighting }}</p>
+                </div>
+                <div *ngIf="mediaItem.colorAndTone" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Color & Tone:</strong
+                  >
+                  <p class="text-right">{{ mediaItem.colorAndTone }}</p>
+                </div>
+                <div *ngIf="mediaItem.composition" class="contents">
+                  <strong class="font-semibold text-gray-400"
+                    >Composition:</strong
+                  >
+                  <p class="text-right">{{ mediaItem.composition }}</p>
+                </div>
+              </div>
+              <div *ngIf="mediaItem.modifiers?.length" class="pt-2">
+                <strong
+                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                  >Modifiers:</strong
+                >
+                <mat-chip-listbox aria-label="Style modifiers">
+                  <mat-chip-option
+                    *ngFor="let modifier of mediaItem.modifiers"
+                    class="!bg-gray-700 !text-gray-300"
+                    >{{ modifier }}</mat-chip-option
+                  >
+                </mat-chip-listbox>
+              </div>
+            </section>
           </div>
-          <pre
-            *ngIf="isPromptVisible"
-            class="mt-1 rounded-md bg-gray-800 p-2 text-sm whitespace-pre-wrap break-words"
-            >{{ formattedPrompt }}</pre>
-        </div>
+        </mat-tab>
 
-        <div *ngIf="mediaItem.rewritten_prompt">
-          <strong class="font-semibold">Rewritten Prompt:</strong>
-          <p>{{ mediaItem.rewritten_prompt }}</p>
-        </div>
+        <!-- Prompt Details Tab -->
+        <mat-tab label="Prompt Details" *ngIf="promptJson">
+          <section class="py-4 space-y-4">
+              <h3
+                class="text-lg font-semibold border-b border-gray-700 pb-2"
+              >
+                Prompt
+              </h3>
 
-        <div>
-          <strong class="font-semibold">Model:</strong>
-          <p>{{ mediaItem.model || 'N/A' }}</p>
-        </div>
+              <!-- Other Prompts -->
+              <div class="text-sm space-y-3">
+                <div *ngIf="mediaItem.originalPrompt">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >Original Prompt:</strong
+                  >
+                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                    {{ mediaItem.originalPrompt }}
+                  </p>
+                </div>
+                <div *ngIf="mediaItem.rewrittenPrompt">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >Rewritten Prompt:</strong
+                  >
+                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                    {{ mediaItem.rewrittenPrompt }}
+                  </p>
+                </div>
+                <div *ngIf="mediaItem.negativePrompt">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >Negative Prompt:</strong
+                  >
+                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                    {{ mediaItem.negativePrompt }}
+                  </p>
+                </div>
+              </div>
+            </section>
+          <div class="py-4 space-y-6">
+            <!-- Raw JSON Prompt -->
+            <mat-expansion-panel class="!bg-gray-800 !text-white">
+              <mat-expansion-panel-header>
+                <mat-panel-title class="!font-semibold">
+                  Raw JSON Prompt Sent
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              <pre
+                class="mt-2 p-3 rounded-md bg-gray-900 text-sm whitespace-pre-wrap break-words text-gray-300"
+                >{{ formattedPrompt }}</pre
+              >
+            </mat-expansion-panel>
 
-        <div>
-          <strong class="font-semibold">Creator:</strong>
-          <p>{{ mediaItem.user_email || 'N/A' }}</p>
-        </div>
+            <!-- Metadata Section -->
+            <section class="space-y-3" *ngIf="promptJson.metadata">
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Metadata
+              </h3>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <strong class="font-semibold text-gray-400"
+                  >Prompt Name:</strong
+                >
+                <p class="text-right break-all">
+                  {{ promptJson.metadata.prompt_name || 'N/A' }}
+                </p>
+                <strong class="font-semibold text-gray-400">Version:</strong>
+                <p class="text-right break-all">
+                  {{ promptJson.metadata.version || 'N/A' }}
+                </p>
+                <strong class="font-semibold text-gray-400"
+                  >Target Model:</strong
+                >
+                <p class="text-right break-all">
+                  {{ promptJson.metadata.target_model || 'N/A' }}
+                </p>
+              </div>
+              <div>
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Core Concept:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.metadata.core_concept || 'N/A' }}
+                </p>
+              </div>
+            </section>
 
-        <div>
-          <strong class="font-semibold">Created at:</strong>
-          <p>{{ mediaItem.created_at | date: 'medium' }}</p>
-        </div>
+            <!-- Scene Setup Section -->
+            <section class="space-y-3" *ngIf="promptJson.scene_setup">
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Scene Setup
+              </h3>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <strong class="font-semibold text-gray-400"
+                  >Temporal Elements:</strong
+                >
+                <p class="text-right break-all">
+                  {{ promptJson.scene_setup.temporal_elements || 'N/A' }}
+                </p>
+              </div>
+              <div>
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Environment:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.scene_setup.environment || 'N/A' }}
+                </p>
+              </div>
+              <div>
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Mood:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.scene_setup.mood || 'N/A' }}
+                </p>
+              </div>
+              <div *ngIf="promptJson.scene_setup.key_objects?.length">
+                <strong
+                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                  >Key Objects:</strong
+                >
+                <mat-chip-listbox aria-label="Scene key objects">
+                  <mat-chip-option
+                    *ngFor="let obj of promptJson.scene_setup.key_objects"
+                    class="!bg-gray-700 !text-gray-300"
+                    >{{ obj }}</mat-chip-option
+                  >
+                </mat-chip-listbox>
+              </div>
+            </section>
 
-        <div>
-          <strong class="font-semibold">Mime Type:</strong>
-          <p>{{ mediaItem.mime_type || 'N/A' }}</p>
-        </div>
+            <!-- Subject Section -->
+            <section class="space-y-3" *ngIf="promptJson.subject">
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Subject
+              </h3>
+              <div>
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Main Subject:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.subject.main_subject || 'N/A' }}
+                </p>
+              </div>
+              <div *ngIf="promptJson.subject.character_details">
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Character Details:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.subject.character_details }}
+                </p>
+              </div>
+              <div *ngIf="promptJson.subject.key_objects?.length">
+                <strong
+                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                  >Key Objects:</strong
+                >
+                <mat-chip-listbox aria-label="Subject key objects">
+                  <mat-chip-option
+                    *ngFor="let obj of promptJson.subject.key_objects"
+                    class="!bg-gray-700 !text-gray-300"
+                    >{{ obj }}</mat-chip-option
+                  >
+                </mat-chip-listbox>
+              </div>
+            </section>
 
-        <div *ngIf="mediaItem.generation_time">
-          <strong class="font-semibold">Generation Time:</strong>
-          <p>{{ mediaItem.generation_time }} seconds</p>
-        </div>
+            <!-- Visual Style Section -->
+            <section class="space-y-3" *ngIf="promptJson.visual_style">
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Visual Style
+              </h3>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <strong class="font-semibold text-gray-400"
+                  >Resolution & Format:</strong
+                >
+                <p class="text-right break-all">
+                  {{
+                    promptJson.visual_style.resolution_and_format || 'N/A'
+                  }}
+                </p>
+              </div>
+              <div>
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Aesthetic:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.visual_style.aesthetic || 'N/A' }}
+                </p>
+              </div>
+              <div>
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Color Palette:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.visual_style.color_palette || 'N/A' }}
+                </p>
+              </div>
+            </section>
 
-        <div *ngIf="mediaItem.error_message">
-          <strong class="font-semibold">Error Message:</strong>
-          <p>{{ mediaItem.error_message }}</p>
-        </div>
+            <!-- Camera Directives Section -->
+            <section
+              class="space-y-3"
+              *ngIf="promptJson.camera_directives"
+            >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Camera Directives
+              </h3>
+              <div
+                *ngIf="promptJson.camera_directives.lens_and_optical_effects"
+              >
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Lens & Optical Effects:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{
+                    promptJson.camera_directives.lens_and_optical_effects
+                  }}
+                </p>
+              </div>
+              <div *ngIf="promptJson.camera_directives.overall_movement">
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Overall Movement:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.camera_directives.overall_movement }}
+                </p>
+              </div>
+              <div *ngIf="promptJson.camera_directives.shot_types">
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Shot Types:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ promptJson.camera_directives.shot_types }}
+                </p>
+              </div>
+              <div *ngIf="promptJson.camera_directives.camera_angles?.length">
+                <strong
+                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                  >Camera Angles:</strong
+                >
+                <mat-chip-listbox aria-label="Camera angles">
+                  <mat-chip-option
+                    *ngFor="
+                      let angle of promptJson.camera_directives.camera_angles
+                    "
+                    class="!bg-gray-700 !text-gray-300"
+                    >{{ angle }}</mat-chip-option
+                  >
+                </mat-chip-listbox>
+              </div>
+              <div
+                *ngIf="promptJson.camera_directives.camera_movements?.length"
+              >
+                <strong
+                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                  >Camera Movements:</strong
+                >
+                <mat-chip-listbox aria-label="Camera movements">
+                  <mat-chip-option
+                    *ngFor="
+                      let move of promptJson.camera_directives.camera_movements
+                    "
+                    class="!bg-gray-700 !text-gray-300"
+                    >{{ move }}</mat-chip-option
+                  >
+                </mat-chip-listbox>
+              </div>
+            </section>
 
-        <div *ngIf="mediaItem.gcsuri">
-          <strong class="font-semibold">GCS URI:</strong>
-          <p>{{ mediaItem.gcsuri }}</p>
-        </div>
+            <!-- Timeline Section -->
+            <section class="space-y-3" *ngIf="promptJson.timeline?.length">
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Timeline
+              </h3>
+              <mat-accordion>
+                <mat-expansion-panel
+                  *ngFor="let event of promptJson.timeline"
+                  class="!bg-gray-800 !text-white"
+                >
+                  <mat-expansion-panel-header>
+                    <mat-panel-title class="!font-semibold">
+                      Sequence {{ event.sequence_id }} ({{
+                        event.timestamp
+                      }})
+                    </mat-panel-title>
+                  </mat-expansion-panel-header>
+                  <div class="space-y-3 text-sm py-2">
+                    <div>
+                      <strong class="font-semibold text-gray-400 block mb-1"
+                        >Action:</strong
+                      >
+                      <p class="text-gray-300">{{ event.action }}</p>
+                    </div>
+                    <div>
+                      <strong class="font-semibold text-gray-400 block mb-1"
+                        >Camera Instruction:</strong
+                      >
+                      <p class="text-gray-300">
+                        {{ event.camera_instruction || 'N/A' }}
+                      </p>
+                    </div>
+                    <div>
+                      <strong class="font-semibold text-gray-400 block mb-1"
+                        >Audio Description:</strong
+                      >
+                      <p class="text-gray-300">
+                        {{ event.audio_description || 'N/A' }}
+                      </p>
+                    </div>
+                  </div>
+                </mat-expansion-panel>
+              </mat-accordion>
+            </section>
 
-        <div *ngIf="mediaItem.gcs_uris">
-          <strong class="font-semibold">GCS URIs:</strong>
-          <ul>
-            <li *ngFor="let uri of mediaItem.gcs_uris">{{ uri }}</li>
-          </ul>
-        </div>
+            <!-- Constraints Section -->
+            <section
+              class="space-y-3"
+              *ngIf="promptJson.constraints?.negative_prompts?.length"
+            >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Constraints
+              </h3>
+              <div>
+                <strong
+                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                  >Negative Prompts:</strong
+                >
+                <mat-chip-listbox aria-label="Negative prompts">
+                  <mat-chip-option
+                    *ngFor="
+                      let prompt of promptJson.constraints.negative_prompts
+                    "
+                    class="!bg-gray-700 !text-gray-300"
+                    >{{ prompt }}</mat-chip-option
+                  >
+                </mat-chip-listbox>
+              </div>
+            </section>
 
-        <div *ngIf="mediaItem.source_images_gcs?.length">
-          <strong class="font-semibold">Source Images GCS:</strong>
-          <ul>
-            <li *ngFor="let image of mediaItem.source_images_gcs">
-              {{ image }}
-            </li>
-          </ul>
-        </div>
+            <!-- Final Summary Prompt Section -->
+            <section
+              class="space-y-3"
+              *ngIf="promptJson.final_summary_prompt"
+            >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+                Final Summary Prompt
+              </h3>
+              <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                {{ promptJson.final_summary_prompt }}
+              </p>
+            </section>
+          </div>
+        </mat-tab>
 
-        <!-- Image Specific -->
-        <div *ngIf="mediaItem.modifiers?.length">
-          <strong class="font-semibold">Modifiers:</strong>
-          <ul>
-            <li *ngFor="let modifier of mediaItem.modifiers">{{ modifier }}</li>
-          </ul>
-        </div>
+        <!-- Technical Info Tab -->
+        <mat-tab label="Technical">
+          <div class="py-4 space-y-6">
+            <!-- File Info -->
+            <section class="space-y-3">
+              <h3
+                class="text-lg font-semibold border-b border-gray-700 pb-2"
+              >
+                File Info
+              </h3>
+              <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <strong class="font-semibold text-gray-400"
+                  >Mime Type:</strong
+                >
+                <p class="text-right">{{ mediaItem.mimeType || 'N/A' }}</p>
 
-        <div *ngIf="mediaItem.num_media">
-          <strong class="font-semibold">Number of Images:</strong>
-          <p>{{ mediaItem.num_media }}</p>
-        </div>
+                <strong class="font-semibold text-gray-400"
+                  >Watermark:</strong
+                >
+                <p class="text-right">
+                  {{ mediaItem.addWatermark ?? 'N/A' }}
+                </p>
+              </div>
+            </section>
 
-        <div *ngIf="mediaItem.aspect_ratio">
-          <strong class="font-semibold">Aspect Ratio:</strong>
-          <p>{{ mediaItem.aspect_ratio }}</p>
-        </div>
+            <!-- Storage -->
+            <section class="space-y-3">
+              <h3
+                class="text-lg font-semibold border-b border-gray-700 pb-2"
+              >
+                Storage
+              </h3>
+              <div class="text-sm space-y-3">
+                <div *ngIf="mediaItem.gcsUris?.length">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >GCS URIs:</strong
+                  >
+                  <ul class="space-y-1">
+                    <li *ngFor="let uri of mediaItem.gcsUris">
+                      <a
+                        [href]="getGcsLink(uri)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="p-3 rounded-md bg-gray-800 block break-all hover:bg-gray-700 transition-colors"
+                      >
+                        {{ uri }}
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <div *ngIf="mediaItem.sourceImagesGcs?.length">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >Source Images:</strong
+                  >
+                  <ul class="space-y-1">
+                    <li *ngFor="let image of mediaItem.sourceImagesGcs">
+                      <a
+                        [href]="getGcsLink(image)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="p-3 rounded-md bg-gray-800 block break-all hover:bg-gray-700 transition-colors"
+                      >
+                        {{ image }}
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </section>
 
-        <div *ngIf="mediaItem.style">
-          <strong class="font-semibold">Image Style:</strong>
-          <p>{{ mediaItem.style }}</p>
-        </div>
+            <!-- Other -->
+            <section class="space-y-3">
+              <h3
+                class="text-lg font-semibold border-b border-gray-700 pb-2"
+              >
+                Other
+              </h3>
+              <div class="text-sm space-y-3">
+                <div *ngIf="mediaItem.comment">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >Comment:</strong
+                  >
+                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                    {{ mediaItem.comment }}
+                  </p>
+                </div>
+                <div *ngIf="mediaItem.critique">
+                  <strong class="font-semibold text-gray-400 block mb-1"
+                    >Critique:</strong
+                  >
+                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                    {{ mediaItem.critique }}
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </mat-tab>
 
-        <div *ngIf="mediaItem.lighting">
-          <strong class="font-semibold">Lighting:</strong>
-          <p>{{ mediaItem.lighting }}</p>
-        </div>
+        <!-- Debug Tab -->
+        <mat-tab
+          label="Debug"
+          *ngIf="
+            mediaItem.rawData ||
+            mediaItem.audioAnalysis ||
+            mediaItem.error_message
+          "
+        >
+          <div class="py-4 space-y-4">
+            <div *ngIf="mediaItem.error_message">
+              <strong class="font-semibold text-red-400 block mb-1"
+                >Error Message:</strong
+              >
+              <p class="p-3 rounded-md bg-red-900/50 text-red-300">
+                {{ mediaItem.error_message }}
+              </p>
+            </div>
 
-        <div *ngIf="mediaItem.color_and_tone">
-          <strong class="font-semibold">Color and Tone:</strong>
-          <p>{{ mediaItem.color_and_tone }}</p>
-        </div>
+            <mat-expansion-panel
+              *ngIf="mediaItem.rawData"
+              class="!bg-gray-800 !text-white"
+            >
+              <mat-expansion-panel-header>
+                <mat-panel-title class="!font-semibold">
+                  Raw Data
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              <pre
+                class="mt-2 p-3 rounded-md bg-gray-900 text-sm whitespace-pre-wrap break-words text-gray-300"
+                >{{ mediaItem.rawData | json }}</pre
+              >
+            </mat-expansion-panel>
 
-        <div *ngIf="mediaItem.composition">
-          <strong class="font-semibold">Composition:</strong>
-          <p>{{ mediaItem.composition }}</p>
-        </div>
-
-        <div *ngIf="mediaItem.seed">
-          <strong class="font-semibold">Seed:</strong>
-          <p>{{ mediaItem.seed }}</p>
-        </div>
-
-        <div *ngIf="mediaItem.critique">
-          <strong class="font-semibold">Critique:</strong>
-          <p>{{ mediaItem.critique }}</p>
-        </div>
-
-        <!-- Video Specific -->
-        <div *ngIf="mediaItem.aspect">
-          <strong class="font-semibold">Aspect Ratio:</strong>
-          <p>{{ mediaItem.aspect }}</p>
-        </div>
-
-        <div *ngIf="mediaItem.duration">
-          <strong class="font-semibold">Duration:</strong>
-          <p>{{ mediaItem.duration }} seconds</p>
-        </div>
-
-        <div *ngIf="mediaItem.reference_image">
-          <strong class="font-semibold">Reference Image:</strong>
-          <p>{{ mediaItem.reference_image }}</p>
-        </div>
-
-        <div *ngIf="mediaItem.last_reference_image">
-          <strong class="font-semibold">Last Reference Image:</strong>
-          <p>{{ mediaItem.last_reference_image }}</p>
-        </div>
-
-        <!-- <div *ngIf="mediaItem.enhanced_prompt_used !== undefined">
-                                          <strong class="font-semibold">Enhanced Prompt Used:</strong>
-                                          <p>{{ mediaItem.enhanced_prompt_used }}</p>
-        </div> -->
-
-        <div *ngIf="mediaItem.negative_prompt">
-          <strong class="font-semibold">Negative Prompt:</strong>
-          <p>{{ mediaItem.negative_prompt }}</p>
-        </div>
-
-        <div>
-          <strong class="font-semibold">Add Watermark:</strong>
-          <p>{{ mediaItem.add_watermark ?? 'N/A' }}</p>
-        </div>
-
-        <div *ngIf="mediaItem.comment">
-          <strong class="font-semibold">Comment:</strong>
-          <p>{{ mediaItem.comment }}</p>
-        </div>
-        <!-- Music Specific -->
-        <div *ngIf="mediaItem.audio_analysis">
-          <b class="font-semibold">Audio Analysis:</b>
-          <pre
-            class="bg-gray-800 p-2 rounded-md text-sm whitespace-pre-wrap break-words"
-            >{{ mediaItem.audio_analysis | json }}</pre>
-        </div>
-
-        <!-- Debugging -->
-        <div *ngIf="mediaItem.raw_data">
-          <b class="font-semibold">Raw Data:</b>
-          <pre
-            class="bg-gray-800 p-2 rounded-md text-sm whitespace-pre-wrap break-words"
-            >{{ mediaItem.raw_data | json }}</pre>
-        </div>
-      </div>
+            <mat-expansion-panel
+              *ngIf="mediaItem.audioAnalysis"
+              class="!bg-gray-800 !text-white"
+            >
+              <mat-expansion-panel-header>
+                <mat-panel-title class="!font-semibold">
+                  Audio Analysis
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              <pre
+                class="mt-2 p-3 rounded-md bg-gray-900 text-sm whitespace-pre-wrap break-words text-gray-300"
+                >{{ mediaItem.audioAnalysis | json }}</pre
+              >
+            </mat-expansion-panel>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
     </div>
   </div>
 </div>

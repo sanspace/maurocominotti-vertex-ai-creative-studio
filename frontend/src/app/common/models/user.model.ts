@@ -14,28 +14,19 @@
  * limitations under the License.
  */
 
-import {DocumentData} from '@angular/fire/firestore';
 
-export interface UserData extends DocumentData {
-  id: string;
+export enum UserRolesEnum {
+  ADMIN = 'admin',
+  USER = 'user',
+  CREATOR = 'creator',
+}
+
+export interface UserModel {
+  id?: number | string;
+  name?: string;
   email: string;
-  picture: string;
-  name: string;
-  roles: string[];
-  createdAt: string;
-  updatedAt: string;
-  last_login_at: string;
+  roles?: UserRolesEnum[];
+  picture?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
-
-interface Selection {
-  value: string;
-  viewValue: string;
-}
-
-export const ROLES: Selection[] = [
-  {value: 'user', viewValue: 'User'},
-  {value: 'super_admin', viewValue: 'Super Admin'},
-  {value: 'org_admin', viewValue: 'Org Admin'},
-  {value: 'creator', viewValue: 'Content Creator'},
-  {value: 'viewer', viewValue: 'Content Viewer'},
-];

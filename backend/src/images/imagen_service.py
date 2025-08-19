@@ -25,20 +25,24 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
-from src.common.schema.base_model_setup import GenAIModelSetup
-from src.common.base_schema_model import GenerationModelEnum
-from src.images.schema.media_item_model import MediaItem
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.common.schema.genai_model_setup import GenAIModelSetup
+from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.schema.media_item_model import MediaItemModel
 from src.images.repository.media_item_repository import MediaRepository
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
-from src.images.schema.imagen_result_model import CustomImagenResult, ImageGenerationResult
+from src.images.schema.imagen_result_model import (
+    CustomImagenResult,
+    ImageGenerationResult,
+)
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.storage_service import store_to_gcs
+from src.common.storage_service import GcsService
 from src.config.config_service import ConfigService
 import uuid
 import base64
 from google.cloud import aiplatform
-from src.multimodal.gemini_service import GeminiService
+from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 
 logger = logging.getLogger(__name__)
 
@@ -49,18 +53,21 @@ class ImagenService:
         self.iam_signer_credentials = IamSignerCredentials()
         self.media_repo = MediaRepository()
         self.gemini_service = GeminiService()
+        self.gcs_service = GcsService()
 
     @retry(
         wait=wait_exponential(
             multiplier=1, min=1, max=10
         ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
         stop=stop_after_attempt(3),  # Stop after 3 attempts
-        retry=retry_if_exception_type(Exception),  # Retry on all exceptions for robustness
+        retry=retry_if_exception_type(
+            Exception
+        ),  # Retry on all exceptions for robustness
         reraise=True,  # re-raise the last exception if all retries fail
     )
     async def generate_images(
         self, request_dto: CreateImagenDto, user_email: str
-    ) -> list[ImageGenerationResult]:
+    ) -> MediaItemResponse | None:
         """
         Generates a batch of images and saves them as a single MediaItem document.
         """
@@ -69,7 +76,9 @@ class ImagenService:
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
         original_prompt = request_dto.prompt
-        rewritten_prompt = self.gemini_service.rewrite_for_image(request_dto)
+        rewritten_prompt = self.gemini_service.enhance_prompt_from_dto(
+            dto=request_dto, target_type=PromptTargetEnum.IMAGE
+        )
         request_dto.prompt = rewritten_prompt
 
         all_generated_images: List[types.GeneratedImage] = []
@@ -95,7 +104,7 @@ class ImagenService:
                             add_watermark=request_dto.add_watermark,
                         ),
                     )
-                    for _ in range(request_dto.number_of_images)
+                    for _ in range(request_dto.number_of_media)
                 ]
                 api_responses = await asyncio.gather(*tasks)
                 for response in api_responses:
@@ -107,7 +116,7 @@ class ImagenService:
                     model=request_dto.generation_model,
                     prompt=request_dto.prompt,
                     config=types.GenerateImagesConfig(
-                        number_of_images=request_dto.number_of_images,
+                        number_of_images=request_dto.number_of_media,
                         output_gcs_uri=gcs_output_directory,
                         aspect_ratio=request_dto.aspect_ratio,
                         negative_prompt=request_dto.negative_prompt,
@@ -119,7 +128,7 @@ class ImagenService:
                 )
 
             if not all_generated_images:
-                return []
+                return None
 
             end_time = time.monotonic()
             generation_time = end_time - start_time
@@ -136,10 +145,12 @@ class ImagenService:
                 for img in valid_generated_images
                 if img.image and img.image.gcs_uri
             ]
-            mime_type: str = (
-                valid_generated_images[0].image.mime_type or "image/png"
+            mime_type: MimeTypeEnum = (
+                MimeTypeEnum.IMAGE_PNG
                 if valid_generated_images[0].image
-                else "image/png"
+                and valid_generated_images[0].image.mime_type
+                == MimeTypeEnum.IMAGE_PNG
+                else MimeTypeEnum.IMAGE_JPEG
             )
 
             # 2. Create and run tasks to generate all presigned URLs in parallel
@@ -152,42 +163,32 @@ class ImagenService:
             presigned_urls = await asyncio.gather(*presigned_url_tasks)
 
             # Create and save a SINGLE MediaItem for the entire batch
-            dto_data = request_dto.model_dump(
-                exclude={"number_of_images", "prompt"}
-            )
-            media_post_to_save = MediaItem(
-                **dto_data,  # Unpack all other matching fields from the DTO
-                mime_type=mime_type,
+            media_post_to_save = MediaItemModel(
+                # Core Props
                 user_email=user_email,
+                mime_type=mime_type,
                 model=request_dto.generation_model,
-                generation_time=generation_time,
+                # Common Props
                 prompt=rewritten_prompt,
                 original_prompt=original_prompt,
-                gcs_uris=permanent_gcs_uris,
-                aspect_ratio=request_dto.aspect_ratio,
                 num_media=len(permanent_gcs_uris),
+                generation_time=generation_time,
+                aspect_ratio=request_dto.aspect_ratio,
+                gcs_uris=permanent_gcs_uris,
+                # Styling props
+                style=request_dto.style,
+                lighting=request_dto.lighting,
+                color_and_tone=request_dto.color_and_tone,
+                composition=request_dto.composition,
+                negative_prompt=request_dto.negative_prompt,
+                add_watermark=request_dto.add_watermark,
             )
             self.media_repo.save(media_post_to_save)
 
-            response_imagen: list[ImageGenerationResult] = []
-            for gen_image, presigned_url in zip(
-                valid_generated_images, presigned_urls
-            ):
-                if gen_image.image:
-                    response_imagen.append(
-                        ImageGenerationResult(
-                            enhanced_prompt=gen_image.enhanced_prompt or "",
-                            rai_filtered_reason=gen_image.rai_filtered_reason,
-                            image=CustomImagenResult(
-                                gcs_uri=gen_image.image.gcs_uri,
-                                presigned_url=presigned_url,
-                                encoded_image="",
-                                mime_type=gen_image.image.mime_type or "",
-                            ),
-                        )
-                    )
-
-            return response_imagen
+            return MediaItemResponse(
+                **media_post_to_save.model_dump(),
+                presigned_urls=presigned_urls,
+            )
 
         except Exception as e:
             logger.error(f"Image generation API call failed: {e}")
@@ -203,7 +204,6 @@ class ImagenService:
         response_gemini: List[ImageGenerationResult] = []
         try:
             gemini_prompt_text = f"Create an image with a style '{style}' based on this user prompt: {term}"
-            print(f"Calling Gemini model for '{term}' with style '{style}'")
 
             for i in range(
                 number_of_images
@@ -277,56 +277,17 @@ class ImagenService:
                                     )
                                 )
                             elif part.text is not None:
-                                print(
+                                logger.info(
                                     f"Gemini Text Output (not an image part): {part.text}"
                                 )
 
-            print(f"Number of images created by Gemini: {len(response_gemini)}")
+            logger.info(
+                f"Number of images created by Gemini: {len(response_gemini)}"
+            )
             return response_gemini
         except Exception as e:
-            print(f"Error during Gemini generation: {e}")
+            logger.error(f"Error during Gemini generation: {e}")
             return []
-
-    async def generate_images_from_gemini(
-        self, request_dto: CreateImagenDto
-    ) -> list[ImageGenerationResult]:
-        client = GenAIModelSetup.init()
-        gemini_coroutine = self._generate_with_gemini(
-            client=client,
-            term=request_dto.prompt,
-            number_of_images=request_dto.number_of_images,
-            style=request_dto.style,
-        )
-        results = await asyncio.gather(gemini_coroutine, return_exceptions=True)
-
-        response_gemini: List[ImageGenerationResult] = []
-        gemini_result_index = request_dto.number_of_images
-        if gemini_result_index < len(results):
-            gemini_task_result = results[gemini_result_index]
-            if isinstance(gemini_task_result, Exception):
-                print(
-                    f"Exception in Gemini generation task: {gemini_task_result}"
-                )
-            elif gemini_task_result is not None and isinstance(gemini_task_result, List):
-                response_gemini = gemini_task_result
-        else:
-            print(
-                "Gemini task result not found in the expected position in results list."
-            )
-        return response_gemini
-
-    async def generate_images_from_prompt(
-        self, request_dto: CreateImagenDto, user_email: str
-    ) -> list[ImageGenerationResult]:
-        """
-        Generates images based on the input prompt and parameters.
-        Returns a list of image URIs. Does not directly modify PageState.
-        """
-        input_txt = ""
-        full_prompt = f"{input_txt}, {request_dto.prompt}"
-        request_dto.prompt = full_prompt
-
-        return await self.generate_images(request_dto, user_email)
 
     def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
         """Generates a single image and returns the image bytes."""
@@ -387,7 +348,7 @@ class ImagenService:
                 encoded_mask_string = prediction["bytesBase64Encoded"]   # type: ignore
                 mask_bytes = base64.b64decode(encoded_mask_string)
 
-                gcs_uri = store_to_gcs(
+                gcs_uri = self.gcs_service.store_to_gcs(
                     folder="recontext_results",
                     file_name=f"recontext_result_{uuid.uuid4()}.png",
                     mime_type="image/png",
@@ -431,7 +392,7 @@ class ImagenService:
 
         try:
             logger.info(
-                f"models.image_models.edit_image: Requesting {request_dto.number_of_images} edited images for model {request_dto.generation_model} with output to {gcs_output_directory}"
+                f"models.image_models.edit_image: Requesting {request_dto.number_of_media} edited images for model {request_dto.generation_model} with output to {gcs_output_directory}"
             )
             images_imagen_response = client.models.edit_image(
                 model=request_dto.generation_model,
@@ -439,7 +400,7 @@ class ImagenService:
                 reference_images=[raw_ref_image, mask_ref_image],  # type: ignore
                 config=types.EditImageConfig(
                     edit_mode=request_dto.edit_mode,
-                    number_of_images=request_dto.number_of_images,
+                    number_of_images=request_dto.number_of_media,
                     include_rai_reason=True,
                     output_gcs_uri=gcs_output_directory,
                     output_mime_type="image/jpeg",

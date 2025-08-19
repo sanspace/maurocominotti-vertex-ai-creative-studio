@@ -38,13 +38,19 @@
                 "input": "public"
               },
               {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets/"
+              },
+              {
                 "glob": "robots.txt",
                 "input": "src",
                 "output": "/"
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/photoswipe/src/photoswipe.css"
             ],
             "scripts": [],
             "server": "src/main.server.ts",
@@ -154,6 +160,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets/"
               },
               {
                 "glob": "robots.txt",

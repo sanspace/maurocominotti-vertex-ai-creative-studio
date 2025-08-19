@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from fastapi.responses import JSONResponse
 from src.config import (
     logger_config,
 )  # Import the logging configuration first to ensure it's set up.
@@ -21,7 +22,7 @@ import logging
 from os import getenv
 import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.auth import firebase_client_service
@@ -33,6 +34,9 @@ from src.multimodal.gemini_controller import router as gemini_router
 from src.users.user_controller import router as user_router
 from src.generation_options.generation_options_controller import (
     router as generation_options_router,
+)
+from src.media_templates.media_templates_controller import (
+    router as media_template_router,
 )
 
 # Get the logger instance that Uvicorn is using
@@ -102,6 +106,25 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """
+    This is the global 'catch-all' exception handler.
+    It catches any exception that is not specifically handled by other exception handlers.
+    """
+    # Log the full error for debugging purposes
+    logger.error(
+        f"Unhandled exception for request {request.method} {request.url}: {exc}",
+        exc_info=True,
+    )
+
+    # Return a standardized 500 Internal Server Error response
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal server error occurred."},
+    )
+
+
 @app.get("/", tags=["Health Check"])
 async def root():
     return "You are calling Creative Studio Backend"
@@ -121,3 +144,4 @@ app.include_router(gallery_router)
 app.include_router(gemini_router)
 app.include_router(user_router)
 app.include_router(generation_options_router)
+app.include_router(media_template_router)

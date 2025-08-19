@@ -1,12 +1,18 @@
+from typing import List, Optional
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.users.dto.user_create_dto import (
+    UserUpdateRoleDto,
+)
+from src.users.dto.user_search_dto import UserSearchDto
 from src.users.repository.user_repository import UserRepository
-from src.users.user_model import User
+from src.users.user_model import User, UserRoleEnum
 
 class UserService:
     """
     Handles the business logic for user management.
     """
     def __init__(self):
-        self.repository = UserRepository()
+        self.user_repo = UserRepository()
 
     def create_user_if_not_exists(self, uid: str, email: str, name: str, picture: str) -> User:
         """
@@ -15,7 +21,7 @@ class UserService:
         document with the current time as the last login.
         """
         # 1. Check if the user already exists in the database.
-        existing_user = self.repository.get_by_id(uid)
+        existing_user = self.user_repo.get_by_id(uid)
 
         if existing_user:
             return existing_user
@@ -25,12 +31,40 @@ class UserService:
         new_user = User(
             id=uid,
             email=email,
-            roles=["user"], # Assign a default role "user" for all new users
+            roles=[
+                UserRoleEnum.USER
+            ],  # Assign a default role "user" for all new users
             name=name,
             picture=picture,
         )
 
         # 3. Call the repository's save() method to create the new document
-        self.repository.save(new_user)
+        self.user_repo.save(new_user)
 
         return new_user
+
+    def get_user_by_id(self, user_id: str) -> Optional[User]:
+        """Finds a single user by their document ID."""
+        return self.user_repo.get_by_id(user_id)
+
+    def find_all_users(
+        self, search_dto: UserSearchDto
+    ) -> PaginationResponseDto[User]:
+        """Retrieves a paginated list of all users."""
+        return self.user_repo.query(search_dto)
+
+    def update_user_role(
+        self, user_id: str, role_data: UserUpdateRoleDto
+    ) -> Optional[User]:
+        """Updates the role of a specific user."""
+        # Convert the list of enums to a list of strings for Firestore
+        roles_as_strings = [role.value for role in role_data.roles]
+
+        # The update method in the repository would handle updating the 'role' field
+        return self.user_repo.update(user_id, {"roles": roles_as_strings})
+
+    def delete_user_by_id(self, user_id: str) -> bool:
+        """Deletes a user from the system."""
+        # Note: This should also trigger a deletion in Firebase Authentication
+        # which requires the Admin SDK.
+        return self.user_repo.delete(user_id)

@@ -41,6 +41,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   ];
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};
+  public hoveredVideoId: string | null = null;
   constructor(
     private galleryService: GalleryService,
     private sanitizer: DomSanitizer,
@@ -74,6 +75,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
       if (images) {
         this.images = images;
+        console.log('Images:', this.images);
         this.images.forEach(image => {
           if (this.currentImageIndices[image.id] === undefined) {
             this.currentImageIndices[image.id] = 0;
@@ -115,7 +117,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
 
   public getCurrentImageUrl(image: MediaItem): string {
     const index = this.currentImageIndices[image.id] || 0;
-    return image.presigned_urls?.[index] || '';
+    return image.presignedUrls?.[index] || '';
   }
 
   public nextImage(
@@ -147,6 +149,54 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
       (currentIndex - 1 + urlsLength) % urlsLength;
   }
 
+  public onMouseEnter(media: MediaItem): void {
+    if (media.mimeType === 'video/mp4') this.playVideo(media.id);
+
+    this.stopAutoSlide(media.id);
+  }
+
+  public onMouseLeave(media: MediaItem): void {
+    if (media.mimeType === 'video/mp4') this.stopVideo();
+
+    this.startAutoSlide(media);
+  }
+
+  public getShortPrompt(
+    prompt: string | undefined | null,
+    wordLimit = 20,
+  ): string {
+    if (!prompt) return 'Generated media';
+
+    let textToTruncate = prompt;
+
+    // Prompts can sometimes be stringified JSON.
+    try {
+      const parsedPrompt = JSON.parse(prompt);
+      if (
+        parsedPrompt &&
+        typeof parsedPrompt === 'object' &&
+        parsedPrompt.prompt_name
+      ) {
+        textToTruncate = parsedPrompt.prompt_name;
+      }
+    } catch (e) {
+      // It's not JSON, so we use the prompt as is.
+    }
+
+    const words = textToTruncate.split(/\s+/);
+    if (words.length > wordLimit)
+      return words.slice(0, wordLimit).join(' ') + '...';
+    return textToTruncate;
+  }
+
+  public playVideo(mediaId: string): void {
+    this.hoveredVideoId = mediaId;
+  }
+
+  public stopVideo(): void {
+    this.hoveredVideoId = null;
+  }
+
   public onShowOnlyMyMediaChange(event: MatCheckboxChange): void {
     if (event.checked) {
       const userDetails = this.userService.getUserDetails();
@@ -155,12 +205,12 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   }
 
   public startAutoSlide(image: MediaItem): void {
-    if (image.presigned_urls && image.presigned_urls.length > 1) {
+    if (image.presignedUrls && image.presignedUrls.length > 1) {
       if (this.autoSlideIntervals[image.id]) {
         return;
       }
       this.autoSlideIntervals[image.id] = setInterval(() => {
-        this.nextImage(image.id, image.presigned_urls!.length);
+        this.nextImage(image.id, image.presignedUrls!.length);
       }, 3000);
     }
   }
@@ -201,10 +251,10 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   public searchTerm(): void {
     const filters: {[key: string]: string} = {};
     if (this.userEmailFilter) {
-      filters['user_email'] = this.userEmailFilter;
+      filters['userEmail'] = this.userEmailFilter;
     }
     if (this.mediaTypeFilter) {
-      filters['mime_type'] = this.mediaTypeFilter;
+      filters['mimeType'] = this.mediaTypeFilter;
     }
     if (this.generationModelFilter) {
       filters['model'] = this.generationModelFilter;
@@ -227,7 +277,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     // just before the user hits the absolute bottom.
     if (
       window.innerHeight + window.scrollY >=
-      document.documentElement.scrollHeight - 200
+      document.documentElement.scrollHeight - 800
     ) {
       this.galleryService.loadGallery();
     }

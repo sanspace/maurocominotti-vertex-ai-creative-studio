@@ -1,44 +1,75 @@
 from typing import List, Optional
 from google.cloud import firestore
 
+from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.common.base_repository import BaseRepository
-from src.images.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItemModel
+from google.cloud.firestore_v1.query_results import QueryResultsList
+from google.cloud.firestore_v1.base_aggregation import AggregationResult
 
 
-class MediaRepository(BaseRepository[MediaItem]):
+class MediaRepository(BaseRepository[MediaItemModel]):
     """Handles database operations for MediaItem objects in Firestore."""
 
     def __init__(self):
         # Call the parent __init__ with the collection name and Pydantic model
-        super().__init__(collection_name="media_library", model=MediaItem)
+        super().__init__(collection_name="media_library", model=MediaItemModel)
 
-    def query(self, search_dto: GallerySearchDto) -> List[MediaItem]:
+    def query(
+        self, search_dto: GallerySearchDto
+    ) -> PaginationResponseDto[MediaItemModel]:
         """
         Performs a generic, paginated query on the media_library collection.
         """
-        # Start with the base query and order by created_at for consistent pagination
-        query = self.collection_ref.order_by(
+        base_query = self.collection_ref
+
+        if search_dto.user_email:
+            base_query = base_query.where(
+                "user_email", "==", search_dto.user_email
+            )
+        if search_dto.mime_type:
+            base_query = base_query.where(
+                "mime_type", "==", search_dto.mime_type
+            )
+        if search_dto.model:
+            base_query = base_query.where("model", "==", search_dto.model)
+
+        count_query = base_query.count(alias="total")
+        aggregation_result = count_query.get()
+
+        total_count = 0
+        if (
+            isinstance(aggregation_result, QueryResultsList)
+            and aggregation_result
+            and isinstance(aggregation_result[0][0], AggregationResult)  # type: ignore
+        ):
+            total_count = int(aggregation_result[0][0].value)  # type: ignore
+
+        data_query = base_query.order_by(
             "created_at", direction=firestore.Query.DESCENDING
         )
 
-        # Apply optional filters
-        if search_dto.user_email:
-            query = query.where("user_email", "==", search_dto.user_email)
-        if search_dto.mime_type:
-            query = query.where("mime_type", "==", search_dto.mime_type)
-        if search_dto.model:
-            query = query.where("model", "==", search_dto.model)
-
-        # Handle the cursor for pagination
         if search_dto.start_after:
-            # Fetch the document snapshot for the cursor ID
             last_doc_snapshot = self.collection_ref.document(search_dto.start_after).get()
             if last_doc_snapshot.exists:
-                # Start the new query after the last document from the previous page
-                query = query.start_after(last_doc_snapshot)
+                data_query = data_query.start_after(last_doc_snapshot)
 
-        # Apply the limit for the page size
-        query = query.limit(search_dto.limit)
+        data_query = data_query.limit(search_dto.limit)
 
-        return [self.model.model_validate(doc.to_dict()) for doc in query.stream()]
+        # Stream results and validate with the Pydantic model
+        documents = list(data_query.stream())
+        media_item_data = [
+            self.model.model_validate(doc.to_dict()) for doc in documents
+        ]
+
+        next_page_cursor = None
+        if len(documents) == search_dto.limit:
+            # The cursor is the ID of the last document fetched.
+            next_page_cursor = documents[-1].id
+
+        return PaginationResponseDto[MediaItemModel](
+            count=total_count,
+            next_page_cursor=next_page_cursor,
+            data=media_item_data,
+        )

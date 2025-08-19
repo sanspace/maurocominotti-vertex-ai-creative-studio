@@ -14,7 +14,8 @@
 
 from fastapi import APIRouter, HTTPException, status as Status
 
-from src.users.user_model import User
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
@@ -22,13 +23,14 @@ from src.images.schema.imagen_result_model import ImageGenerationResult
 from src.images.imagen_service import ImagenService
 from fastapi import APIRouter, Depends
 
+# Define role checkers for convenience
+creator_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.CREATOR, UserRoleEnum.ADMIN]))
+
 router = APIRouter(
     prefix="/api/images",
     tags=["Google Imagen APIs"],
     responses={404: {"description": "Not found"}},
-    dependencies=[
-        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
-    ],
+    dependencies=[creator_only],
 )
 
 
@@ -36,7 +38,7 @@ router = APIRouter(
 async def generate_images(
     image_request: CreateImagenDto,
     current_user: User = Depends(get_current_user),
-) -> list[ImageGenerationResult]:
+) -> MediaItemResponse | None:
     try:
         service = ImagenService()
         return await service.generate_images(
@@ -53,33 +55,6 @@ async def generate_images(
         raise HTTPException(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
-
-
-@router.post("/generate-images-from-prompt")
-async def generate_images_from_prompt(
-    image_request: CreateImagenDto,
-    current_user: User = Depends(get_current_user),
-) -> list[ImageGenerationResult]:
-    try:
-        service = ImagenService()
-        return await service.generate_images_from_prompt(
-            image_request, current_user.email
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-
-@router.post("/generate-images-from-gemini")
-async def generate_images_from_gemini(image_request: CreateImagenDto) -> list[ImageGenerationResult]:
-    try:
-        service = ImagenService()
-        return await service.generate_images_from_gemini(image_request)
-    except Exception as e:
-        raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 

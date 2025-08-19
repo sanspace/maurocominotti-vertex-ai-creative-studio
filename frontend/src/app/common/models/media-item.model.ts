@@ -14,63 +14,63 @@
  * limitations under the License.
  */
 
+import {PaginatedResponse} from './paginated-response.model';
+
 /**
  * Represents a single media item, mirroring the Pydantic model from the backend.
  */
 export interface MediaItem {
   id: string;
-  user_email?: string;
-  created_at?: string; // ISO 8601 date string
-  updated_at?: string; // ISO 8601 date string
+  userEmail?: string;
+  createdAt?: string; // ISO 8601 date string
+  updatedAt?: string; // ISO 8601 date string
 
   // Common fields across media types
   prompt?: string;
-  original_prompt?: string;
-  rewritten_prompt?: string;
+  originalPrompt?: string;
+  rewrittenPrompt?: string;
+  numMedia?: number;
   model?: string;
-  mime_type?: string;
-  generation_time?: number;
+  mimeType?: string;
+  generationTime?: number;
   error_message?: string;
 
   // URI and URL fields
-  gcsuri?: string;
-  gcs_uris: string[];
-  source_images_gcs: string[];
-  presigned_urls?: string[];
+  gcsUris: string[];
+  sourceImagesGcs?: string[];
+  presignedUrls?: string[];
+  presignedThumbnailUrls?: string[];
 
   // Video specific
-  aspect?: string; // Note: 'aspect' is used for video, 'aspect_ratio' for image
+  aspect?: string; // Note: 'aspect' is used for video, 'aspectRatio' for image
   duration?: number;
-  reference_image?: string;
-  last_reference_image?: string;
-  enhanced_prompt_used?: boolean;
+  referenceImage?: string;
+  lastReferenceImage?: string;
+  enhancedPromptUsed?: boolean;
   comment?: string;
 
   // Image specific
-  modifiers: string[];
-  num_media?: number;
-  aspect_ratio?: string;
+  modifiers?: string[];
+  aspectRatio?: string;
   style?: string;
   lighting?: string;
-  color_and_tone?: string;
+  colorAndTone?: string;
   composition?: string;
-  negative_prompt?: string;
+  negativePrompt?: string;
   seed?: number;
   critique?: string;
-  add_watermark?: boolean;
+  addWatermark?: boolean;
 
   // Music specific
-  audio_analysis?: Record<string, any>;
+  audioAnalysis?: Record<string, any>;
 
   // Debugging field
-  raw_data?: Record<string, any>;
+  rawData?: Record<string, any>;
 }
 
 /**
  * Defines the response structure for a paginated gallery query,
  * mirroring the Pydantic model from the backend.
  */
-export interface PaginatedGalleryResponse {
-  items: MediaItem[];
-  next_page_cursor: string | null;
-}
+export interface PaginatedGalleryResponse
+  extends PaginatedResponse<MediaItem> {}

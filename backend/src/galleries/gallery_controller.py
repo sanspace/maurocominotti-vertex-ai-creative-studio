@@ -14,9 +14,11 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.users.user_model import UserRoleEnum
 from src.auth.auth_guard import RoleChecker
-from src.galleries.dto.gallery_search_dto import GallerySearchDto, PaginatedGalleryResponse
-from src.galleries.dto.gallery_response_dto import GalleryItemResponse
+from src.galleries.dto.gallery_search_dto import GallerySearchDto
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.galleries.gallery_service import GalleryService
 
 
@@ -25,11 +27,19 @@ router = APIRouter(
     tags=["Creative Studio Media Gallery"],
     responses={404: {"description": "Not found"}},
     dependencies=[
-        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+        Depends(
+            RoleChecker(
+                allowed_roles=[
+                    UserRoleEnum.ADMIN,
+                    UserRoleEnum.USER,
+                ]
+            )
+        )
     ],
 )
 
-@router.post("", response_model=PaginatedGalleryResponse)
+
+@router.post("", response_model=PaginationResponseDto[MediaItemResponse])
 async def search_gallery_items(
     search_dto: GallerySearchDto,
     service: GalleryService = Depends(),
@@ -42,7 +52,8 @@ async def search_gallery_items(
     """
     return await service.get_paginated_gallery(search_dto=search_dto)
 
-@router.get("/item/{item_id}", response_model=GalleryItemResponse)
+
+@router.get("/item/{item_id}", response_model=MediaItemResponse)
 async def get_single_gallery_item(
     item_id: str,
     service: GalleryService = Depends(),

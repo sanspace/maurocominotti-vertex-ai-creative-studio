@@ -1,36 +1,16 @@
-/**
- * Copyright 2025 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import {Component, ElementRef, QueryList, ViewChildren} from '@angular/core';
+import {Component} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {LightGallery} from 'lightgallery/lightgallery';
-import {finalize, Subscription} from 'rxjs';
+import {finalize} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
-import {GeneratedVideo} from '../common/models/generated-image.model';
 import {VeoRequest} from '../common/models/search.model';
-import lightGallery from 'lightgallery';
-import lgZoom from 'lightgallery/plugins/zoom';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgShare from 'lightgallery/plugins/share';
-import {additionalShareOptions} from '../utils/lightgallery-share-options';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {GenerationParameters} from '../fun-templates/media-template.model';
+import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import {MediaItem} from '../common/models/media-item.model';
 
 @Component({
   selector: 'app-video',
@@ -38,25 +18,29 @@ import {ToastMessageComponent} from '../common/components/toast-message/toast-me
   styleUrl: './video.component.scss',
 })
 export class VideoComponent {
+  templateParams: GenerationParameters | undefined;
+
   // --- Component State ---
-  videoDocuments: GeneratedVideo[] = [];
+  videoDocuments: MediaItem | null = null;
   isLoading = false;
+  isAudioGenerationDisabled = false;
   showDefaultDocuments = false;
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
   searchRequest: VeoRequest = {
     prompt:
-      'A hiker during a late spring day in California’s Big Sur overlooking the ocean',
-    generationModel: 'veo-3.0-fast-generate-preview',
+      'Create an ad for Cymball consisting in the following: In a sunlit Scandinavian bedroom, a single, sealed Cymball box sits in the center of the otherwise empty room. From a fixed, wide-angle cinematic shot, the box trembles and opens. In a rapid, hyper-lapse sequence, furniture pieces assemble themselves precisely, quickly filling the space with a bed, wardrobe, shelves, and other decor! The action concludes as a yellow Cymball throw blanket lands perfectly on the bed, leaving a calm, fully furnished, and serene modern room. you can see the box placed in the front of the bed, with the Cymball logo at the end',
+    generationModel: 'veo-3.0-generate-preview',
     aspectRatio: '16:9',
-    videoStyle: 'Modern',
-    numberOfVideos: 1,
+    style: 'Modern',
+    numberOfMedia: 4,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',
-    addWatermark: false,
     negativePrompt: '',
+    generateAudio: true,
+    durationSeconds: 8,
   };
 
   // --- Negative Prompt Chips ---
@@ -65,12 +49,12 @@ export class VideoComponent {
   // --- Dropdown Options ---
   generationModels = [
     {
-      value: 'veo-3.0-fast-generate-preview',
-      viewValue: 'Veo 3 Fast \n (Beta Audio)',
-    },
-    {
       value: 'veo-3.0-generate-preview',
       viewValue: 'Veo 3 Quality \n (Beta Audio)',
+    },
+    {
+      value: 'veo-3.0-fast-generate-preview',
+      viewValue: 'Veo 3 Fast \n (Beta Audio)',
     },
     {value: 'veo-2.0-generate-001', viewValue: 'Veo 2 Quality \n (No Audio)'},
     {value: 'veo-2.0-fast-generate-001', viewValue: 'Veo 2 Fast \n (No Audio)'},
@@ -79,7 +63,7 @@ export class VideoComponent {
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
       {value: '16:9', viewValue: '1200x628 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: false},
+      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: true},
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [
@@ -118,6 +102,7 @@ export class VideoComponent {
     'Toned',
   ];
   numberOfVideosOptions = [1, 2, 3, 4];
+  durationOptions = [1, 2, 3, 4, 5, 6, 7, 8];
   compositions = [
     'Closeup',
     'Knolling',
@@ -129,18 +114,6 @@ export class VideoComponent {
     'Surface detail',
     'Wide angle',
   ];
-  watermarkOptions = [
-    {value: true, viewValue: 'Yes'},
-    {value: false, viewValue: 'No'},
-  ];
-  selectedWatermark = this.watermarkOptions.find(
-    o => o.value === this.searchRequest.addWatermark,
-  )!.viewValue;
-
-  @ViewChildren('lightGalleryVideos')
-  lightGalleryElements?: QueryList<ElementRef>;
-  private lightGalleryInstance?: LightGallery;
-  private galleryElementsSub?: Subscription;
 
   constructor(
     private sanitizer: DomSanitizer,
@@ -166,6 +139,10 @@ export class VideoComponent {
         'gemini-spark-icon',
         this.setPath(`${this.path}/gemini-spark-icon.svg`),
       );
+
+    this.templateParams =
+      this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
+    this.applyTemplateParameters();
   }
 
   private path = '../../assets/images';
@@ -174,86 +151,14 @@ export class VideoComponent {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
-  ngAfterViewInit(): void {
-    // The gallery will be initialized when videos are loaded for the first time.
-    // We subscribe to changes in the QueryList to know when the #lightGallery element is rendered.
-    this.galleryElementsSub = this.lightGalleryElements?.changes.subscribe(
-      (list: QueryList<ElementRef>) => {
-        if (list.first) {
-          // The element is now in the DOM, we can initialize the gallery.
-          this.initLightGallery();
-        }
-      },
-    );
-  }
+  private processSearchResults(searchResponse: MediaItem) {
+    this.videoDocuments = searchResponse;
 
-  ngOnDestroy(): void {
-    this.lightGalleryInstance?.destroy();
-    this.galleryElementsSub?.unsubscribe();
-  }
-
-  private initLightGallery(): void {
-    const galleryElement = this.lightGalleryElements?.first?.nativeElement;
-    console.log('initLightGallery galleryElement', galleryElement);
-
-    if (galleryElement) {
-      console.log('ISIDE galleryElement');
-      const dynamicElements = this.videoDocuments.map((doc, index) => ({
-        src: doc?.video?.presignedUrl || '',
-        thumb: doc?.video?.presignedUrl || '',
-        subHtml: `<div class="lightGallery-captions"><h4>Video ${index + 1}</h4><p>Generated with ${doc?.source || 'Videon 4 Model'}</p></div>`,
-        // Add data-src attribute for sharing video url
-        // TODO: We should create a creative studio url for that particular video
-        'data-src': doc?.video?.presignedUrl || '',
-        facebookShareUrl: doc?.video?.presignedUrl || '',
-        twitterShareUrl: doc?.video?.presignedUrl || '',
-        tweetText: 'Try Google Creative Studio now!!',
-        pinterestText: 'Try Google Creative Studio now!!',
-      }));
-
-      console.log('dynamicElements', dynamicElements);
-
-      this.lightGalleryInstance = lightGallery(galleryElement, {
-        container: galleryElement,
-        dynamic: true,
-        plugins: [lgZoom, lgThumbnail, lgShare],
-        speed: 200,
-        download: true,
-        share: true,
-        additionalShareOptions: additionalShareOptions,
-        hash: false,
-        // Do not allow users to close the gallery
-        closable: false,
-        // Add maximize icon to enlarge the gallery
-        showMaximizeIcon: true,
-        // Append caption inside the slide item
-        // to apply some animation for the captions (Optional)
-        appendSubHtmlTo: '.lg-item',
-        // Delay slide transition to complete captions animations
-        // before navigating to different slides (Optional)
-        // You can find caption animation demo on the captions demo page
-        slideDelay: 200,
-        dynamicEl: dynamicElements,
-      });
-
-      // Since we are using dynamic mode, we need to programmatically open lightGallery
-      this.lightGalleryInstance.openGallery();
-    }
-  }
-
-  private processSearchResults(searchResponse: GeneratedVideo[]) {
-    this.videoDocuments = (searchResponse || []).map(img => ({
-      ...img,
-      source: 'Video 3 Model',
-    }));
-
-    console.log(this.videoDocuments);
-
-    const hasVideonResults = this.videoDocuments.length > 0;
+    const hasVideonResults =
+      (this.videoDocuments?.presignedUrls?.length || 0) > 0;
 
     if (hasVideonResults) {
       this.showDefaultDocuments = false;
-      // The QueryList subscription in ngAfterViewInit will handle the gallery initialization.
     } else {
       this.showDefaultDocuments = true;
     }
@@ -262,14 +167,45 @@ export class VideoComponent {
   selectModel(model: {value: string; viewValue: string}): void {
     this.searchRequest.generationModel = model.value;
     this.selectedGenerationModel = model.viewValue;
+
+    const isVeo2 = model.value.includes('veo-2.0');
+
+    if (isVeo2) {
+      // Veo 2 models do not support audio.
+      this.isAudioGenerationDisabled = true;
+      this.searchRequest.generateAudio = false;
+
+      // Re-enable all aspect ratios for Veo 2.
+      this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
+    } else {
+      // Veo 3 models support audio.
+      this.isAudioGenerationDisabled = false;
+
+      // Veo 3 only supports 16:9 aspect ratio.
+      this.searchRequest.aspectRatio = '16:9';
+      const landscapeOption = this.aspectRatioOptions.find(
+        opt => opt.value === '16:9',
+      )!;
+      this.selectedAspectRatio = landscapeOption.viewValue;
+
+      this.aspectRatioOptions.forEach(opt => {
+        opt.disabled = opt.value !== '16:9';
+      });
+    }
   }
 
   selectAspectRatio(ratio: string): void {
     this.searchRequest.aspectRatio = ratio;
+    const selectedOption = this.aspectRatioOptions.find(
+      opt => opt.value === ratio,
+    );
+    if (selectedOption) {
+      this.selectedAspectRatio = selectedOption.viewValue;
+    }
   }
 
   selectVideoStyle(style: string): void {
-    this.searchRequest.videoStyle = style;
+    this.searchRequest.style = style;
   }
 
   selectLighting(lighting: string): void {
@@ -281,16 +217,21 @@ export class VideoComponent {
   }
 
   selectNumberOfVideos(num: number): void {
-    this.searchRequest.numberOfVideos = num;
+    this.searchRequest.numberOfMedia = num;
+  }
+
+  selectDuration(seconds: number): void {
+    this.searchRequest.durationSeconds = seconds;
   }
 
   selectComposition(composition: string): void {
     this.searchRequest.composition = composition;
   }
 
-  selectWatermark(option: {value: boolean; viewValue: string}): void {
-    this.searchRequest.addWatermark = option.value;
-    this.selectedWatermark = option.viewValue;
+  toggleAudio(): void {
+    if (!this.isAudioGenerationDisabled) {
+      this.searchRequest.generateAudio = !this.searchRequest.generateAudio;
+    }
   }
 
   addNegativePhrase(event: MatChipInputEvent): void {
@@ -310,14 +251,13 @@ export class VideoComponent {
     if (!this.searchRequest.prompt) return;
 
     this.isLoading = true;
-    this.videoDocuments = [];
-    this.lightGalleryInstance?.destroy();
+    this.videoDocuments = null;
 
     this.service
       .searchVeo(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: GeneratedVideo[]) => {
+        next: (searchResponse: MediaItem) => {
           this.processSearchResults(searchResponse);
         },
         error: error => {
@@ -335,5 +275,143 @@ export class VideoComponent {
           });
         },
       });
+  }
+
+  rewritePrompt() {
+    if (!this.searchRequest.prompt) return;
+
+    this.isLoading = true;
+    const promptToSend = this.searchRequest.prompt;
+    this.searchRequest.prompt = '';
+    this.service
+      .rewritePrompt({
+        targetType: 'video',
+        userPrompt: promptToSend,
+      })
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          handleErrorSnackbar(this._snackBar, error, 'Rewrite prompt');
+        },
+      });
+  }
+
+  getRandomPrompt() {
+    this.isLoading = true;
+    this.searchRequest.prompt = '';
+    this.service
+      .getRandomPrompt({target_type: 'video'})
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          handleErrorSnackbar(this._snackBar, error, 'Get random prompt');
+        },
+      });
+  }
+
+  resetAllFilters() {
+    this.searchRequest = {
+      prompt: '',
+      generationModel: 'veo-3.0-generate-preview',
+      aspectRatio: '16:9',
+      style: 'Modern',
+      numberOfMedia: 4,
+      lighting: 'Cinematic',
+      colorAndTone: 'Vibrant',
+      composition: 'Closeup',
+      negativePrompt: '',
+      generateAudio: true,
+      durationSeconds: 8,
+    };
+  }
+
+  private handleError(error: any, context: string) {
+    console.error(`${context} error:`, error);
+    const errorMessage =
+      error?.error?.detail?.[0]?.msg ||
+      error?.message ||
+      'Something went wrong';
+    this._snackBar.openFromComponent(ToastMessageComponent, {
+      panelClass: ['red-toast'],
+      verticalPosition: 'top',
+      horizontalPosition: 'right',
+      duration: 6000,
+      data: {
+        text: errorMessage,
+        icon: 'cross-in-circle-white',
+      },
+    });
+  }
+
+  private applyTemplateParameters(): void {
+    console.log('Applying template parameters:', this.templateParams);
+
+    if (!this.templateParams) {
+      return;
+    }
+
+    if (this.templateParams.prompt) {
+      this.searchRequest.prompt = this.templateParams.prompt;
+    }
+
+    if (this.templateParams.numMedia) {
+      console.log('Setting number of images:', this.templateParams.numMedia);
+      this.searchRequest.numberOfMedia = this.templateParams.numMedia;
+    }
+
+    if (this.templateParams.model) {
+      const templateModel = this.templateParams.model;
+      const modelOption = this.generationModels.find(m =>
+        m.value.toLowerCase().includes(templateModel.toLowerCase()),
+      );
+      if (modelOption) {
+        this.searchRequest.generationModel = modelOption.value;
+        this.selectedGenerationModel = modelOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.aspectRatio) {
+      const templateAspectRatio = this.templateParams.aspectRatio;
+      const aspectRatioOption = this.aspectRatioOptions.find(
+        r => r.value === templateAspectRatio,
+      );
+      if (aspectRatioOption) {
+        this.searchRequest.aspectRatio = aspectRatioOption.value;
+        this.selectedAspectRatio = aspectRatioOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.durationSeconds)
+      this.searchRequest.durationSeconds = this.templateParams.durationSeconds;
+
+    if (this.templateParams.style) {
+      this.searchRequest.style = this.templateParams.style;
+    }
+
+    if (this.templateParams.lighting) {
+      this.searchRequest.lighting = this.templateParams.lighting;
+    }
+
+    if (this.templateParams.colorAndTone) {
+      this.searchRequest.colorAndTone = this.templateParams.colorAndTone;
+    }
+
+    if (this.templateParams.composition) {
+      this.searchRequest.composition = this.templateParams.composition;
+    }
+
+    if (this.templateParams.negativePrompt) {
+      this.negativePhrases = this.templateParams.negativePrompt
+        .split(',')
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+      this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
+    }
   }
 }

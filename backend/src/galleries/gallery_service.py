@@ -15,11 +15,12 @@
 import asyncio
 from typing import Optional
 
-from src.galleries.dto.gallery_search_dto import GallerySearchDto, PaginatedGalleryResponse
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.galleries.dto.gallery_response_dto import GalleryItemResponse
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.repository.media_item_repository import MediaRepository
-from src.images.schema.media_item_model import MediaItem
+from src.common.schema.media_item_model import MediaItemModel
 
 class GalleryService:
     """
@@ -31,15 +32,14 @@ class GalleryService:
         self.media_repo = MediaRepository()
         self.iam_signer_credentials = IamSignerCredentials()
 
-    async def _create_gallery_response(self, item: MediaItem) -> GalleryItemResponse:
+    async def _create_gallery_response(
+        self, item: MediaItemModel
+    ) -> MediaItemResponse:
         """
         Helper function to convert a MediaItem into a GalleryItemResponse
         by generating presigned URLs in parallel for its GCS URIs.
         """
         all_gcs_uris = item.gcs_uris or []
-        # Also include the singular gcsuri if it exists
-        if item.gcsuri and item.gcsuri not in all_gcs_uris:
-            all_gcs_uris.append(item.gcsuri)
 
         # Create a list of tasks to run the synchronous URL generation in parallel threads
         tasks = [
@@ -50,35 +50,47 @@ class GalleryService:
         # Await all URL generation tasks to complete concurrently
         presigned_urls = await asyncio.gather(*tasks)
 
+        thumbnail_tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in (item.thumbnail_uris or "")
+            if uri
+        ]
+        presigned_thumbnail_urls = await asyncio.gather(*thumbnail_tasks)
+
         # Create the response DTO, copying all original data and adding the new URLs
-        return GalleryItemResponse(
+        return MediaItemResponse(
             **item.model_dump(),
-            presigned_urls=presigned_urls
+            presigned_urls=presigned_urls,
+            presigned_thumbnail_urls=presigned_thumbnail_urls
         )
 
-    async def get_paginated_gallery(self, search_dto: GallerySearchDto) -> PaginatedGalleryResponse:
+    async def get_paginated_gallery(
+        self, search_dto: GallerySearchDto
+    ) -> PaginationResponseDto[MediaItemResponse]:
         """
         Performs a paginated and filtered search for media items.
         """
         # Run the synchronous database query in a separate thread
-        media_items = await asyncio.to_thread(self.media_repo.query, search_dto)
+        media_items_query = await asyncio.to_thread(
+            self.media_repo.query, search_dto
+        )
+        media_items = media_items_query.data or []
 
         # Convert each MediaItem to a GalleryItemResponse in parallel
         response_tasks = [self._create_gallery_response(item) for item in media_items]
         enriched_items = await asyncio.gather(*response_tasks)
 
-        # Determine the cursor for the next page
-        next_page_cursor = None
-        if len(media_items) == search_dto.limit:
-            # If we received a full page of results, the last item is the next cursor
-            next_page_cursor = media_items[-1].id
-
-        return PaginatedGalleryResponse(
-            items=enriched_items,
-            next_page_cursor=next_page_cursor
+        return PaginationResponseDto[MediaItemResponse](
+            count=media_items_query.count,
+            next_page_cursor=media_items_query.next_page_cursor,
+            data=enriched_items,
         )
 
-    async def get_media_by_id(self, item_id: str) -> Optional[GalleryItemResponse]:
+    async def get_media_by_id(
+        self, item_id: str
+    ) -> Optional[MediaItemResponse]:
         """
         Retrieves a single media item and enriches it with presigned URLs.
         """

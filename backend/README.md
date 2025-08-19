@@ -27,6 +27,7 @@ This will create a new Firestore database in Native Mode.
 Our application uses specific queries that require custom composite indexes to function correctly.
 
 ```bash
+# For MediaItems
 # Command for Index 1: user_email and created_at
 # This index allows you to query for a specific user's media and sort it by the most recent.
 gcloud firestore indexes composite create \
@@ -49,8 +50,21 @@ gcloud firestore indexes composite create \
   --collection-group=media_library \
   --query-scope=COLLECTION \
   --field-config=field-path=model,order=ASCENDING \
-  --field-config=field-path=created_at,order=DESCENDING
+  --field-config=field-path=created_at,order=DESCENDING \
 
+
+# For Users
+gcloud firestore indexes composite create \
+  --collection-group=users \
+  --query-scope=COLLECTION \
+  --field-config=field-path=role,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+
+gcloud firestore indexes composite create \
+  --collection-group=users \
+  --query-scope=COLLECTION \
+  --field-config=field-path=email,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
 
 # After a while you can check with
 gcloud beta firestore indexes composite list
@@ -149,6 +163,15 @@ uv sync --all-extras
 
 > **IMPORTANT!** VS Code may not recognize your env, in that case type "ctrl + shift + P", then select "Python: Select Interpreter" and then select "Enter interpreter path..." and then select your .venv python interpreter, in this case .backend/.venv/bin/python
 
+### 1.1 Installing ffmpeg
+If you want to use the video capabilities, you will need to install ffmpeg. Meanwhile this is done automatically on Docker, if you are trying this on local you will need to install it. You can see [the official FFMPEG documentation here](https://ffmpeg.org/download.html), but overall:
+```
+# On Debian/Ubuntu
+sudo apt install ffmpeg
+
+# On Windows, OS X, etc
+brew install ffmpeg
+```
 
 ### 2. Setup gcloud credentials
 ```

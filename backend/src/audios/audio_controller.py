@@ -20,6 +20,7 @@ from fastapi import File, UploadFile
 from google.cloud import speech
 from fastapi import APIRouter, Depends
 
+from src.users.user_model import UserRoleEnum
 from src.auth.auth_guard import RoleChecker
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,14 @@ router = APIRouter(
     tags=["Google Audio APIs"],
     responses={404: {"description": "Not found"}},
     dependencies=[
-        Depends(RoleChecker(allowed_roles=["user", "creator", "admin"]))
+        Depends(
+            RoleChecker(
+                allowed_roles=[
+                    UserRoleEnum.ADMIN,
+                    UserRoleEnum.USER,
+                ]
+            )
+        )
     ],
 )
 

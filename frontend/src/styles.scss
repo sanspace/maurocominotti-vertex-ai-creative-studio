@@ -28,7 +28,7 @@
 // Define the theme object.
 $creative-studio-theme: mat.define-theme((
   color: (
-    theme-type: light,
+    theme-type: dark,
     primary: mat.$azure-palette,
     tertiary: mat.$blue-palette,
   ),
@@ -99,16 +99,6 @@ textarea {
   border-style: hidden;
 }
 
-// Import LightGallery styles
-@import 'lightgallery/css/lightgallery.css';
-@import 'lightgallery/css/lg-thumbnail.css';
-@import 'lightgallery/css/lg-zoom.css';
-@import 'lightgallery/css/lg-share.css';
-@import 'lightgallery/css/lg-video.css';
-@import 'lightgallery/css/lg-autoplay.css';
-@import 'lightgallery/css/lg-comments.css';
-@import 'lightgallery/css/lg-pager.css';
-
 .lg-backdrop {
   background-color: rgba(0, 0, 0, 0.8);
 }
@@ -122,7 +112,7 @@ textarea {
 
 .inline-gallery-container {
   width: 100%;
-  height: 60vh;
+  height: 70vh;
   position: relative;
 }
 
@@ -167,10 +157,6 @@ textarea {
     transform: translateX(-50%) translateY(-10%);
   }
 }
-
-svg {
-    fill: var(--mat-fab-foreground-color);
-  }
 
 .gradient-bg {
   width: 100vw;
@@ -291,6 +277,30 @@ svg {
   }
 }
 
+.mat-mdc-button-base {
+  background-color: transparent !important;
+  color: white !important;
+  fill: white !important;
+}
+
+svg {
+  fill: white !important;
+}
+
+::ng-deep .mat-mdc-cell,
+::ng-deep .mat-mdc-header-cell,
+::ng-deep .mat-mdc-paginator-container,
+table {
+  background-color: #2e3031 !important;
+  color: white !important;
+}
+
+::ng-deep .mat-mdc-paginator-touch-target,
+::ng-deep .mat-mdc-select-value {
+  color: white !important;
+}
+
+
 
 // --- Media Queries for Mobile-First Responsive Design ---
 // Small devices (landscape phones, 576px and up)
@@ -336,7 +346,7 @@ svg {
 @media screen and (min-width: 2160px) {
   .gradient-bg {
     .interactive {
-      left: -95%;
+      left: -85%;
     }
   }
 }

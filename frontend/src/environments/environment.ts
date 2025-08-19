@@ -27,7 +27,7 @@ export const environment = {
   production: true,
   EMAIL_REGEX:
     /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-  SUPER_ADMIN: 'super_admin',
+  ADMIN: 'admin',
   CLOUD_FUNCTION_URL: '',
   FEEDBACK_FORM_URL: '',
   PROD_URL: '',

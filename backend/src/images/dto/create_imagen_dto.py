@@ -4,8 +4,8 @@ from pydantic import Field, field_validator
 from pydantic.alias_generators import to_camel
 from google.genai import types
 
-from src.common.base_schema_model import (
-    BaseSchema,
+from src.common.base_dto import (
+    BaseDto,
     ColorAndToneEnum,
     GenerationModelEnum,
     AspectRatioEnum,
@@ -15,13 +15,13 @@ from src.common.base_schema_model import (
 )
 
 
-class CreateImagenDto(BaseSchema):
+class CreateImagenDto(BaseDto):
     """
     The refactored request model. Defaults are defined here to make the API
     contract explicit and self-documenting.
     """
 
-    prompt: Annotated[str, Query(max_length=500)] = Field(
+    prompt: Annotated[str, Query(max_length=10000)] = Field(
         description="Prompt term to be passed to the model"
     )
     generation_model: GenerationModelEnum = Field(
@@ -32,7 +32,7 @@ class CreateImagenDto(BaseSchema):
         default=AspectRatioEnum.RATIO_1_1,
         description="Aspect ratio of the image.",
     )
-    number_of_images: int = Field(
+    number_of_media: int = Field(
         default=1,
         ge=1,
         le=4,

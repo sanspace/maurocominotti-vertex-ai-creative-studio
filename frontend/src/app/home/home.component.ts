@@ -19,8 +19,6 @@ import {
   OnInit,
   OnDestroy,
   AfterViewInit,
-  ViewChildren,
-  QueryList,
   ElementRef,
   ViewChild,
 } from '@angular/core';
@@ -30,17 +28,11 @@ import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {finalize} from 'rxjs/operators';
 import {SearchService} from '../services/search/search.service';
-import {GeneratedImage} from '../common/models/generated-image.model';
 import {ImagenRequest} from '../common/models/search.model';
-import lightGallery from 'lightgallery';
-import {LightGallery} from 'lightgallery/lightgallery';
-import lgThumbnail from 'lightgallery/plugins/thumbnail';
-import lgZoom from 'lightgallery/plugins/zoom';
-import lgShare from 'lightgallery/plugins/share';
-import {Subscription} from 'rxjs';
-import {additionalShareOptions} from '../utils/lightgallery-share-options';
-import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {MatSnackBar} from '@angular/material/snack-bar';
+import {GenerationParameters} from '../fun-templates/media-template.model';
+import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import {MediaItem} from '../common/models/media-item.model';
 
 @Component({
   selector: 'app-home',
@@ -49,8 +41,9 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 })
 export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // --- Component State ---
-  imagenDocuments: GeneratedImage[] = [];
+  imagenDocuments: MediaItem | null = null;
   isLoading = false;
+  templateParams: GenerationParameters | undefined;
   showDefaultDocuments = false;
 
   // --- Search Request Object ---
@@ -60,8 +53,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
     generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
     aspectRatio: '1:1',
-    imageStyle: 'Modern',
-    numberOfImages: 1,
+    style: 'Modern',
+    numberOfMedia: 4,
     lighting: 'Cinematic',
     colorAndTone: 'Vibrant',
     composition: 'Closeup',
@@ -162,9 +155,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private tgY = 0;
   private animationFrameId: number | undefined;
 
-  @ViewChildren('lightGallery') lightGalleryElements?: QueryList<ElementRef>;
-  private lightGalleryInstance?: LightGallery;
-  private galleryElementsSub?: Subscription;
   @ViewChild('interactiveBubble') interBubble!: ElementRef<HTMLDivElement>;
 
   constructor(
@@ -199,6 +189,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         'mobile-white-gemini-spark-icon',
         this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
       );
+
+    this.templateParams =
+      this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
+    this.applyTemplateParameters();
   }
 
   private path = '../../assets/images';
@@ -208,17 +202,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // The gallery will be initialized when images are loaded for the first time.
-    // We subscribe to changes in the QueryList to know when the #lightGallery element is rendered.
-    this.galleryElementsSub = this.lightGalleryElements?.changes.subscribe(
-      (list: QueryList<ElementRef>) => {
-        if (list.first) {
-          // The element is now in the DOM, we can initialize the gallery.
-          this.initLightGallery();
-        }
-      },
-    );
-
     // This hook is called after the component's view has been initialized.
     // Now we can be sure that 'interBubble' is available.
     if (this.interBubble && this.interBubble.nativeElement) {
@@ -231,9 +214,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.lightGalleryInstance?.destroy();
-    this.galleryElementsSub?.unsubscribe();
-
     if (typeof window !== 'undefined')
       window.removeEventListener('mousemove', this.onMouseMove);
 
@@ -249,67 +229,82 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       window.addEventListener('mousemove', this.onMouseMove);
   }
 
+  private applyTemplateParameters(): void {
+    console.log('Applying template parameters:', this.templateParams);
+
+    if (!this.templateParams) {
+      return;
+    }
+
+    if (this.templateParams.prompt) {
+      this.searchRequest.prompt = this.templateParams.prompt;
+    }
+
+    if (this.templateParams.numMedia) {
+      console.log('Setting number of images:', this.templateParams.numMedia);
+      this.searchRequest.numberOfMedia = this.templateParams.numMedia;
+    }
+
+    if (this.templateParams.model) {
+      const templateModel = this.templateParams.model;
+      const modelOption = this.generationModels.find(m =>
+        m.value.toLowerCase().includes(templateModel.toLowerCase()),
+      );
+      if (modelOption) {
+        this.searchRequest.generationModel = modelOption.value;
+        this.selectedGenerationModel = modelOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.aspectRatio) {
+      const templateAspectRatio = this.templateParams.aspectRatio;
+      const aspectRatioOption = this.aspectRatioOptions.find(
+        r => r.value === templateAspectRatio,
+      );
+      if (aspectRatioOption) {
+        this.searchRequest.aspectRatio = aspectRatioOption.value;
+        this.selectedAspectRatio = aspectRatioOption.viewValue;
+      }
+    }
+
+    if (this.templateParams.style) {
+      this.searchRequest.style = this.templateParams.style;
+    }
+
+    if (this.templateParams.lighting) {
+      this.searchRequest.lighting = this.templateParams.lighting;
+    }
+
+    if (this.templateParams.colorAndTone) {
+      this.searchRequest.colorAndTone = this.templateParams.colorAndTone;
+    }
+
+    if (this.templateParams.composition) {
+      this.searchRequest.composition = this.templateParams.composition;
+    }
+
+    if (this.templateParams.negativePrompt) {
+      this.negativePhrases = this.templateParams.negativePrompt
+        .split(',')
+        .map((p: string) => p.trim())
+        .filter(Boolean);
+      this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
+    }
+  }
+
   openLink(url: string | undefined) {
     if (!url) return;
     window.open(url, '_blank');
   }
 
-  private initLightGallery(): void {
-    const galleryElement = this.lightGalleryElements?.first?.nativeElement;
+  private processSearchResults(searchResponse: MediaItem) {
+    this.imagenDocuments = searchResponse;
 
-    if (galleryElement) {
-      const dynamicElements = this.imagenDocuments.map((doc, index) => ({
-        src: doc?.image?.presignedUrl || '',
-        thumb: doc?.image?.presignedUrl || '',
-        subHtml: `<div class="lightGallery-captions"><h4>Image ${index + 1}</h4><p>Generated with ${doc.source || 'Imagen 4 Model'}</p></div>`,
-        // Add data-src attribute for sharing image url
-        // TODO: We should create a creative studio url for that particular image
-        'data-src': doc?.image?.presignedUrl || '',
-        facebookShareUrl: doc?.image?.presignedUrl || '',
-        twitterShareUrl: doc?.image?.presignedUrl || '',
-        tweetText: 'Try Google Creative Studio now!!',
-        pinterestText: 'Try Google Creative Studio now!!',
-      }));
-
-      this.lightGalleryInstance = lightGallery(galleryElement, {
-        container: galleryElement,
-        dynamic: true,
-        plugins: [lgZoom, lgThumbnail, lgShare],
-        speed: 200,
-        download: true,
-        share: true,
-        additionalShareOptions: additionalShareOptions,
-        hash: false,
-        // Do not allow users to close the gallery
-        closable: false,
-        // Add maximize icon to enlarge the gallery
-        showMaximizeIcon: true,
-        // Append caption inside the slide item
-        // to apply some animation for the captions (Optional)
-        appendSubHtmlTo: '.lg-item',
-        // Delay slide transition to complete captions animations
-        // before navigating to different slides (Optional)
-        // You can find caption animation demo on the captions demo page
-        slideDelay: 200,
-        dynamicEl: dynamicElements,
-      });
-
-      // Since we are using dynamic mode, we need to programmatically open lightGallery
-      this.lightGalleryInstance.openGallery();
-    }
-  }
-
-  private processSearchResults(searchResponse: GeneratedImage[]) {
-    this.imagenDocuments = (searchResponse || []).map(img => ({
-      ...img,
-      source: 'Imagen 4 Model',
-    }));
-
-    const hasImagenResults = this.imagenDocuments.length > 0;
+    const hasImagenResults =
+      (this.imagenDocuments?.presignedUrls?.length || 0) > 0;
 
     if (hasImagenResults) {
       this.showDefaultDocuments = false;
-      // The QueryList subscription in ngAfterViewInit will handle the gallery initialization.
     } else {
       this.showDefaultDocuments = true;
     }
@@ -325,7 +320,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectImageStyle(style: string): void {
-    this.searchRequest.imageStyle = style;
+    this.searchRequest.style = style;
   }
 
   selectLighting(lighting: string): void {
@@ -337,7 +332,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectNumberOfImages(num: number): void {
-    this.searchRequest.numberOfImages = num;
+    this.searchRequest.numberOfMedia = num;
   }
 
   selectComposition(composition: string): void {
@@ -367,34 +362,72 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
     this.isLoading = true;
-    this.imagenDocuments = [];
-    this.lightGalleryInstance?.destroy();
+    this.imagenDocuments = null;
 
     this.service
-      .search(this.searchRequest)
+      .searchImagen(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: GeneratedImage[]) => {
+        next: (searchResponse: MediaItem) => {
           this.processSearchResults(searchResponse);
         },
         error: error => {
-          console.error('Search error:', error);
-          const errorMessage =
-            error?.error?.detail?.[0]?.msg ||
-            error?.message ||
-            'Something went wrong';
-          this._snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['red-toast'],
-            verticalPosition: 'top',
-            horizontalPosition: 'right',
-            duration: 6000,
-            data: {
-              text: errorMessage,
-              icon: 'cross-in-circle-white',
-            },
-          });
+          handleErrorSnackbar(this._snackBar, error, 'Search');
         },
       });
+  }
+
+  rewritePrompt() {
+    if (!this.searchRequest.prompt) return;
+
+    this.isLoading = true;
+    const promptToSend = this.searchRequest.prompt;
+    this.searchRequest.prompt = '';
+    this.service
+      .rewritePrompt({
+        targetType: 'image',
+        userPrompt: promptToSend,
+      })
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          handleErrorSnackbar(this._snackBar, error, 'Rewrite prompt');
+        },
+      });
+  }
+
+  getRandomPrompt() {
+    this.isLoading = true;
+    this.searchRequest.prompt = '';
+    this.service
+      .getRandomPrompt({target_type: 'image'})
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: (response: {prompt: string}) => {
+          this.searchRequest.prompt = response.prompt;
+        },
+        error: error => {
+          handleErrorSnackbar(this._snackBar, error, 'Get random prompt');
+        },
+      });
+  }
+
+  resetAllFilters() {
+    this.searchRequest = {
+      prompt: '',
+      generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
+      aspectRatio: '1:1',
+      style: 'Modern',
+      numberOfMedia: 4,
+      lighting: 'Cinematic',
+      colorAndTone: 'Vibrant',
+      composition: 'Closeup',
+      addWatermark: false,
+      negativePrompt: '',
+    };
   }
 
   private onMouseMove = (event: MouseEvent) => {

@@ -13,9 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
+import json
 import logging
-from typing import Any
+from typing import Any, Optional, Type, Union
 from google.genai import types, Client
+from pydantic import BaseModel
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -23,12 +26,20 @@ from tenacity import (
     wait_exponential,
 )
 
+from src.multimodal.dto.create_prompt_imagen_dto import (
+    CreatePromptImageDto,
+)
 from src.videos.dto.create_veo_dto import CreateVeoDto
-from src.multimodal.dto.create_prompt_media_dto import CreatePromptMediaDto
+from src.multimodal.dto.create_prompt_video_dto import (
+    CreatePromptVideoDto,
+)
 from src.multimodal.rewriters import (
-    IMAGEN_REWRITER_PROMPT,
-    RANDOM_PROMPT_TEMPLATE,
-    VIDEO_REWRITER_PROMPT,
+    RANDOM_IMAGE_PROMPT_TEMPLATE,
+    RANDOM_VIDEO_PROMPT_TEMPLATE,
+    REWRITE_IMAGE_TEXT_PROMPT_TEMPLATE,
+    REWRITE_IMAGE_JSON_PROMPT_TEMPLATE,
+    REWRITE_VIDEO_TEXT_PROMPT_TEMPLATE,
+    REWRITE_VIDEO_JSON_PROMPT_TEMPLATE,
 )
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.multimodal.schema.gemini_model_setup import GeminiModelSetup
@@ -36,148 +47,220 @@ from src.config.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
 
+
+class PromptTargetEnum(str, Enum):
+    IMAGE = "image"
+    VIDEO = "video"
+
+
+class ResponseMimeTypeEnum(str, Enum):
+    JSON = "application/json"
+    TEXT = "text/plain"
+
+
 class GeminiService:
     """
-    A dedicated service for all interactions with Google's Gemini models.
-    Handles client initialization, API calls, and error handling.
+    A dedicated service for interactions with Google's Gemini models.
+    Handles client initialization, prompt rewriting, and error handling.
     """
+
     def __init__(self):
         """Initializes the Gemini client and configuration."""
         self.client: Client = GeminiModelSetup.init()
         self.cfg = ConfigService()
+        self.rewriter_model = self.cfg.GEMINI_MODEL_ID
+
+    def _get_response_schema(self, target: PromptTargetEnum) -> Type[BaseModel]:
+        """Dynamically gets the Pydantic schema based on the target type."""
+        if target is PromptTargetEnum.IMAGE:
+            return CreatePromptImageDto
+        if target is PromptTargetEnum.VIDEO:
+            return CreatePromptVideoDto
+        raise ValueError(f"No response schema defined for target: {target}")
 
     @retry(
-        wait=wait_exponential(multiplier=1, min=1, max=10),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type(Exception),
         reraise=True,
     )
-    def rewrite_prompt_with_gemini(
+    def generate_structured_prompt(
         self,
         original_prompt: str,
-        prompt_template: str = IMAGEN_REWRITER_PROMPT,
-        response_mime_type: str = "application/json",
-        generation_model: str = "gemini-2.5-flash",
+        target_type: PromptTargetEnum,
+        prompt_template: str,
+        response_mime_type: ResponseMimeTypeEnum = ResponseMimeTypeEnum.JSON,
+        response_schema: Type[BaseModel] | None = None,
     ) -> str:
         """
-        Outputs a rewritten prompt using the Gemini model.
+        Rewrites a user prompt using Gemini into a structured JSON format.
+
         Args:
-            original_prompt (str): The user's original prompt.
+            original_prompt: The initial, unstructured prompt from the user.
+            target_type: The target output type (IMAGE or VIDEO).
+            prompt_template: The instruction template for the Gemini model.
+
         Returns:
-            str: The rewritten prompt.
-        Raises:
-            Exception: If the rewriter service fails.
+            A dictionary parsed from Gemini's JSON response.
         """
+        full_prompt = f"{prompt_template} {original_prompt}"
+        response_schema = response_schema or self._get_response_schema(
+            target_type
+        )
+
         try:
-            full_prompt = f"{prompt_template} {original_prompt}"
-            response = self.client.models.generate_content(
-                model=generation_model,
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type=response_mime_type,
-                    response_schema=CreatePromptMediaDto,
-                ),
-            )
-            rewritten_text = response.text or ""
-            return rewritten_text
+            response = None
+            if response_mime_type.value == ResponseMimeTypeEnum.JSON.value:
+                response = self.client.models.generate_content(
+                    model=self.rewriter_model,
+                    contents=full_prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type=response_mime_type.value,
+                        response_schema=response_schema,
+                    ),
+                )
+            elif response_mime_type.value == ResponseMimeTypeEnum.TEXT.value:
+                response = self.client.models.generate_content(
+                    model=self.rewriter_model,
+                    contents=full_prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type=response_mime_type.value
+                    ),
+                )
+            else:
+                return ""
+
+            return response.text or ""
         except Exception as e:
-            print(f"Gemini rewriter failed: {e}")
+            logger.error(
+                f"Failed to generate structured prompt for '{original_prompt}': {e}"
+            )
             raise
 
-    def generate_random_image_prompt(self) -> str:
-        """Generates a completely new, random prompt for image creation."""
-        return self.rewrite_prompt_with_gemini(RANDOM_PROMPT_TEMPLATE)
+    def generate_random_or_rewrite_prompt(
+        self, target_type: PromptTargetEnum, original_prompt: str = ""
+    ) -> str:
+        """Generates a completely new, random, and creative text prompt."""
+        try:
+            prompt_template = RANDOM_IMAGE_PROMPT_TEMPLATE
 
-    def rewrite_for_image(self, image_request_dto: CreateImagenDto) -> str:
+            if not original_prompt:
+                prompt_template = (
+                    RANDOM_IMAGE_PROMPT_TEMPLATE
+                    if target_type.value == PromptTargetEnum.IMAGE
+                    else RANDOM_VIDEO_PROMPT_TEMPLATE
+                )
+            else:
+                prompt_template = (
+                    REWRITE_IMAGE_TEXT_PROMPT_TEMPLATE
+                    if target_type.value == PromptTargetEnum.IMAGE
+                    else REWRITE_VIDEO_TEXT_PROMPT_TEMPLATE
+                )
+            response = self.generate_structured_prompt(
+                original_prompt=original_prompt,
+                target_type=target_type,
+                prompt_template=prompt_template,
+                response_mime_type=ResponseMimeTypeEnum.TEXT,
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Failed to generate random prompt: {e}")
+            raise
+
+    def _convert_dto_to_string(self, dto: BaseModel) -> str:
         """
-        Constructs a high-quality, natural language prompt for image generation.
+        Private helper to convert a DTO into a formatted string for prompting.
+        This consolidates the repetitive logic from the original file.
+        """
+        # Use Pydantic's model_dump to get only user-provided fields
+        fields = dto.model_dump(exclude_unset=True)
+        # The main 'prompt' field is the base, others are attributes
+        prompt_base = fields.pop("prompt", "")
 
-        This method dynamically builds a prompt from the DTO's parameters,
-        gracefully handling any optional fields that are not provided.
+        attributes = [prompt_base]
+        for key, value in fields.items():
+            if value:  # Ensure value is not None or empty
+                formatted_key = key.replace("_", " ").title()
+                attributes.append(f"- {formatted_key}: {value}")
+        return "\n".join(filter(None, attributes))
+
+    def enhance_prompt_from_dto(
+        self,
+        dto: Union[CreateImagenDto, CreateVeoDto],
+        target_type: PromptTargetEnum,
+        response_mime_type: ResponseMimeTypeEnum = ResponseMimeTypeEnum.JSON,
+    ) -> str:
+        """
+        Enhances a partially filled DTO by converting it to a string,
+        then asking Gemini to generate a complete, structured prompt.
+
+        This single method replaces the four repetitive `rewrite_for_*` methods.
 
         Args:
-            image_request_dto: The DTO containing the user's request parameters.
+            dto: The input DTO, which can be for an image or video.
+            target_type: The target output type (IMAGE or VIDEO).
 
         Returns:
-            A single, cohesive string prompt ready for the image model.
+            A dictionary containing the complete, structured prompt data from Gemini.
         """
-        # Start with the core user prompt, which is mandatory.
-        prompt_parts = [image_request_dto.prompt.strip()]
+        if target_type not in [PromptTargetEnum.IMAGE, PromptTargetEnum.VIDEO]:
+            raise ValueError("Invalid target_type. Must be IMAGE or VIDEO.")
 
-        # Conditionally add style modifiers to the prompt.
-        if image_request_dto.style:
-            prompt_parts.append(f"in a {image_request_dto.style.lower()} style")
-
-        # Conditionally add lighting description.
-        if image_request_dto.lighting:
-            prompt_parts.append(f"with {image_request_dto.lighting.lower()} lighting")
-
-        # Conditionally add color and tone description.
-        if image_request_dto.color_and_tone:
-            prompt_parts.append(f"featuring {image_request_dto.color_and_tone.lower()} colors and tones")
-
-        # Conditionally add composition
-        if image_request_dto.composition:
-            prompt_parts.append(
-                f"featuring {image_request_dto.composition.lower()} composition"
-            )
-
-        # Join all the available parts into a single, well-formatted string.
-        # Example output: "A futuristic city, in a vintage style, with dramatic studio lighting"
-        rewritten_prompt = self.rewrite_prompt_with_gemini(
-            ", ".join(prompt_parts), IMAGEN_REWRITER_PROMPT
+        prompt_template = (
+            REWRITE_IMAGE_JSON_PROMPT_TEMPLATE
+            if target_type == PromptTargetEnum.IMAGE
+            else REWRITE_VIDEO_JSON_PROMPT_TEMPLATE
         )
-        return rewritten_prompt
+        prompt_string = self._convert_dto_to_string(dto)
 
-    def rewrite_for_video(self, video_request_dto: CreateVeoDto) -> str:
+        return self.generate_structured_prompt(
+            original_prompt=prompt_string,
+            target_type=target_type,
+            prompt_template=prompt_template,
+            response_mime_type=response_mime_type,
+        )
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    def generate_text(self, prompt: str, model_id: Optional[str] = None) -> str:
         """
-        Constructs a high-quality, natural language prompt for image generation.
+        Generates plain text from a given prompt using a Gemini model.
 
-        This method dynamically builds a prompt from the DTO's parameters,
-        gracefully handling any optional fields that are not provided.
+        This is a general-purpose method for simple text-in, text-out interactions.
 
         Args:
-            video_request_dto: The DTO containing the user's request parameters.
+            prompt: The text prompt to send to the model.
+            model_id: Optional. The specific Gemini model ID to use, overriding the service default.
 
         Returns:
-            A single, cohesive string prompt ready for the image model.
+            A string containing the generated text from the model.
+
+        Raises:
+            Exception: Propagates exceptions from the API call after retries.
         """
-        # Start with the core user prompt, which is mandatory.
-        prompt_parts = [video_request_dto.prompt.strip()]
+        # Use the provided model_id or fall back to the service's default rewriter model
+        target_model = model_id or self.rewriter_model
 
-        # Conditionally add style modifiers to the prompt.
-        if video_request_dto.video_style:
-            prompt_parts.append(
-                f"in a {video_request_dto.video_style.lower()} style"
+        logger.info(f"Sending text generation request to model: {target_model}")
+        try:
+            response = self.client.models.generate_content(
+                model=target_model,
+                contents=prompt,
+                # Configure for a simple text response without a schema
+                config=types.GenerateContentConfig(
+                    response_mime_type="text/plain"
+                ),
             )
-
-        # Conditionally add lighting description.
-        if video_request_dto.lighting:
-            prompt_parts.append(
-                f"with {video_request_dto.lighting.lower()} lighting"
+            logger.info("Successfully received text response from Gemini.")
+            # Strip any leading/trailing whitespace from the response
+            return response.text.strip() if response.text else ""
+        except Exception as e:
+            # Log the error with part of the prompt for context
+            logger.error(
+                f"Gemini text generation failed for prompt '{prompt[:100]}...': {e}"
             )
-
-        # Conditionally add color and tone description.
-        if video_request_dto.color_and_tone:
-            prompt_parts.append(
-                f"featuring {video_request_dto.color_and_tone.lower()} colors and tones"
-            )
-
-        # Conditionally add composition
-        if video_request_dto.composition:
-            prompt_parts.append(
-                f"featuring {video_request_dto.composition.lower()} composition"
-            )
-
-        # Join all the available parts into a single, well-formatted string.
-        # Example output: "A futuristic city, in a vintage style, with dramatic studio lighting"
-        rewritten_prompt = self.rewrite_prompt_with_gemini(
-            ", ".join(prompt_parts), VIDEO_REWRITER_PROMPT
-        )
-        return rewritten_prompt
-
-    def rewrite_for_audio(self, audio_request_dto: Any) -> str:
-        """
-        Placeholder for future audio prompt rewriting logic.
-        """
-        raise NotImplementedError("Audio prompt rewriting is not yet implemented.")
+            raise
