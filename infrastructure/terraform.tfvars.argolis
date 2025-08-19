@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------
 
 # [REQUIRED] Your Google Cloud Project ID.
-gcp_project_id = "creative-studio-dev"
+gcp_project_id = "dojo-creativestudio"
 
 apis_to_enable = [
   "serviceusage.googleapis.com",     # Required to enable other APIs

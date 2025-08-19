@@ -95,6 +95,18 @@ resource "google_cloud_run_v2_service" "backend_service" {
       }
     }
   }
+
+  deletion_protection = false
+  
+  lifecycle {
+    ignore_changes = [
+      # This tells Terraform not to revert the image updated by the CI/CD pipeline
+      template[0].containers[0].image,
+      # ignore the informational client metadata
+      client,
+      client_version,
+    ]
+  }
   depends_on = [google_project_service.apis]
 }
 
