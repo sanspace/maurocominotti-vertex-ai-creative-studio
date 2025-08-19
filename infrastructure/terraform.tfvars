@@ -14,6 +14,7 @@ apis_to_enable = [
   "cloudbuild.googleapis.com",       # Required for Cloud Build
   "artifactregistry.googleapis.com", # Required for Artifact Registry
   "run.googleapis.com",              # Required for Cloud Run
+  "secretmanager.googleapis.com",    # Required for Github Connection
 
   "cloudresourcemanager.googleapis.com",
 

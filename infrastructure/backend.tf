@@ -97,7 +97,7 @@ resource "google_cloud_run_v2_service" "backend_service" {
   }
 
   deletion_protection = false
-  
+
   lifecycle {
     ignore_changes = [
       # This tells Terraform not to revert the image updated by the CI/CD pipeline
