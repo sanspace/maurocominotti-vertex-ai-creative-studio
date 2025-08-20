@@ -1,5 +1,3 @@
-# backend/cloudbuild.yaml
-
 steps:
   # Step 1: Build the container image using the standard Docker builder.
   # Using SHORT_SHA for the tag is a best practice for traceability.

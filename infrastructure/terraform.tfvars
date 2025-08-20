@@ -1,4 +1,3 @@
-# terraform.tfvars
 # -----------------------------------------------------------------
 # This file provides values for the variables defined in variables.tf.
 # Replace the placeholder values with your specific project details.
@@ -15,10 +14,7 @@ apis_to_enable = [
   "artifactregistry.googleapis.com", # Required for Artifact Registry
   "run.googleapis.com",              # Required for Cloud Run
   "secretmanager.googleapis.com",    # Required for Github Connection
-
   "cloudresourcemanager.googleapis.com",
-
-
   "compute.googleapis.com",
   "cloudfunctions.googleapis.com",
   "iamcredentials.googleapis.com",
@@ -27,7 +23,6 @@ apis_to_enable = [
 
 # [OPTIONAL] The GCP region. Overrides the default "us-central1".
 gcp_region = "us-central1"
-
 
 be_env_vars = {
   # Keep the default common and development variables...
@@ -52,6 +47,6 @@ be_env_vars = {
 environment = "development"
 
 # [OPTIONAL] GitHub repository details.
-github_repo_owner  = "sanspace"
+github_repo_owner  = "MauroCominotti"
 github_repo_name   = "maurocominotti-vertex-ai-creative-studio"
-github_branch_name = "feat/add-fe"
+github_branch_name = "feature/add-angular-and-fastapi"

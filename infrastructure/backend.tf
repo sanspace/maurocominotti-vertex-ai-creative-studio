@@ -1,5 +1,3 @@
-# backend.tf
-
 locals {
   # Short prefix for backend resources to avoid character limits
   be_prefix = "cs-be"

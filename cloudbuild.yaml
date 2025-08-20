@@ -1,0 +1,25 @@
+steps:
+  # 1. Use the official HashiCorp Terraform builder image.
+  # The version is passed via the substitution variable we will define in the trigger.
+- name: 'hashicorp/terraform:1.5.7'
+  args: ['init']
+  id: 'init'
+
+  # 2. Run 'terraform plan' to see the changes.
+- name: 'hashicorp/terraform:1.5.7'
+  args: ['plan', '-out=tfplan']
+  id: 'plan'
+  waitFor: ['init']
+
+  # 3. This step pauses the build and waits for a manual approval in the GCP Console.
+  # It will timeout after 7 days if not approved or rejected.
+- id: 'hold-for-approval'
+  waitFor: ['-'] # The '-' indicates this is a manual approval step.
+
+  # 4. Run 'terraform apply' to deploy the changes ONLY after approval.
+- name: 'hashicorp/terraform:1.5.7'
+  args: ['apply', 'tfplan']
+  id: 'apply'
+  waitFor: ['plan', 'hold-for-approval']
+
+timeout: '1200s' # 20 minutes

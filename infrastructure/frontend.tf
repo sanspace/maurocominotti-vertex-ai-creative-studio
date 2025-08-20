@@ -1,5 +1,3 @@
-# frontend.tf
-
 locals {
   # Short prefix for frontend resources
   fe_prefix = "cs-fe"
