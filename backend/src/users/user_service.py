@@ -33,6 +33,8 @@ class UserService:
         # existing_user = self.user_repo.get_by_id(uid)
         existing_user = self.user_repo.get_by_email(email)
 
+        logger.info(f"[existing_user] {existing_user}")
+
         if existing_user:
             return existing_user
 

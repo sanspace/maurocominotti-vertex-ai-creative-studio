@@ -76,16 +76,19 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         return user_doc
 
     except auth.ExpiredIdTokenError:
+        logger.error(f"[get_current_user - auth.ExpiredIdTokenError]")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication token has expired."
         )
     except auth.InvalidIdTokenError as e:
+        logger.error(f"[get_current_user - auth.InvalidIdTokenError]: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid authentication token: {e}"
         )
     except Exception as e:
+        logger.error(f"[get_current_user - Exception]: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred during authentication: {e}"
@@ -104,7 +107,10 @@ class RoleChecker:
         """
         Checks the user's roles against the allowed roles.
         """
+        logger.info(f"[RoleChecker] self.allowed_roles {self.allowed_roles}")
+        logger.info(f"[RoleChecker] user.roles {user.roles}")
         is_authorized = any(role in self.allowed_roles for role in user.roles)
+        logger.info(f"[RoleChecker] is_authorized {is_authorized}")
 
         if not is_authorized:
             raise HTTPException(
