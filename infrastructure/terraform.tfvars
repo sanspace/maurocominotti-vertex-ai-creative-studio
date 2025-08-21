@@ -47,6 +47,7 @@ be_env_vars = {
 environment = "development"
 
 # [OPTIONAL] GitHub repository details.
+github_conn_name   = "gh-mauro-con"
 github_repo_owner  = "MauroCominotti"
 github_repo_name   = "maurocominotti-vertex-ai-creative-studio"
-github_branch_name = "feature/add-angular-and-fastapi"
+github_branch_name = "main"
