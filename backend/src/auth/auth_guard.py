@@ -1,12 +1,17 @@
-from typing import List, Dict, Any
+from typing import List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
+from src.config.config_service import ConfigService
 from src.users.user_model import User, UserRoleEnum
 from src.users.user_service import UserService
+# --- Google Auth for IAP ---
+from google.auth.transport import requests as google_auth_requests
+from google.oauth2 import id_token
 
 # Initialize the service once to be used by dependencies.
 user_service = UserService()
+config = ConfigService()
 
 # This scheme will require the client to send a token in the Authorization header.
 # It tells FastAPI how to find the token but doesn't validate it itself.
@@ -26,15 +31,34 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     try:
         # Use the official Firebase Admin SDK to verify the token.
         # This is the most secure method.
-        decoded_token = auth.verify_id_token(token)
-        uid = decoded_token["uid"]
+        # decoded_token = auth.verify_id_token(token)
+
+        # Verify the Google-issued OIDC ID token from the Authorization header.
+        # The audience (aud) must be the OAuth 2.0 client ID of the IAP-protected resource.
+        # This client ID must be configured as the IAP_AUDIENCE environment variable.
+        IAP_AUDIENCE = config.IAP_AUDIENCE
+        decoded_token = id_token.verify_oauth2_token(
+            token,
+            google_auth_requests.Request(),  # Use google.auth.transport.requests for fetching public keys
+            audience=IAP_AUDIENCE,
+        )
+
         email = decoded_token.get("email")
         name = decoded_token.get("name")
         picture = decoded_token.get("picture")
+        token_info_hd = decoded_token.get("hd")
+
+        if not email or token_info_hd != "google.com":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden: User identity could not be confirmed from token.",
+            )
 
         # Just-In-Time (JIT) User Provisioning:
         # Create a user profile in our database on their first API call.
-        user_doc = user_service.create_user_if_not_exists(uid=uid, email=email, name=name, picture=picture)
+        user_doc = user_service.create_user_if_not_exists(
+            email=email, name=name, picture=picture
+        )
 
         if not user_doc:
             raise HTTPException(

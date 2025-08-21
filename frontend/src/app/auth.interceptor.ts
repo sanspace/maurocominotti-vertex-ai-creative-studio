@@ -44,7 +44,7 @@ export class AuthInterceptor implements HttpInterceptor {
     if (!shouldAttachToken) return next.handle(request);
 
     // Asynchronously get a valid token. This will use the cache or trigger a silent refresh.
-    return this.authService.getValidFirebaseToken$().pipe(
+    return this.authService.getValidIapToken$().pipe(
       switchMap(token => {
         // Token was retrieved successfully. Clone the request and add the auth header.
         const authorizedRequest = request.clone({

@@ -6,6 +6,9 @@ import google.auth
 class ConfigService:
     """ConfigService class"""
 
+    # Google Identity Platform Auth
+    IAP_AUDIENCE = getenv("IAP_AUDIENCE", "")
+
     # Gemini
     _, project_id = google.auth.default()
     PROJECT_ID: str = getenv("PROJECT_ID", project_id or "")
