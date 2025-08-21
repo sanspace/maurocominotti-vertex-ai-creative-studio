@@ -33,6 +33,7 @@ be_env_vars = {
     FRONTEND_URL = "http://localhost:4200"
     CORS_ORIGINS = "[\"http://localhost:4200\",\"http://127.0.0.1:4200\"]"
     ENVIRONMENT  = "development"
+    IAP_AUDIENCE = "703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com"
   }
   # But override the production values with specific settings
   production = {
@@ -44,9 +45,13 @@ be_env_vars = {
   }
 }
 
+backend_custom_audiences = [ "703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com", "creative-studio-dev" ]
+frontend_custom_audiences = [ "703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com", "creative-studio-dev" ]
+
 environment = "development"
 
 # [OPTIONAL] GitHub repository details.
+github_conn_name   = "gh-mauro-con"
 github_repo_owner  = "MauroCominotti"
 github_repo_name   = "maurocominotti-vertex-ai-creative-studio"
-github_branch_name = "feature/add-angular-and-fastapi"
+github_branch_name = "main"

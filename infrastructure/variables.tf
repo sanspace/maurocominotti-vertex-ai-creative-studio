@@ -28,10 +28,30 @@ variable "backend_service_name" {
   default     = "creative-studio-backend"
 }
 
+variable "backend_custom_audiences" {
+  type        = list(string)
+  description = "The custom audiences the backend service."
+  default     = []
+}
+
+variable "frontend_custom_audiences" {
+  type        = list(string)
+  description = "The custom audiences the frontend service."
+  default     = []
+}
+
 variable "frontend_service_name" {
   type        = string
   description = "The name of the frontend service."
   default     = "creative-studio"
+}
+
+
+
+variable "github_conn_name" {
+  type        = string
+  description = "The owner of the GitHub repository."
+  default     = "gh-mauro-con"
 }
 
 variable "github_repo_owner" {
