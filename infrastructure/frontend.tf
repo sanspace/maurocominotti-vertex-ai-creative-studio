@@ -61,11 +61,13 @@ resource "google_cloud_run_v2_service" "frontend_service" {
     }
     scaling {
       min_instance_count = 1
-      max_instance_count = 10
+      max_instance_count = 100
     }
   }
 
   deletion_protection = false
+
+  custom_audiences = var.frontend_custom_audiences
 
   lifecycle {
     ignore_changes = [
