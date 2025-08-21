@@ -7,6 +7,11 @@ terraform {
       version = "6.47.0"
     }
   }
+
+  backend "gcs" {
+    bucket  = "cstudio-dev-tfstate"
+    prefix  = "devpipeline/terraform/state"
+  }
 }
 
 provider "google" {
