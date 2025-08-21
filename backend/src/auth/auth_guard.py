@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -15,8 +16,10 @@ config = ConfigService()
 
 # This scheme will require the client to send a token in the Authorization header.
 # It tells FastAPI how to find the token but doesn't validate it itself.
-# TODO: Change this to only require a JWT Token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+logger = logging.getLogger(__name__)
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     """
@@ -37,6 +40,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         # The audience (aud) must be the OAuth 2.0 client ID of the IAP-protected resource.
         # This client ID must be configured as the IAP_AUDIENCE environment variable.
         IAP_AUDIENCE = config.IAP_AUDIENCE
+        logger.info(
+            f"[get_current_user] Checking config.IAP_AUDIENCE {IAP_AUDIENCE}"
+        )
+
         decoded_token = id_token.verify_oauth2_token(
             token,
             google_auth_requests.Request(),  # Use google.auth.transport.requests for fetching public keys
