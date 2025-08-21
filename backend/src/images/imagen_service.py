@@ -158,7 +158,6 @@ class ImagenService:
                     )
                     for img in valid_generated_images
                 ]
-                logger.info(upscale_dtos)
                 upscale_images = []
                 tasks = [
                     self.upscale_image(request_dto=dto) for dto in upscale_dtos
@@ -539,7 +538,7 @@ class ImagenService:
                         enhanced_prompt="",
                         rai_filtered_reason=rai_filtered_reason,
                         image=CustomImagenResult(
-                            gcs_uri=destination_blob_name,
+                            gcs_uri=generated_image.gcs_uri,
                             encoded_image=base64.b64encode(image_bytes).decode(
                                 "utf-8"
                             ),

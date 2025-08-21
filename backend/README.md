@@ -9,7 +9,7 @@ The architecture always follows the following structure: a folder for the fronte
 ## 🚀 Backend Setup
 Before running the application, you must initialize the Google Cloud project with a Firestore database and the necessary indexes.
 
-### Step 0: Setu up gcp dependencies
+### Step 0: Setup gcp dependencies
 
 Two environment variables are required to run this application:
 
