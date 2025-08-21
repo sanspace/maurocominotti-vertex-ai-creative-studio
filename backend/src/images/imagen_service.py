@@ -14,35 +14,36 @@
 
 
 import asyncio
-import datetime
+import base64
 import logging
 import time
+import uuid
 from typing import List
-from google.genai import types, Client
+
+from google.cloud import aiplatform
+from google.genai import Client, types
+from src.auth.iam_signer_credentials_service import IamSignerCredentials
+from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.schema.genai_model_setup import GenAIModelSetup
+from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
+from src.common.storage_service import GcsService
+from src.config.config_service import ConfigService
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.images.dto.create_imagen_dto import CreateImagenDto
+from src.images.dto.edit_imagen_dto import EditImagenDto
+from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
+from src.images.repository.media_item_repository import MediaRepository
+from src.images.schema.imagen_result_model import (
+    CustomImagenResult,
+    ImageGenerationResult,
+)
+from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 from tenacity import (
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
 )
-from src.galleries.dto.gallery_response_dto import MediaItemResponse
-from src.common.schema.genai_model_setup import GenAIModelSetup
-from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
-from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
-from src.images.repository.media_item_repository import MediaRepository
-from src.images.dto.create_imagen_dto import CreateImagenDto
-from src.images.dto.edit_imagen_dto import EditImagenDto
-from src.images.schema.imagen_result_model import (
-    CustomImagenResult,
-    ImageGenerationResult,
-)
-from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.storage_service import GcsService
-from src.config.config_service import ConfigService
-import uuid
-import base64
-from google.cloud import aiplatform
-from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,8 @@ class ImagenService:
         """
         Generates a batch of images and saves them as a single MediaItem document.
         """
+        start_time = time.monotonic()
+
         client = GenAIModelSetup.init()
         cfg = ConfigService()
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
@@ -84,7 +87,6 @@ class ImagenService:
         all_generated_images: List[types.GeneratedImage] = []
 
         try:
-            start_time = time.monotonic()
 
             if (
                 request_dto.generation_model
@@ -130,19 +132,11 @@ class ImagenService:
             if not all_generated_images:
                 return None
 
-            end_time = time.monotonic()
-            generation_time = end_time - start_time
-
             # --- UNIFIED PROCESSING AND SAVING ---
             # Create the list of permanent GCS URIs and the response for the frontend
             valid_generated_images = [
                 img
                 for img in all_generated_images
-                if img.image and img.image.gcs_uri
-            ]
-            permanent_gcs_uris = [
-                img.image.gcs_uri
-                for img in valid_generated_images
                 if img.image and img.image.gcs_uri
             ]
             mime_type: MimeTypeEnum = (
@@ -153,6 +147,36 @@ class ImagenService:
                 else MimeTypeEnum.IMAGE_JPEG
             )
 
+            # 1. Upscale images if needed
+            if request_dto.upscale_factor:
+                upscale_dtos: UpscaleImagenDto = [
+                    UpscaleImagenDto(
+                        generation_model=request_dto.generation_model,
+                        user_image=img.image.gcs_uri,
+                        mime_type=img.image.mime_type,
+                        upscale_factor=request_dto.upscale_factor,
+                    )
+                    for img in valid_generated_images
+                ]
+                logger.info(upscale_dtos)
+                upscale_images = []
+                tasks = [
+                    self.upscale_image(request_dto=dto) for dto in upscale_dtos
+                ]
+                upscale_images = await asyncio.gather(*tasks)
+
+                permanent_gcs_uris = [
+                    img.image.gcs_uri
+                    for img in upscale_images
+                    if img.image and img.image.gcs_uri
+                ]
+            else:
+                permanent_gcs_uris = [
+                    img.image.gcs_uri
+                    for img in valid_generated_images
+                    if img.image and img.image.gcs_uri
+                ]
+
             # 2. Create and run tasks to generate all presigned URLs in parallel
             presigned_url_tasks = [
                 asyncio.to_thread(
@@ -161,6 +185,9 @@ class ImagenService:
                 for uri in permanent_gcs_uris
             ]
             presigned_urls = await asyncio.gather(*presigned_url_tasks)
+
+            end_time = time.monotonic()
+            generation_time = end_time - start_time
 
             # Create and save a SINGLE MediaItem for the entire batch
             media_post_to_save = MediaItemModel(
@@ -219,7 +246,7 @@ class ImagenService:
                     ),
                 )
 
-                for candidate in (gemini_api_response.candidates or []):
+                for candidate in gemini_api_response.candidates or []:
                     if candidate.content and candidate.content.parts:
                         for part in candidate.content.parts:
                             if (
@@ -301,11 +328,15 @@ class ImagenService:
                 aspect_ratio="1:1",
             ),
         )
-        if response.generated_images and \
-          response.generated_images[0].image and \
-          response.generated_images[0].image.image_bytes:
+        if (
+            response.generated_images
+            and response.generated_images[0].image
+            and response.generated_images[0].image.image_bytes
+        ):
             enhanced_prompt = response.generated_images[0].enhanced_prompt
-            rai_filtered_reason = response.generated_images[0].rai_filtered_reason
+            rai_filtered_reason = response.generated_images[
+                0
+            ].rai_filtered_reason
             generated_image = response.generated_images[0].image
             image_bytes = response.generated_images[0].image.image_bytes
             return ImageGenerationResult(
@@ -321,32 +352,38 @@ class ImagenService:
         else:
             raise ValueError("Image generation failed or returned no data.")
 
-    def recontextualize_product_in_scene(self, image_uris_list: list[str], prompt: str, sample_count: int) -> list[str]:
+    def recontextualize_product_in_scene(
+        self, image_uris_list: list[str], prompt: str, sample_count: int
+    ) -> list[str]:
         """Recontextualizes a product in a scene and returns a list of GCS URIs."""
         cfg = ConfigService()
-        client_options = {"api_endpoint": f"{cfg.LOCATION}-aiplatform.googleapis.com"}
-        client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
+        client_options = {
+            "api_endpoint": f"{cfg.LOCATION}-aiplatform.googleapis.com"
+        }
+        client = aiplatform.gapic.PredictionServiceClient(
+            client_options=client_options
+        )
 
         model_endpoint = f"projects/{cfg.PROJECT_ID}/locations/{cfg.LOCATION}/publishers/google/models/{cfg.MODEL_IMAGEN_PRODUCT_RECONTEXT}"
 
-        instance = { "productImages": [] }
+        instance = {"productImages": []}
         for product_image_uri in image_uris_list:
             product_image = {"image": {"gcsUri": product_image_uri}}
             instance["productImages"].append(product_image)
 
         if prompt:
-            instance["prompt"] = prompt   # type: ignore
+            instance["prompt"] = prompt  # type: ignore
 
         parameters = {"sampleCount": sample_count}
 
         response = client.predict(
-            endpoint=model_endpoint, instances=[instance], parameters=parameters   # type: ignore
+            endpoint=model_endpoint, instances=[instance], parameters=parameters  # type: ignore
         )
 
         gcs_uris = []
         for prediction in response.predictions:
-            if prediction.get("bytesBase64Encoded"):   # type: ignore
-                encoded_mask_string = prediction["bytesBase64Encoded"]   # type: ignore
+            if prediction.get("bytesBase64Encoded"):  # type: ignore
+                encoded_mask_string = prediction["bytesBase64Encoded"]  # type: ignore
                 mask_bytes = base64.b64decode(encoded_mask_string)
 
                 gcs_uri = self.gcs_service.store_to_gcs(
@@ -361,9 +398,7 @@ class ImagenService:
         return gcs_uris
 
     @retry(
-        wait=wait_exponential(
-            multiplier=1, min=1, max=10
-        ),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type(Exception),
         reraise=True,
@@ -374,7 +409,9 @@ class ImagenService:
         """Edits an image using the Google GenAI client."""
         client = GenAIModelSetup.init()
         cfg = ConfigService()
-        gcs_output_directory = f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_EDITED_SUBFOLDER}"
+        gcs_output_directory = (
+            f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_EDITED_SUBFOLDER}"
+        )
 
         raw_ref_image = types.RawReferenceImage(
             reference_id=1,
@@ -409,7 +446,9 @@ class ImagenService:
             )
 
             response_imagen = []
-            for generated_image in (images_imagen_response.generated_images or []):
+            for generated_image in (
+                images_imagen_response.generated_images or []
+            ):
                 if generated_image.image:
                     response_imagen.append(
                         ImageGenerationResult(
@@ -427,8 +466,105 @@ class ImagenService:
                         )
                     )
 
-            logger.info(f"Number of images created by Imagen: {len(response_imagen)}")
+            logger.info(
+                f"Number of images created by Imagen: {len(response_imagen)}"
+            )
             return response_imagen
         except Exception as e:
             logger.error(f"API call failed: {e}")
+            raise
+
+    @retry(
+        wait=wait_exponential(
+            multiplier=1, min=1, max=10
+        ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
+        stop=stop_after_attempt(3),  # Stop after 3 attempts
+        retry=retry_if_exception_type(
+            Exception
+        ),  # Retry on all exceptions for robustness
+        reraise=True,  # re-raise the last exception if all retries fail
+    )
+    async def upscale_image(
+        self, request_dto: UpscaleImagenDto
+    ) -> ImageGenerationResult | None:
+        """
+        Upscale an image.
+        """
+        client = GenAIModelSetup.init()
+        new_gcs_uri = None
+        try:
+            if request_dto.user_image[:5] == "gs://":
+                image = types.Image(gcs_uri=request_dto.user_image)
+                uri_parts = request_dto.user_image.split("/")
+                uri_parts[-1] = (
+                    f"upscaled_{request_dto.upscale_factor}_{uri_parts[-1]}"
+                )
+                new_gcs_uri = "/".join(uri_parts)
+            else:
+                image = types.Image(
+                    image_bytes=base64.b64decode(request_dto.user_image)
+                )
+            response = client.models.upscale_image(
+                model=request_dto.generation_model,
+                image=image,
+                upscale_factor=request_dto.upscale_factor,
+                config=types.UpscaleImageConfig(
+                    include_rai_reason=request_dto.include_rai_reason,
+                ),
+            )
+            if (
+                response.generated_images
+                and response.generated_images[0].image
+                and response.generated_images[0].image.image_bytes
+            ):
+                rai_filtered_reason = (
+                    response.generated_images[0].rai_filtered_reason or ""
+                )
+                generated_image = response.generated_images[0].image
+                image_bytes = response.generated_images[0].image.image_bytes
+
+                if new_gcs_uri:
+                    destination_blob_name = new_gcs_uri.replace(
+                        f"gs://{self.gcs_service.bucket_name}/", ""
+                    )
+                    generated_image.gcs_uri = (
+                        self.gcs_service.upload_bytes_to_gcs(
+                            image_bytes,
+                            destination_blob_name,
+                            request_dto.mime_type,
+                        )
+                    )
+
+                    return ImageGenerationResult(
+                        enhanced_prompt="",
+                        rai_filtered_reason=rai_filtered_reason,
+                        image=CustomImagenResult(
+                            gcs_uri=destination_blob_name,
+                            encoded_image=base64.b64encode(image_bytes).decode(
+                                "utf-8"
+                            ),
+                            mime_type=generated_image.mime_type or "",
+                            presigned_url="",
+                        ),
+                    )
+                else:
+                    return ImageGenerationResult(
+                        enhanced_prompt="",
+                        rai_filtered_reason=rai_filtered_reason,
+                        image=CustomImagenResult(
+                            gcs_uri="",
+                            encoded_image=base64.b64encode(image_bytes).decode(
+                                "utf-8"
+                            ),
+                            mime_type=generated_image.mime_type or "",
+                            presigned_url="",
+                        ),
+                    )
+            else:
+                raise ValueError(
+                    "Image upscaling generation failed or returned no data."
+                )
+
+        except Exception as e:
+            logger.error(f"Image upscaling generation API call failed: {e}")
             raise

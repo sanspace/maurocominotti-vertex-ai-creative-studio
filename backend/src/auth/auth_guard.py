@@ -1,14 +1,15 @@
 import logging
+import os
 from typing import List
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
+from google.auth.transport import requests as google_auth_requests
+from google.oauth2 import id_token
 from src.config.config_service import ConfigService
 from src.users.user_model import User, UserRoleEnum
 from src.users.user_service import UserService
-# --- Google Auth for IAP ---
-from google.auth.transport import requests as google_auth_requests
-from google.oauth2 import id_token
 
 # Initialize the service once to be used by dependencies.
 user_service = UserService()
@@ -16,10 +17,15 @@ config = ConfigService()
 
 # This scheme will require the client to send a token in the Authorization header.
 # It tells FastAPI how to find the token but doesn't validate it itself.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+oauth2_scheme = (
+    OAuth2PasswordBearer(tokenUrl="token")
+    if os.getenv("ENVIRONMENT") != "local"
+    else OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+)
 
 logger = logging.getLogger(__name__)
+
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     """
@@ -31,6 +37,20 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     4. If the user is new, creates their document ("Just-In-Time Provisioning").
     5. Returns a Pydantic model with the user's data.
     """
+    if os.getenv("ENVIRONMENT") == "local":
+        # Bypass auth for local development and return mock user
+        return User(
+            uid="local_user_uid",
+            email="local_user@example.com",
+            name="Local User",
+            picture="https://example.com/picture.jpg",
+            roles=[UserRoleEnum.USER, UserRoleEnum.CREATOR, UserRoleEnum.ADMIN],
+            is_active=True,
+            is_superuser=False,
+            created_at="2023-01-01T00:00:00Z",
+            updated_at="2023-01-01T00:00:00Z",
+        )
+
     try:
         # Use the official Firebase Admin SDK to verify the token.
         # This is the most secure method.
@@ -66,7 +86,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         if not user_doc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Could not create or retrieve user profile."
+                detail="Could not create or retrieve user profile.",
             )
 
         return user_doc
@@ -75,19 +95,19 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         logger.error(f"[get_current_user - auth.ExpiredIdTokenError]")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication token has expired."
+            detail="Authentication token has expired.",
         )
     except auth.InvalidIdTokenError as e:
         logger.error(f"[get_current_user - auth.InvalidIdTokenError]: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {e}"
+            detail=f"Invalid authentication token: {e}",
         )
     except Exception as e:
         logger.error(f"[get_current_user - Exception]: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred during authentication: {e}"
+            detail=f"An unexpected error occurred during authentication: {e}",
         )
 
 
@@ -96,6 +116,7 @@ class RoleChecker:
     Dependency that checks if the authenticated user has the required roles.
     It depends on `get_current_user` to ensure the user is authenticated first.
     """
+
     def __init__(self, allowed_roles: List[UserRoleEnum]):
         self.allowed_roles = allowed_roles
 
@@ -108,5 +129,5 @@ class RoleChecker:
         if not is_authorized:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have sufficient permissions to perform this action."
+                detail="You do not have sufficient permissions to perform this action.",
             )
