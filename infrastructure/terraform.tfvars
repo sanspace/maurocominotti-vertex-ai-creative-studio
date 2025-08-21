@@ -52,6 +52,7 @@ be_env_vars = {
 environment = "development"
 
 # [OPTIONAL] GitHub repository details.
-github_repo_owner  = "sanspace"
+github_conn_name   = "gh-mauro-con"
+github_repo_owner  = "MauroCominotti"
 github_repo_name   = "maurocominotti-vertex-ai-creative-studio"
-github_branch_name = "feat/add-fe"
+github_branch_name = "main"
