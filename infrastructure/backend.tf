@@ -92,7 +92,13 @@ resource "google_cloud_run_v2_service" "backend_service" {
         }
       }
     }
+    scaling {
+      min_instance_count = 1
+      max_instance_count = 100
+    }
   }
+
+  custom_audiences = var.backend_custom_audiences
 
   deletion_protection = false
 
