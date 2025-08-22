@@ -24,13 +24,15 @@ from src.images.imagen_service import ImagenService
 from fastapi import APIRouter, Depends
 
 # Define role checkers for convenience
-creator_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.CREATOR, UserRoleEnum.ADMIN]))
+user_only = Depends(
+    RoleChecker(allowed_roles=[UserRoleEnum.USER, UserRoleEnum.ADMIN])
+)
 
 router = APIRouter(
     prefix="/api/images",
     tags=["Google Imagen APIs"],
     responses={404: {"description": "Not found"}},
-    dependencies=[creator_only],
+    dependencies=[user_only],
 )
 
 

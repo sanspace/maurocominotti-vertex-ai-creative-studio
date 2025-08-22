@@ -1,4 +1,3 @@
-import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.common.dto.pagination_response_dto import PaginationResponseDto
@@ -11,7 +10,6 @@ from src.users.user_service import UserService
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.users.user_model import User, UserRoleEnum
 
-logger = logging.getLogger(__name__)
 
 # Define role checkers for convenience and clean code
 admin_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN]))
@@ -39,7 +37,6 @@ async def get_my_profile(
     """
     # The 'current_user' object is the fully validated user model from your database.
     # The controller doesn't need to know about the UID; it already has the whole object.
-    logger.info(f"[get_my_profile] current_user: {current_user}")
     return current_user
 
 

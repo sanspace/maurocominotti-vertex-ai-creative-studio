@@ -1,4 +1,3 @@
-import logging
 from typing import Optional
 from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.users.dto.user_create_dto import (
@@ -8,7 +7,6 @@ from src.users.dto.user_search_dto import UserSearchDto
 from src.users.repository.user_repository import UserRepository
 from src.users.user_model import User, UserRoleEnum
 
-logger = logging.getLogger(__name__)
 
 class UserService:
     """
@@ -25,15 +23,10 @@ class UserService:
         last login time. If the user doesn't exist, it creates a new user
         document with the current time as the last login.
         """
-        logger.info(
-            f"[create_user_if_not_exists] Checking user {name} with email {email}"
-        )
 
         # 1. Check if the user already exists in the database.
         # existing_user = self.user_repo.get_by_id(uid)
         existing_user = self.user_repo.get_by_email(email)
-
-        logger.info(f"[existing_user] {existing_user}")
 
         if existing_user:
             return existing_user

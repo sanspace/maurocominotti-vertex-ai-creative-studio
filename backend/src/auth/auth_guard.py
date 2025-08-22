@@ -40,10 +40,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         # The audience (aud) must be the OAuth 2.0 client ID of the IAP-protected resource.
         # This client ID must be configured as the IAP_AUDIENCE environment variable.
         IAP_AUDIENCE = config.IAP_AUDIENCE
-        logger.info(
-            f"[get_current_user] Checking config.IAP_AUDIENCE {IAP_AUDIENCE}"
-        )
-
         decoded_token = id_token.verify_oauth2_token(
             token,
             google_auth_requests.Request(),  # Use google.auth.transport.requests for fetching public keys
@@ -107,10 +103,7 @@ class RoleChecker:
         """
         Checks the user's roles against the allowed roles.
         """
-        logger.info(f"[RoleChecker] self.allowed_roles {self.allowed_roles}")
-        logger.info(f"[RoleChecker] user.roles {user.roles}")
         is_authorized = any(role in self.allowed_roles for role in user.roles)
-        logger.info(f"[RoleChecker] is_authorized {is_authorized}")
 
         if not is_authorized:
             raise HTTPException(

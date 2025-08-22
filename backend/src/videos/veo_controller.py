@@ -11,27 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
-from typing import List
+
 from fastapi import APIRouter, HTTPException, status as Status
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends
 
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
-from src.videos.schema.veo_result_model import VeoGenerationResult
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.videos.veo_service import VeoService
 from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 
 # Define role checkers for convenience
-creator_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.CREATOR, UserRoleEnum.ADMIN]))
+user_only = Depends(
+    RoleChecker(allowed_roles=[UserRoleEnum.USER, UserRoleEnum.ADMIN])
+)
 
 router = APIRouter(
     prefix="/api/videos",
     tags=["Google Video APIs"],
     responses={404: {"description": "Not found"}},
-    dependencies=[creator_only],
+    dependencies=[user_only],
 )
 
 
