@@ -42,8 +42,6 @@ interface FirebaseSession {
   expiry: number; // Expiration timestamp in milliseconds
 }
 
-const loginInfoUrl = `${environment.backendURL}/login-info`;
-
 @Injectable({
   providedIn: 'root',
 })
@@ -56,10 +54,6 @@ export class AuthService {
   private currentOAuthAccessToken: string | null = null;
   private firebaseIdToken: string | null = null; // To store the Firebase token for the test
   private firebaseTokenExpiry: number | null = null; // To store token expiration time (in ms)
-  private allowedAdminEmails: string[] = [
-    'maurocominotti@google.com',
-    'robbysingh@google.com',
-  ];
 
   constructor(
     private router: Router,
@@ -193,14 +187,6 @@ export class AuthService {
         );
       }
 
-      if (IAP_CLIENT_ID.includes('YOUR_IAP_OAUTH_CLIENT_ID')) {
-        return observer.error(
-          new Error(
-            'Please replace YOUR_IAP_OAUTH_CLIENT_ID in auth.service.ts signInForGoogleIap()',
-          ),
-        );
-      }
-
       const loginTimeout = setTimeout(() => {
         observer.error(
           new Error(
@@ -254,48 +240,10 @@ export class AuthService {
       );
     }
 
-    return new Observable<string>(observer => {
-      if (typeof google === 'undefined') {
-        return observer.error(
-          new Error('Google Identity Services script not loaded.'),
-        );
-      }
-
-      // --- Timeout for silent refresh ---
-      const refreshTimeout = setTimeout(() => {
-        observer.error(new Error('Silent token refresh timed out.'));
-      }, 10000); // 10-second timeout for silent refresh
-
-      google.accounts.id.initialize({
-        client_id: environment.IAP_CLIENT_ID,
-        callback: (response: any) => {
-          const idToken = response.credential;
-          if (idToken) {
-            const payload = JSON.parse(atob(idToken.split('.')[1]));
-            const expiry = payload.exp * 1000;
-            clearTimeout(refreshTimeout); // Success!
-
-            this.firebaseIdToken = idToken;
-            this.firebaseTokenExpiry = expiry;
-
-            const session: FirebaseSession = {token: idToken, expiry: expiry};
-            localStorage.setItem(FIREBASE_SESSION_KEY, JSON.stringify(session));
-
-            observer.next(idToken);
-            observer.complete();
-          } else {
-            clearTimeout(refreshTimeout);
-            observer.error(
-              new Error('Silent refresh failed to return a credential.'),
-            );
-          }
-        },
-        auto_select: true, // This enables the silent token refresh behavior
-      });
-
-      // Trigger the prompt. The callback is no longer used for flow control.
-      google.accounts.id.prompt();
-    });
+    // Fallback case: The Firebase Auth instance is not yet initialized, but we
+    // have a valid token from localStorage. We can use this for the current
+    // request. The next request will likely hit the ideal case above.
+    return of(this.firebaseIdToken!);
   }
 
   private syncUserWithBackend$(token: string): Observable<UserModel> {
