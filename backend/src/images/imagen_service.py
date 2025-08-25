@@ -149,14 +149,20 @@ class ImagenService:
 
             # 1. Upscale images if needed
             if request_dto.upscale_factor:
-                upscale_dtos: UpscaleImagenDto = [
+                upscale_dtos: list[UpscaleImagenDto] = [
                     UpscaleImagenDto(
                         generation_model=request_dto.generation_model,
-                        user_image=img.image.gcs_uri,
-                        mime_type=img.image.mime_type,
+                        user_image=img.image.gcs_uri or "",
+                        mime_type=(
+                            MimeTypeEnum.IMAGE_PNG
+                            if img.image.mime_type
+                            == MimeTypeEnum.IMAGE_PNG.value
+                            else MimeTypeEnum.IMAGE_JPEG
+                        ),
                         upscale_factor=request_dto.upscale_factor,
                     )
                     for img in valid_generated_images
+                    if img.image
                 ]
                 upscale_images = []
                 tasks = [
@@ -167,7 +173,7 @@ class ImagenService:
                 permanent_gcs_uris = [
                     img.image.gcs_uri
                     for img in upscale_images
-                    if img.image and img.image.gcs_uri
+                    if img and img.image and img.image.gcs_uri
                 ]
             else:
                 permanent_gcs_uris = [
