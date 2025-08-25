@@ -48,3 +48,14 @@ class UpscaleImagenDto(BaseDto):
         if value not in valid_video_ratios:
             raise ValueError("Invalid generation model for imagen.")
         return value
+
+    @field_validator("mime_type")
+    def validate_imagen_mime_type(cls, value: MimeTypeEnum) -> MimeTypeEnum:
+        """Ensures that only supported generation models for imagen are used."""
+        valid_mime_types = [
+            MimeTypeEnum.IMAGE_PNG,
+            MimeTypeEnum.IMAGE_JPEG,
+        ]
+        if value not in valid_mime_types:
+            raise ValueError("Invalid mime type for imagen.")
+        return value
