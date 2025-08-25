@@ -1,7 +1,7 @@
 import {Component, OnDestroy} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {finalize, Subscription, switchMap, timer} from 'rxjs';
+import {finalize, Observable, Subscription, switchMap, timer} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
 import {VeoRequest} from '../common/models/search.model';
@@ -17,9 +17,10 @@ import {JobStatus, MediaItem} from '../common/models/media-item.model';
   templateUrl: './video.component.html',
   styleUrl: './video.component.scss',
 })
-export class VideoComponent implements OnDestroy {
-  isPolling = false;
-  private pollingSubscription: Subscription | null = null;
+export class VideoComponent {
+  // This observable will always reflect the current job's state
+  activeVideoJob$: Observable<MediaItem | null>;
+  public readonly JobStatus = JobStatus; // Expose enum to the template
 
   templateParams: GenerationParameters | undefined;
 
@@ -125,6 +126,8 @@ export class VideoComponent implements OnDestroy {
     public router: Router,
     private _snackBar: MatSnackBar,
   ) {
+    this.activeVideoJob$ = this.service.activeVideoJob$;
+
     this.matIconRegistry
       .addSvgIcon(
         'content-type-icon',
@@ -152,10 +155,6 @@ export class VideoComponent implements OnDestroy {
 
   private setPath(url: string): SafeResourceUrl {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
-
-  ngOnDestroy(): void {
-    this.stopPolling();
   }
 
   selectModel(model: {value: string; viewValue: string}): void {
@@ -252,14 +251,13 @@ export class VideoComponent implements OnDestroy {
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (initialResponse: MediaItem) => {
-          // The backend immediately returns a placeholder with an ID and "processing" status
+          // This logic is now handled by the 'tap' operator in the service,
+          // but it's fine to also have it here. The key is the 'error' block.
           console.log('Job started successfully:', initialResponse);
-          this.videoDocuments = initialResponse;
-          this.isPolling = true;
-          // Start polling for the final result
-          this.startPolling(initialResponse.id);
+          // The component's main display will be driven by the service's observable
         },
         error: error => {
+          // This block will now execute correctly if the POST request fails.
           console.error('Search error:', error);
           const errorMessage =
             error?.error?.detail?.[0]?.msg ||
@@ -274,49 +272,6 @@ export class VideoComponent implements OnDestroy {
           });
         },
       });
-  }
-
-  private startPolling(mediaId: string): void {
-    // Stop any previous polling
-    this.stopPolling();
-
-    // Use RxJS timer to poll every 15 seconds
-    this.pollingSubscription = timer(0, 15000) // 0ms initial delay, 15000ms interval
-      .pipe(switchMap(() => this.service.getVeoMediaItem(mediaId)))
-      .subscribe({
-        next: (latestItem: MediaItem) => {
-          console.log('Polling status:', latestItem.status);
-          this.videoDocuments = latestItem; // Update the UI with the latest status
-
-          if (
-            latestItem.status === JobStatus.COMPLETED ||
-            latestItem.status === JobStatus.FAILED
-          ) {
-            this.stopPolling(); // Stop polling when the job is done
-            this.isPolling = false;
-
-            if (latestItem.status === JobStatus.FAILED) {
-              this.handleError(
-                'Video generation failed in the background.',
-                'Polling Error',
-              );
-            }
-          }
-        },
-        error: error => {
-          this.handleError(error, 'Polling failed');
-          this.stopPolling();
-          this.isPolling = false;
-        },
-      });
-  }
-
-  private stopPolling(): void {
-    if (this.pollingSubscription) {
-      this.pollingSubscription.unsubscribe();
-      this.pollingSubscription = null;
-      console.log('Polling stopped.');
-    }
   }
 
   rewritePrompt() {

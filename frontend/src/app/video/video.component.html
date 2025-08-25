@@ -29,17 +29,26 @@
     </ng-container>
 
     <ng-template #videoOrGallery>
-      <div *ngIf="isPolling" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
-        <mat-progress-spinner
-          color="primary"
-          mode="indeterminate"
-          [diameter]="50"
-        ></mat-progress-spinner>
-        <p class="mt-4 text-white text-lg">Your video is being generated...</p>
-        <p class="text-gray-400 text-sm">This may take a few minutes. You can safely navigate away.</p>
-      </div>
 
-      <ng-container *ngIf="(videoDocuments?.presignedUrls?.length || 0) === 0; else videoGallery">
+      <ng-container *ngIf="activeVideoJob$ | async as job">
+        <div *ngIf="job.status === JobStatus.PROCESSING" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
+          <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
+          <p class="mt-4 text-white text-lg">Your video is being generated...</p>
+          <p class="text-gray-400 text-sm">This may take a few minutes. You can safely navigate away.</p>
+        </div>
+
+        <!-- Video Gallery -->
+        <app-media-lightbox
+          *ngIf="job.status === JobStatus.COMPLETED"
+          [mediaItem]="job"
+        ></app-media-lightbox>
+
+        <div *ngIf="job.status === JobStatus.FAILED" class="error-display">
+          <p>Sorry, video generation failed</p>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="(activeVideoJob$ | async)?.status !== JobStatus.COMPLETED">
         <div class="video-container">
           <video
             class="w-full rounded-xl"
@@ -62,12 +71,6 @@
           </div>
         </div>
       </ng-container>
-      <!-- Video Gallery -->
-      <ng-template #videoGallery>
-        <div class="grid grid-cols-1 gap-4">
-          <app-media-lightbox *ngIf="videoDocuments" [mediaItem]="videoDocuments" [initialIndex]="0" [showSeeMoreInfoButton]="true" style="max-height: 80vh;"></app-media-lightbox>
-        </div>
-      </ng-template>
     </ng-template>
 
     <!-- Control Options -->
