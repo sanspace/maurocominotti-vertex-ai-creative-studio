@@ -28,7 +28,7 @@ from tenacity import (
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
-from src.common.schema.media_item_model import MediaItemModel
+from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
 from src.images.repository.media_item_repository import MediaRepository
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
@@ -175,6 +175,7 @@ class ImagenService:
                 generation_time=generation_time,
                 aspect_ratio=request_dto.aspect_ratio,
                 gcs_uris=permanent_gcs_uris,
+                status=JobStatusEnum.COMPLETED,
                 # Styling props
                 style=request_dto.style,
                 lighting=request_dto.lighting,

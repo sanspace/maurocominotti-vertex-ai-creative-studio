@@ -35,11 +35,21 @@ export class SearchService {
       .pipe(map(response => response as MediaItem));
   }
 
-  searchVeo(searchRequest: VeoRequest) {
+  startVeoGeneration(searchRequest: VeoRequest) {
     const searchURL = `${environment.backendURL}/videos/generate-videos`;
     return this.http
       .post(searchURL, searchRequest)
       .pipe(map(response => response as MediaItem));
+  }
+
+  /**
+   * Fetches the current state of a media item by its ID.
+   * @param mediaId The unique ID of the media item to check.
+   * @returns An Observable of the MediaItem.
+   */
+  getVeoMediaItem(mediaId: string): Observable<MediaItem> {
+    const getURL = `${environment.backendURL}/videos/${mediaId}`;
+    return this.http.get<MediaItem>(getURL);
   }
 
   rewritePrompt(payload: {

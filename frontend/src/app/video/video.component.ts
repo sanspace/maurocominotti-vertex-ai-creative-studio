@@ -1,7 +1,7 @@
-import {Component} from '@angular/core';
+import {Component, OnDestroy} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {finalize} from 'rxjs';
+import {finalize, Subscription, switchMap, timer} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
 import {VeoRequest} from '../common/models/search.model';
@@ -10,14 +10,17 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
-import {MediaItem} from '../common/models/media-item.model';
+import {JobStatus, MediaItem} from '../common/models/media-item.model';
 
 @Component({
   selector: 'app-video',
   templateUrl: './video.component.html',
   styleUrl: './video.component.scss',
 })
-export class VideoComponent {
+export class VideoComponent implements OnDestroy {
+  isPolling = false;
+  private pollingSubscription: Subscription | null = null;
+
   templateParams: GenerationParameters | undefined;
 
   // --- Component State ---
@@ -151,17 +154,8 @@ export class VideoComponent {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
-  private processSearchResults(searchResponse: MediaItem) {
-    this.videoDocuments = searchResponse;
-
-    const hasVideonResults =
-      (this.videoDocuments?.presignedUrls?.length || 0) > 0;
-
-    if (hasVideonResults) {
-      this.showDefaultDocuments = false;
-    } else {
-      this.showDefaultDocuments = true;
-    }
+  ngOnDestroy(): void {
+    this.stopPolling();
   }
 
   selectModel(model: {value: string; viewValue: string}): void {
@@ -254,11 +248,16 @@ export class VideoComponent {
     this.videoDocuments = null;
 
     this.service
-      .searchVeo(this.searchRequest)
+      .startVeoGeneration(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: MediaItem) => {
-          this.processSearchResults(searchResponse);
+        next: (initialResponse: MediaItem) => {
+          // The backend immediately returns a placeholder with an ID and "processing" status
+          console.log('Job started successfully:', initialResponse);
+          this.videoDocuments = initialResponse;
+          this.isPolling = true;
+          // Start polling for the final result
+          this.startPolling(initialResponse.id);
         },
         error: error => {
           console.error('Search error:', error);
@@ -275,6 +274,49 @@ export class VideoComponent {
           });
         },
       });
+  }
+
+  private startPolling(mediaId: string): void {
+    // Stop any previous polling
+    this.stopPolling();
+
+    // Use RxJS timer to poll every 15 seconds
+    this.pollingSubscription = timer(0, 15000) // 0ms initial delay, 15000ms interval
+      .pipe(switchMap(() => this.service.getVeoMediaItem(mediaId)))
+      .subscribe({
+        next: (latestItem: MediaItem) => {
+          console.log('Polling status:', latestItem.status);
+          this.videoDocuments = latestItem; // Update the UI with the latest status
+
+          if (
+            latestItem.status === JobStatus.COMPLETED ||
+            latestItem.status === JobStatus.FAILED
+          ) {
+            this.stopPolling(); // Stop polling when the job is done
+            this.isPolling = false;
+
+            if (latestItem.status === JobStatus.FAILED) {
+              this.handleError(
+                'Video generation failed in the background.',
+                'Polling Error',
+              );
+            }
+          }
+        },
+        error: error => {
+          this.handleError(error, 'Polling failed');
+          this.stopPolling();
+          this.isPolling = false;
+        },
+      });
+  }
+
+  private stopPolling(): void {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+      console.log('Polling stopped.');
+    }
   }
 
   rewritePrompt() {

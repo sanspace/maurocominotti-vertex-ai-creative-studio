@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from concurrent.futures import ProcessPoolExecutor
 from fastapi.responses import JSONResponse
 from src.config import (
     logger_config,
@@ -38,16 +39,39 @@ from src.generation_options.generation_options_controller import (
 from src.media_templates.media_templates_controller import (
     router as media_template_router,
 )
+from google.cloud.logging.handlers import CloudLoggingHandler
+from google.cloud.logging import Client as LoggerClient
 
 # Get the logger instance that Uvicorn is using
-logging.basicConfig(
-    level=logging.INFO,
-    stream=sys.stderr,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    encoding="utf-8",
-)
-logger = logging.getLogger(__name__)
+# Check the environment to provide readable logs locally
+# and structured JSON logs in production.
+# Attach the Google Cloud Logging handler.
+# This handler automatically formats logs as JSON and sends them to Cloud Logging.
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)  # Set the minimum level for all handlers
 
+# Clear any existing handlers to prevent duplicate logs
+if root_logger.handlers:
+    for handler in root_logger.handlers:
+        root_logger.removeHandler(handler)
+
+if getenv("ENVIRONMENT") == "production":
+    # In PRODUCTION, attach the Google Cloud Logging handler.
+    # This sends logs as structured JSON to Google Cloud.
+    client = LoggerClient()
+    handler = CloudLoggingHandler(client, name="creative-studio-main")
+    root_logger.addHandler(handler)
+else:
+    # In DEVELOPMENT, use a simple stream handler for readable console output.
+    handler = logging.StreamHandler(sys.stderr)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    handler.setFormatter(formatter)
+    root_logger.addHandler(handler)
+
+# Get a logger instance for use in this file. It will inherit the root setup.
+logger = logging.getLogger(__name__)
 
 def configure_cors(app):
     """Configures CORS middleware based on the environment."""
@@ -91,10 +115,17 @@ async def lifespan(app: FastAPI):
         }"""
     )
 
+    logger.info("Creating ProcessPoolExecutor...")
+    # Create the pool and attach it to the app's state
+    app.state.process_pool = ProcessPoolExecutor(max_workers=4)
+
     yield
 
     # Code here runs on shutdown
     logger.info("Application shutdown terminating")
+
+    logger.info("Closing ProcessPoolExecutor...")
+    app.state.process_pool.shutdown(wait=True)
     # Your shutdown logic here, e.g., closing database connections
 
 
