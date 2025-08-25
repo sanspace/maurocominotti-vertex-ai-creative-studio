@@ -51,11 +51,17 @@
 
     <!-- Actions Toolbar on the right -->
     <div class="media-actions-toolbar" *ngIf="mediaItem">
-      <button class="action-button" (click)="toggleShareMenu()" title="Share">
+      <button
+        *ngIf="showShareButton"
+        class="action-button"
+        (click)="toggleShareMenu()"
+        title="Share"
+      >
         <mat-icon>share</mat-icon>
         <span>Share</span>
       </button>
       <button
+        *ngIf="showDownloadButton"
         class="action-button"
         (click)="openInNewTab()"
         title="Open in new tab"

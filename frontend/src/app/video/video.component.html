@@ -41,6 +41,9 @@
         <app-media-lightbox
           *ngIf="job.status === JobStatus.COMPLETED"
           [mediaItem]="job"
+          [initialIndex]="0"
+          [showSeeMoreInfoButton]="true"
+          style="max-height: 80vh;"
         ></app-media-lightbox>
 
         <div *ngIf="job.status === JobStatus.FAILED" class="error-display">
