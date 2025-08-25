@@ -6,6 +6,7 @@ from firebase_admin import auth
 from src.config.config_service import ConfigService
 from src.users.user_model import User, UserRoleEnum
 from src.users.user_service import UserService
+
 # --- Google Auth for IAP ---
 from google.auth.transport import requests as google_auth_requests
 from google.oauth2 import id_token
@@ -21,12 +22,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 logger = logging.getLogger(__name__)
 
+
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     """
     Dependency that handles the entire authentication and user provisioning flow.
 
     1. Verifies the Firebase ID token.
-    2. Extracts user information (uid, email).
+    2. Extracts user information (id, email).
     3. Checks if a user document exists in Firestore.
     4. If the user is new, creates their document ("Just-In-Time Provisioning").
     5. Returns a Pydantic model with the user's data.
@@ -66,7 +68,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         if not user_doc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Could not create or retrieve user profile."
+                detail="Could not create or retrieve user profile.",
             )
 
         return user_doc
@@ -75,19 +77,19 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         logger.error(f"[get_current_user - auth.ExpiredIdTokenError]")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication token has expired."
+            detail="Authentication token has expired.",
         )
     except auth.InvalidIdTokenError as e:
         logger.error(f"[get_current_user - auth.InvalidIdTokenError]: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {e}"
+            detail=f"Invalid authentication token: {e}",
         )
     except Exception as e:
         logger.error(f"[get_current_user - Exception]: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred during authentication: {e}"
+            detail=f"An unexpected error occurred during authentication: {e}",
         )
 
 
@@ -96,6 +98,7 @@ class RoleChecker:
     Dependency that checks if the authenticated user has the required roles.
     It depends on `get_current_user` to ensure the user is authenticated first.
     """
+
     def __init__(self, allowed_roles: List[UserRoleEnum]):
         self.allowed_roles = allowed_roles
 
@@ -108,5 +111,5 @@ class RoleChecker:
         if not is_authorized:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have sufficient permissions to perform this action."
+                detail="You do not have sufficient permissions to perform this action.",
             )

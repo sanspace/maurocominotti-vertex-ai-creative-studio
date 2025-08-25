@@ -13,34 +13,30 @@
 # limitations under the License.
 
 
-from concurrent.futures import ProcessPoolExecutor
-from fastapi.responses import JSONResponse
-from src.config import (
-    logger_config,
-)  # Import the logging configuration first to ensure it's set up.
-from contextlib import asynccontextmanager
 import logging
-from os import getenv
 import sys
+from concurrent.futures import ProcessPoolExecutor
+from contextlib import asynccontextmanager
+from os import getenv
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-
-from src.auth import firebase_client_service
-from src.images.imagen_controller import router as imagen_router
+from fastapi.responses import JSONResponse
+from google.cloud.logging import Client as LoggerClient
+from google.cloud.logging.handlers import CloudLoggingHandler
 from src.audios.audio_controller import router as audio_router
-from src.videos.veo_controller import router as video_router
+from src.auth import firebase_client_service
 from src.galleries.gallery_controller import router as gallery_router
-from src.multimodal.gemini_controller import router as gemini_router
-from src.users.user_controller import router as user_router
 from src.generation_options.generation_options_controller import (
     router as generation_options_router,
 )
+from src.images.imagen_controller import router as imagen_router
 from src.media_templates.media_templates_controller import (
     router as media_template_router,
 )
-from google.cloud.logging.handlers import CloudLoggingHandler
-from google.cloud.logging import Client as LoggerClient
+from src.multimodal.gemini_controller import router as gemini_router
+from src.users.user_controller import router as user_router
+from src.videos.veo_controller import router as video_router
 
 # Get the logger instance that Uvicorn is using
 # Check the environment to provide readable logs locally
@@ -73,6 +69,7 @@ else:
 # Get a logger instance for use in this file. It will inherit the root setup.
 logger = logging.getLogger(__name__)
 
+
 def configure_cors(app):
     """Configures CORS middleware based on the environment."""
     environment = getenv("ENVIRONMENT")
@@ -85,11 +82,11 @@ def configure_cors(app):
                 "FRONTEND_URL environment variable not set in production"
             )
         allowed_origins.append(frontend_url)
-    elif environment == "development":
+    elif environment in ["development", "local"]:
         allowed_origins.append("*")  # Allow all origins in development
     else:
         raise ValueError(
-            f"Invalid ENVIRONMENT: {environment}. Must be 'production' or 'development'"
+            f"Invalid ENVIRONMENT: {environment}. Must be 'production', 'development' or 'local'"
         )
 
     app.add_middleware(

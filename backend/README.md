@@ -9,6 +9,98 @@ The architecture always follows the following structure: a folder for the fronte
 ## 🚀 Backend Setup
 Before running the application, you must initialize the Google Cloud project with a Firestore database and the necessary indexes.
 
+### Step 0: Setup gcp dependencies
+
+Two environment variables are required to run this application:
+
+`PROJECT_ID`
+Provide an environment variable for your Google Cloud Project ID
+
+```
+export PROJECT_ID=$(gcloud config get project)
+```
+
+`GENMEDIA_BUCKET`
+You'll need Google Cloud Storage bucket for the generative media. Note that this has to exist prior to running the application.
+
+If an existing Google Cloud Storage bucket is available, please provide its name without the `"gs://"` prefix.
+
+```
+export GENMEDIA_BUCKET=$PROJECT_ID-genmedia
+```
+
+Otherwise, follow the next steps to create a storage bucket.
+
+#### Create Storage Bucket (Optional)
+
+Please run the following command to obtain new credentials.
+
+```
+gcloud auth login
+or
+gcloud auth application-default login
+```
+
+If you have already logged in with a different account, run:
+
+```
+gcloud config set project $PROJECT_ID
+
+gcloud config set account <your gcp email account>
+```
+
+You may need to set the default quota project for your ADC Credentials
+```
+gcloud auth application-default set-quota-project $PROJECT_ID
+```
+
+Create the storage bucket and make the url images accessible to the frontend.
+
+```
+gcloud storage buckets create gs://$GENMEDIA_BUCKET --location=US --default-storage-class=STANDARD
+
+gcloud storage buckets add-iam-policy-binding gs://$GENMEDIA_BUCKET \
+    --member=allUsers \
+    --role=roles/storage.objectViewer
+```
+
+If you can't make the images accessible to anyone with the previous command, due to an error like the following:
+```
+ERROR: (gcloud.storage.buckets.add-iam-policy-binding) HTTPError 412: One or more users named in the policy do not belong to a permitted customer.
+```
+
+Probably is due to organizational restrictions, and the images/videos won't appear on the UI.
+In that case, you can configure Creative Studio to generate presigned url, and access them by setting up a separated service account.
+```
+export SA_NAME=sa-genmedia-creative-studio
+
+gcloud iam service-accounts create $SA_NAME \
+  --display-name="Image Signing Service Account" \
+  --project=$PROJECT_ID
+
+gcloud storage buckets add-iam-policy-binding gs://$GENMEDIA_BUCKET \
+  --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+# You can change the USER_EMAIL accordingly to your case
+export USER_EMAIL=$(gcloud config get account)
+gcloud iam service-accounts add-iam-policy-binding $SA_NAME@$PROJECT_ID.iam.gserviceaccount.com --member="user:$USER_EMAIL" --role="roles/iam.serviceAccountTokenCreator"
+```
+
+### Enable the GCP Services
+#### 2. Enable required Google Cloud APIs
+```
+gcloud services enable \
+    run.googleapis.com \
+    compute.googleapis.com \
+    cloudfunctions.googleapis.com \
+    cloudbuild.googleapis.com \
+    artifactregistry.googleapis.com \
+    iamcredentials.googleapis.com \
+    aiplatform.googleapis.com \
+    firestore.googleapis.com \
+```
+
 ### Step 1: Create the Firestore Database
 A Firestore database must be created for your project. This is a one-time operation.
 
@@ -137,18 +229,7 @@ To implement a proper search bar, you must integrate a dedicated third-party sea
     --timeout=300s # Set a reasonable timeout (e.g., 5 minutes)
 ```
 
-## Accessing images
-In order fot the pre-signed URLs to work, make sure the SIGNING_SA_EMAIL matches the default CloudRun Service Account assigned, and provide it with access to the bucket.
-Make sure your default Service Account MUST have the "Service Account Token Creator" Role and also the "Storage Object Viewer" IAM Role.
-```
-export SA_NAME=your-default-cloudrun-sa && \
-
-gcloud storage buckets add-iam-policy-binding gs://$GENMEDIA_BUCKET \
-  --member="serviceAccount:$SA_NAME" \
-  --role="roles/storage.objectViewer"
-```
-
-## Setting up
+## Running Locally
 ### 1. Create virtualenv inside the backend folder and install dependencies
 Create a virtual environment with uv on the root of the application, activate it and install the requirements
 ```
