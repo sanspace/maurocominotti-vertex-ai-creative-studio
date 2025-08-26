@@ -32,6 +32,7 @@ from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
+from src.images.dto.vto_dto import VtoDto
 from src.images.repository.media_item_repository import MediaRepository
 from src.images.schema.imagen_result_model import (
     CustomImagenResult,
@@ -55,6 +56,7 @@ class ImagenService:
         self.media_repo = MediaRepository()
         self.gemini_service = GeminiService()
         self.gcs_service = GcsService()
+        self.cfg = ConfigService()
 
     @retry(
         wait=wait_exponential(
@@ -75,8 +77,7 @@ class ImagenService:
         start_time = time.monotonic()
 
         client = GenAIModelSetup.init()
-        cfg = ConfigService()
-        gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
+        gcs_output_directory = f"gs://{self.cfg.GENMEDIA_BUCKET}"
 
         original_prompt = request_dto.prompt
         rewritten_prompt = self.gemini_service.enhance_prompt_from_dto(
@@ -322,54 +323,150 @@ class ImagenService:
             logger.error(f"Error during Gemini generation: {e}")
             return []
 
-    def generate_image_for_vto(self, prompt: str) -> ImageGenerationResult:
-        """Generates a single image and returns the image bytes."""
+    @retry(
+        wait=wait_exponential(
+            multiplier=1, min=1, max=10
+        ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
+        stop=stop_after_attempt(3),  # Stop after 3 attempts
+        retry=retry_if_exception_type(
+            Exception
+        ),  # Retry on all exceptions for robustness
+        reraise=True,  # re-raise the last exception if all retries fail
+    )
+    async def generate_image_for_vto(
+        self, request_dto: VtoDto, user_email: str
+    ) -> MediaItemResponse | None:
+        """Generates a VTO image using the google.genai client."""
+        start_time = time.monotonic()
         client = GenAIModelSetup.init()
-        response = client.models.generate_images(
-            model=GenerationModelEnum.IMAGEN_4_ULTRA,
-            prompt=prompt,
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="1:1",
-            ),
-        )
-        if (
-            response.generated_images
-            and response.generated_images[0].image
-            and response.generated_images[0].image.image_bytes
-        ):
-            enhanced_prompt = response.generated_images[0].enhanced_prompt
-            rai_filtered_reason = response.generated_images[
-                0
-            ].rai_filtered_reason
-            generated_image = response.generated_images[0].image
-            image_bytes = response.generated_images[0].image.image_bytes
-            return ImageGenerationResult(
-                enhanced_prompt=enhanced_prompt or "",
-                rai_filtered_reason=rai_filtered_reason,
-                image=CustomImagenResult(
-                    gcs_uri=generated_image.gcs_uri or "",
-                    encoded_image=base64.b64encode(image_bytes).decode("utf-8"),
-                    mime_type=generated_image.mime_type or "",
-                    presigned_url="",
-                ),
+        gcs_output_directory = f"gs://{self.cfg.IMAGE_BUCKET}/{self.cfg.IMAGEN_RECONTEXT_SUBFOLDER}"
+
+        if request_dto.person_image.gcs_uri:
+            person_image_part = types.Image(
+                gcs_uri=request_dto.person_image.gcs_uri,
             )
         else:
-            raise ValueError("Image generation failed or returned no data.")
+            person_image_part = types.Image(
+                image_bytes=base64.b64decode(request_dto.person_image.b64)
+            )
+
+        product_images = []
+        products = []
+        if request_dto.top_image:
+            products.append(request_dto.top_image)
+        if request_dto.bottom_image:
+            products.append(request_dto.bottom_image)
+        if request_dto.dress_image:
+            products.append(request_dto.dress_image)
+        if request_dto.shoe_image:
+            products.append(request_dto.shoe_image)
+
+        for product in products:
+            if product and product.gcs_uri:
+                product_image_part = types.Image(
+                    gcs_uri=product.gcs_uri,
+                )
+            else:
+                product_image_part = types.Image(
+                    image_bytes=base64.b64decode(product.b64)
+                )
+
+            product_images.append(
+                types.ProductImage(product_image=product_image_part)
+            )
+
+        try:
+            # Call recontext_image on the client's model endpoint, not a GenerativeModel instance
+            response = client.models.recontext_image(
+                model=self.cfg.VTO_MODEL_ID,
+                source=types.RecontextImageSource(
+                    # prompt=request_dto.prompt,
+                    person_image=person_image_part,
+                    product_images=product_images,
+                ),
+                config=types.RecontextImageConfig(
+                    output_gcs_uri=gcs_output_directory,
+                    number_of_images=request_dto.number_of_media,
+                ),
+            )
+
+            # Repeat behaviour from generate images
+            all_generated_images = response.generated_images or []
+
+            if not all_generated_images:
+                return None
+
+            # --- UNIFIED PROCESSING AND SAVING ---
+            # Create the list of permanent GCS URIs and the response for the frontend
+            valid_generated_images = [
+                img
+                for img in all_generated_images
+                if img.image and img.image.gcs_uri
+            ]
+            mime_type: MimeTypeEnum = (
+                MimeTypeEnum.IMAGE_PNG
+                if valid_generated_images[0].image
+                and valid_generated_images[0].image.mime_type
+                == MimeTypeEnum.IMAGE_PNG
+                else MimeTypeEnum.IMAGE_JPEG
+            )
+
+            permanent_gcs_uris = [
+                img.image.gcs_uri
+                for img in valid_generated_images
+                if img.image and img.image.gcs_uri
+            ]
+
+            # 2. Create and run tasks to generate all presigned URLs in parallel
+            presigned_url_tasks = [
+                asyncio.to_thread(
+                    self.iam_signer_credentials.generate_presigned_url, uri
+                )
+                for uri in permanent_gcs_uris
+            ]
+            presigned_urls = await asyncio.gather(*presigned_url_tasks)
+
+            end_time = time.monotonic()
+            generation_time = end_time - start_time
+
+            # Create and save a SINGLE MediaItem for the entire batch
+            media_post_to_save = MediaItemModel(
+                # Core Props
+                user_email=user_email,
+                mime_type=mime_type,
+                model=self.cfg.VTO_MODEL_ID,
+                aspect_ratio="1:1",
+                # Common Props
+                prompt="vto",
+                original_prompt="vto",
+                num_media=len(permanent_gcs_uris),
+                generation_time=generation_time,
+                gcs_uris=permanent_gcs_uris,
+                status=JobStatusEnum.COMPLETED,
+            )
+            self.media_repo.save(media_post_to_save)
+
+            return MediaItemResponse(
+                **media_post_to_save.model_dump(),
+                presigned_urls=presigned_urls,
+            )
+
+        except Exception as e:
+            logger.error(f"Image generation API call failed: {e}")
+            raise
 
     def recontextualize_product_in_scene(
         self, image_uris_list: list[str], prompt: str, sample_count: int
     ) -> list[str]:
         """Recontextualizes a product in a scene and returns a list of GCS URIs."""
-        cfg = ConfigService()
         client_options = {
-            "api_endpoint": f"{cfg.LOCATION}-aiplatform.googleapis.com"
+            "api_endpoint": f"{self.cfg.LOCATION}-aiplatform.googleapis.com"
         }
         client = aiplatform.gapic.PredictionServiceClient(
             client_options=client_options
         )
 
-        model_endpoint = f"projects/{cfg.PROJECT_ID}/locations/{cfg.LOCATION}/publishers/google/models/{cfg.MODEL_IMAGEN_PRODUCT_RECONTEXT}"
+        model_endpoint = f"projects/{self.cfg.PROJECT_ID}/locations/{self.cfg.LOCATION}/publishers/google/models/{self.cfg.MODEL_IMAGEN_PRODUCT_RECONTEXT}"
 
         instance = {"productImages": []}
         for product_image_uri in image_uris_list:
@@ -413,9 +510,8 @@ class ImagenService:
     ) -> list[ImageGenerationResult]:
         """Edits an image using the Google GenAI client."""
         client = GenAIModelSetup.init()
-        cfg = ConfigService()
         gcs_output_directory = (
-            f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_EDITED_SUBFOLDER}"
+            f"gs://{self.cfg.IMAGE_BUCKET}/{self.cfg.IMAGEN_EDITED_SUBFOLDER}"
         )
 
         raw_ref_image = types.RawReferenceImage(

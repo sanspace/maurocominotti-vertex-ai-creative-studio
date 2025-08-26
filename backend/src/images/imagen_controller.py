@@ -19,6 +19,7 @@ from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
+from src.images.dto.vto_dto import VtoDto
 from src.images.imagen_service import ImagenService
 from src.images.schema.imagen_result_model import ImageGenerationResult
 from src.users.user_model import User, UserRoleEnum
@@ -61,13 +62,27 @@ async def generate_images(
 
 
 @router.post("/generate-images-for-vto")
-def generate_images_vto(prompt: str) -> ImageGenerationResult:
+async def generate_images_vto(
+    image_request: VtoDto,
+    current_user: User = Depends(get_current_user),
+) -> MediaItemResponse | None:
+
     try:
         service = ImagenService()
-        return service.generate_image_for_vto(prompt)
+        return await service.generate_image_for_vto(
+            request_dto=image_request, user_email=current_user.email
+        )
+    except HTTPException as http_exception:
+        raise http_exception
+    except ValueError as value_error:
+        raise HTTPException(
+            status_code=Status.HTTP_400_BAD_REQUEST,
+            detail=str(value_error),
+        )
     except Exception as e:
         raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
         )
 
 
