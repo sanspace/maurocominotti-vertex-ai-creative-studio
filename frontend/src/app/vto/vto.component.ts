@@ -344,10 +344,13 @@ export class VtoComponent {
         val === 'female' ? this.femaleModels : this.maleModels;
       this.firstFormGroup.get('model')?.reset();
       this.selectedModel = null;
+      this.imagenDocuments = null;
     });
 
     this.firstFormGroup.get('model')?.valueChanges.subscribe(model => {
       this.selectedModel = model;
+      // Reset any previous generation when the model changes
+      this.imagenDocuments = null;
     });
 
     this.secondFormGroup.get('top')?.valueChanges.subscribe(top => {
@@ -442,12 +445,25 @@ export class VtoComponent {
     }
 
     this.isLoading = true;
-    this.imagenDocuments = null;
 
     try {
+      let personImage: VtoImageData;
+
+      // If we have a previous result, use its GCS URI for the next generation.
+      // Otherwise, use the initially selected model image as a base64 string.
+      if (
+        this.imagenDocuments &&
+        this.imagenDocuments.gcsUris &&
+        this.imagenDocuments.gcsUris.length > 0
+      ) {
+        personImage = {gcs_uri: this.imagenDocuments.gcsUris[0]};
+      } else {
+        personImage = await this.createImageData(this.selectedModel.imageUrl);
+      }
+
       const payload: VtoRequest = {
         number_of_media: 1, // Defaulting to 1 as per DTO
-        person_image: await this.createImageData(this.selectedModel.imageUrl),
+        person_image: personImage,
       };
 
       if (this.selectedTop) {
@@ -480,6 +496,15 @@ export class VtoComponent {
           next: response => {
             this.isLoading = false;
             this.imagenDocuments = response;
+            // Also update the preview model to reflect the latest generation
+            // for the next iterative step.
+            if (
+              this.selectedModel &&
+              response.presignedUrls &&
+              response.presignedUrls.length > 0
+            ) {
+              this.selectedModel.imageUrl = response.presignedUrls[0];
+            }
           },
           error: err => {
             this.isLoading = false;
