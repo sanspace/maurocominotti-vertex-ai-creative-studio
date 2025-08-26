@@ -221,18 +221,34 @@
               </div>
             </div>
 
-            <div class="preview-pane">
-              <h4>Preview</h4>
-              <div class="preview-image-container" *ngIf="selectedModel">
-                <img
-                  [src]="selectedModel.imageUrl"
-                  alt="Selected Model"
-                  class="model-image"
-                />
+            <div class="right-column">
+              <div class="preview-pane">
+                <h4>Preview</h4>
+                <div class="preview-image-container" *ngIf="selectedModel">
+                  <img
+                    [src]="selectedModel.imageUrl"
+                    alt="Selected Model"
+                    class="model-image"
+                  />
+                </div>
+                <p *ngIf="!selectedModel">
+                  Select a model in Step 1 to see a preview.
+                </p>
               </div>
-              <p *ngIf="!selectedModel">
-                Select a model in Step 1 to see a preview.
-              </p>
+              <div class="output-pane">
+                <div *ngIf="isLoading" class="loading-container">
+                  <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+                  <p>Generating your virtual try-on...</p>
+                </div>
+                <div *ngIf="imagenDocuments" class="results-container">
+                  <h3>Results</h3>
+                  <div class="item-row">
+                    <mat-card *ngFor="let url of imagenDocuments.presignedUrls">
+                      <img mat-card-image [src]="url" alt="VTO Result" />
+                    </mat-card>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -250,23 +266,5 @@
         </form>
       </mat-step>
     </mat-stepper>
-
-    <div *ngIf="isLoading" class="loading-container">
-      <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
-      <p>Generating your virtual try-on...</p>
-    </div>
-
-    <div *ngIf="imagenDocuments" class="results-container">
-      <h3>Results</h3>
-      <div class="item-row">
-        <mat-card *ngFor="let url of imagenDocuments.presignedUrls">
-          <img
-            mat-card-image
-            [src]="url"
-            alt="VTO Result"
-          />
-        </mat-card>
-      </div>
-    </div>
   </div>
 </div>

@@ -81,13 +81,26 @@
 }
 
 .clothing-options {
-  flex: 3;
+  flex: 2;
+  min-width: 0; /* Prevents flexbox overflow */
+}
+
+.right-column {
+  flex: 2;
+  display: flex;
+  gap: 24px;
 }
 
 .preview-pane {
   flex: 1;
   border-left: 1px solid #ccc;
   padding-left: 24px;
+
+  /* Make the preview pane sticky */
+  position: sticky;
+  top: 2rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 4rem);
 }
 
 .preview-image-container {
@@ -127,8 +140,12 @@
   color: white;
 }
 
+.output-pane {
+  flex: 1;
+}
+
 .results-container {
-  margin-top: 2rem;
+  /* margin-top is no longer needed */
   color: white;
 }
 
