@@ -110,16 +110,26 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    // The `mix-blend-mode` can create a simple overlay effect.
-    // You might need to adjust this or use a different technique
-    // for more realistic results, possibly involving canvas or
-    // multiple layered images with transparency.
-    mix-blend-mode: multiply;
   }
 }
 
 ::ng-deep .mat-stepper-horizontal {
   background-color: transparent !important;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+  color: white;
+}
+
+.results-container {
+  margin-top: 2rem;
+  color: white;
 }
 
 // Small devices (landscape phones, 576px and up)

@@ -23,7 +23,11 @@ from typing import List
 from google.cloud import aiplatform
 from google.genai import Client, types
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.base_dto import (
+    AspectRatioEnum,
+    GenerationModelEnum,
+    MimeTypeEnum,
+)
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
 from src.common.storage_service import GcsService
@@ -341,11 +345,12 @@ class ImagenService:
         client = GenAIModelSetup.init()
         gcs_output_directory = f"gs://{self.cfg.IMAGE_BUCKET}/{self.cfg.IMAGEN_RECONTEXT_SUBFOLDER}"
 
+        person_image_part = None
         if request_dto.person_image.gcs_uri:
             person_image_part = types.Image(
                 gcs_uri=request_dto.person_image.gcs_uri,
             )
-        else:
+        elif request_dto.person_image.b64:
             person_image_part = types.Image(
                 image_bytes=base64.b64decode(request_dto.person_image.b64)
             )
@@ -380,7 +385,6 @@ class ImagenService:
             response = client.models.recontext_image(
                 model=self.cfg.VTO_MODEL_ID,
                 source=types.RecontextImageSource(
-                    # prompt=request_dto.prompt,
                     person_image=person_image_part,
                     product_images=product_images,
                 ),
@@ -434,8 +438,8 @@ class ImagenService:
                 # Core Props
                 user_email=user_email,
                 mime_type=mime_type,
-                model=self.cfg.VTO_MODEL_ID,
-                aspect_ratio="1:1",
+                model=GenerationModelEnum.VTO,
+                aspect_ratio=AspectRatioEnum.RATIO_1_1,
                 # Common Props
                 prompt="vto",
                 original_prompt="vto",

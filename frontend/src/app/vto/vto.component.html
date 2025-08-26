@@ -229,30 +229,6 @@
                   alt="Selected Model"
                   class="model-image"
                 />
-                <img
-                  *ngIf="selectedTop"
-                  [src]="selectedTop.imageUrl"
-                  alt="Selected Top"
-                  class="garment-overlay top"
-                />
-                <img
-                  *ngIf="selectedBottom"
-                  [src]="selectedBottom.imageUrl"
-                  alt="Selected Bottom"
-                  class="garment-overlay bottom"
-                />
-                <img
-                  *ngIf="selectedDress"
-                  [src]="selectedDress.imageUrl"
-                  alt="Selected Dress"
-                  class="garment-overlay dress"
-                />
-                <img
-                  *ngIf="selectedShoes"
-                  [src]="selectedShoes.imageUrl"
-                  alt="Selected Shoes"
-                  class="garment-overlay shoes"
-                />
               </div>
               <p *ngIf="!selectedModel">
                 Select a model in Step 1 to see a preview.
@@ -274,5 +250,23 @@
         </form>
       </mat-step>
     </mat-stepper>
+
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+      <p>Generating your virtual try-on...</p>
+    </div>
+
+    <div *ngIf="imagenDocuments" class="results-container">
+      <h3>Results</h3>
+      <div class="item-row">
+        <mat-card *ngFor="let url of imagenDocuments.presignedUrls">
+          <img
+            mat-card-image
+            [src]="url"
+            alt="VTO Result"
+          />
+        </mat-card>
+      </div>
+    </div>
   </div>
 </div>
