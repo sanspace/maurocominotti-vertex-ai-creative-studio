@@ -106,7 +106,7 @@ export class VideoComponent {
     'Toned',
   ];
   numberOfVideosOptions = [1, 2, 3, 4];
-  durationOptions = [1, 2, 3, 4, 5, 6, 7, 8];
+  durationOptions = [8];
   compositions = [
     'Closeup',
     'Knolling',
@@ -246,6 +246,7 @@ export class VideoComponent {
     this.isLoading = true;
     this.videoDocuments = null;
 
+    // TODO: Add notification when video is completed after the pooling
     this.service
       .startVeoGeneration(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
@@ -326,24 +327,6 @@ export class VideoComponent {
       generateAudio: true,
       durationSeconds: 8,
     };
-  }
-
-  private handleError(error: any, context: string) {
-    console.error(`${context} error:`, error);
-    const errorMessage =
-      error?.error?.detail?.[0]?.msg ||
-      error?.message ||
-      'Something went wrong';
-    this._snackBar.openFromComponent(ToastMessageComponent, {
-      panelClass: ['red-toast'],
-      verticalPosition: 'top',
-      horizontalPosition: 'right',
-      duration: 6000,
-      data: {
-        text: errorMessage,
-        icon: 'cross-in-circle-white',
-      },
-    });
   }
 
   private applyTemplateParameters(): void {

@@ -24,3 +24,19 @@ export const handleErrorSnackbar: (
     },
   });
 };
+
+export const handleSuccessSnackbar: (
+  snackBar: MatSnackBar,
+  msg: any,
+) => void = (snackBar: MatSnackBar, msg: any) => {
+  snackBar.openFromComponent(ToastMessageComponent, {
+    panelClass: ['green-toast'],
+    verticalPosition: 'top',
+    horizontalPosition: 'right',
+    duration: 6000,
+    data: {
+      text: msg,
+      matIcon: 'check_small',
+    },
+  });
+};

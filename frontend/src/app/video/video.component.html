@@ -45,10 +45,6 @@
           [showSeeMoreInfoButton]="true"
           style="max-height: 80vh;"
         ></app-media-lightbox>
-
-        <div *ngIf="job.status === JobStatus.FAILED" class="error-display">
-          <p>Sorry, video generation failed</p>
-        </div>
       </ng-container>
 
       <ng-container *ngIf="(activeVideoJob$ | async)?.status !== JobStatus.COMPLETED">
