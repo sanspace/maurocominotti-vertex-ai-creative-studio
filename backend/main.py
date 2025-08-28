@@ -82,11 +82,11 @@ def configure_cors(app):
                 "FRONTEND_URL environment variable not set in production"
             )
         allowed_origins.append(frontend_url)
-    elif environment == "development":
+    elif environment in ["development", "local"]:
         allowed_origins.append("*")  # Allow all origins in development
     else:
         raise ValueError(
-            f"Invalid ENVIRONMENT: {environment}. Must be 'production' or 'development'"
+            f"Invalid ENVIRONMENT: {environment}. Must be 'production', 'development' or 'local'"
         )
 
     app.add_middleware(
