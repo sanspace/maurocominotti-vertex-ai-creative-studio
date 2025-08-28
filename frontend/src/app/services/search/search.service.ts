@@ -17,15 +17,19 @@
 import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
 import {environment} from '../../../environments/environment';
-import {map} from 'rxjs/operators';
+import {catchError, map, switchMap, tap} from 'rxjs/operators';
 import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
-import {Observable} from 'rxjs';
-import {MediaItem} from '../../common/models/media-item.model';
+import {BehaviorSubject, EMPTY, Observable, Subscription, timer} from 'rxjs';
+import {JobStatus, MediaItem} from '../../common/models/media-item.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SearchService {
+  private activeVideoJob = new BehaviorSubject<MediaItem | null>(null);
+  public activeVideoJob$ = this.activeVideoJob.asObservable();
+  private pollingSubscription: Subscription | null = null;
+
   constructor(private http: HttpClient) {}
 
   searchImagen(searchRequest: ImagenRequest) {
@@ -35,11 +39,70 @@ export class SearchService {
       .pipe(map(response => response as MediaItem));
   }
 
-  searchVeo(searchRequest: VeoRequest) {
+  /**
+   * Starts the video generation job by POSTing to the backend.
+   * It returns an Observable of the initial MediaItem.
+   */
+  startVeoGeneration(searchRequest: VeoRequest): Observable<MediaItem> {
     const searchURL = `${environment.backendURL}/videos/generate-videos`;
-    return this.http
-      .post(searchURL, searchRequest)
-      .pipe(map(response => response as MediaItem));
+
+    return this.http.post<MediaItem>(searchURL, searchRequest).pipe(
+      // The 'tap' operator lets us perform a side-effect (like starting polling)
+      // without affecting the value passed to the component's subscription.
+      tap(initialItem => {
+        // 1. Push the initial "processing" item into the BehaviorSubject
+        this.activeVideoJob.next(initialItem);
+        // 2. Start polling in the background
+        this.startVeoPolling(initialItem.id);
+      }),
+    );
+  }
+
+  /**
+   * Private method to poll the status of a media item.
+   * @param mediaId The ID of the job to poll.
+   */
+  private startVeoPolling(mediaId: string): void {
+    this.stopVeoPolling(); // Ensure no other polls are running
+
+    this.pollingSubscription = timer(5000, 15000) // Start after 5s, then every 15s
+      .pipe(
+        switchMap(() => this.getVeoMediaItem(mediaId)),
+        tap(latestItem => {
+          // Push the latest status to all subscribers
+          this.activeVideoJob.next(latestItem);
+
+          // If the job is finished, stop polling
+          if (
+            latestItem.status === JobStatus.COMPLETED ||
+            latestItem.status === JobStatus.FAILED
+          ) {
+            this.stopVeoPolling();
+          }
+        }),
+        catchError(err => {
+          console.error('Polling failed', err);
+          this.stopVeoPolling();
+          // You could update the item with an error status here
+          return EMPTY;
+        }),
+      )
+      .subscribe();
+  }
+
+  private stopVeoPolling(): void {
+    this.pollingSubscription?.unsubscribe();
+    this.pollingSubscription = null;
+  }
+
+  /**
+   * Fetches the current state of a media item by its ID.
+   * @param mediaId The unique ID of the media item to check.
+   * @returns An Observable of the MediaItem.
+   */
+  getVeoMediaItem(mediaId: string): Observable<MediaItem> {
+    const getURL = `${environment.backendURL}/videos/${mediaId}`;
+    return this.http.get<MediaItem>(getURL);
   }
 
   rewritePrompt(payload: {

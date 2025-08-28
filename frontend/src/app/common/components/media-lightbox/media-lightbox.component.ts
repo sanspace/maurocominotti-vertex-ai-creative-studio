@@ -24,6 +24,8 @@ export class MediaLightboxComponent
   @Input() mediaItem: MediaItem | undefined;
   @Input() initialIndex = 0;
   @Input() showSeeMoreInfoButton = false;
+  @Input() showShareButton = true;
+  @Input() showDownloadButton = true;
 
   selectedIndex = 0;
   selectedUrl: string | undefined;
@@ -190,14 +192,11 @@ export class MediaLightboxComponent
     }
 
     // Create a URL tree with the path and query parameters for the specific image
-    const urlTree = this.router.createUrlTree(
-      ['/gallery', this.mediaItem.id],
-      {
-        queryParams: {
-          img_index: this.selectedIndex > 0 ? this.selectedIndex : null,
-        },
+    const urlTree = this.router.createUrlTree(['/gallery', this.mediaItem.id], {
+      queryParams: {
+        img_index: this.selectedIndex > 0 ? this.selectedIndex : null,
       },
-    );
+    });
     // Serialize the tree to a relative path string (e.g., /gallery/123?img_index=2)
     const relativeUrl = this.router.serializeUrl(urlTree);
     // Combine with the window's origin to get the full, absolute URL

@@ -11,40 +11,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
-from typing import List
-from fastapi import APIRouter, HTTPException, status as Status
-from pydantic import BaseModel
+
+from fastapi import APIRouter, HTTPException, Request, status as Status
 from fastapi import APIRouter, Depends
 
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
-from src.videos.schema.veo_result_model import VeoGenerationResult
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.videos.veo_service import VeoService
 from src.users.user_model import User, UserRoleEnum
 from src.auth.auth_guard import RoleChecker, get_current_user
 
 # Define role checkers for convenience
-creator_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.CREATOR, UserRoleEnum.ADMIN]))
+user_only = Depends(
+    RoleChecker(allowed_roles=[UserRoleEnum.USER, UserRoleEnum.ADMIN])
+)
 
 router = APIRouter(
     prefix="/api/videos",
     tags=["Google Video APIs"],
     responses={404: {"description": "Not found"}},
-    dependencies=[creator_only],
+    dependencies=[user_only],
 )
 
 
 @router.post("/generate-videos")
 async def generate_videos(
     video_request: CreateVeoDto,
+    request: Request,
     current_user: User = Depends(get_current_user),
+    service: VeoService = Depends(),
 ) -> MediaItemResponse | None:
     try:
-        service = VeoService()
-        return await service.generate_videos(
-            request_dto=video_request, user_email=current_user.email
+        # Get the process pool from the application state
+        executor = request.app.state.process_pool
+
+        placeholder_item = service.start_video_generation_job(
+            request_dto=video_request,
+            user_email=current_user.email,
+            executor=executor,  # Pass the pool to the service
         )
+        return placeholder_item
     except HTTPException as http_exception:
         raise http_exception
     except ValueError as value_error:
@@ -57,3 +63,29 @@ async def generate_videos(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+@router.get(
+    "/{media_id}",
+    response_model=MediaItemResponse,
+    summary="Get Media Item by ID",
+)
+async def get_media_item_by_id(
+    media_id: str,
+    media_service: VeoService = Depends(),
+):
+    """
+    Retrieves a single media item by its unique ID, including its current status
+    and presigned URLs for viewing. This is the endpoint to use for polling.
+    """
+    media_item_response = (
+        await media_service.get_media_item_with_presigned_urls(media_id)
+    )
+
+    if not media_item_response:
+        raise HTTPException(
+            status_code=Status.HTTP_404_NOT_FOUND,
+            detail="Media item not found.",
+        )
+
+    return media_item_response

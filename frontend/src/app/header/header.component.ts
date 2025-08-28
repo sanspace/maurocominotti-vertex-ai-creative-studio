@@ -59,8 +59,4 @@ export class HeaderComponent {
   navigate() {
     void this.router.navigateByUrl('/');
   }
-
-  getFeedbackFormUrl() {
-    return environment.FEEDBACK_FORM_URL;
-  }
 }

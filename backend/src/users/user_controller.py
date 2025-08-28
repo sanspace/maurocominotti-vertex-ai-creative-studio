@@ -10,6 +10,7 @@ from src.users.user_service import UserService
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.users.user_model import User, UserRoleEnum
 
+
 # Define role checkers for convenience and clean code
 admin_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN]))
 any_authenticated_user = Depends(get_current_user)

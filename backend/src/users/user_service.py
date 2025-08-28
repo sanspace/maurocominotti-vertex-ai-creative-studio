@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.users.dto.user_create_dto import (
     UserUpdateRoleDto,
@@ -7,6 +7,7 @@ from src.users.dto.user_search_dto import UserSearchDto
 from src.users.repository.user_repository import UserRepository
 from src.users.user_model import User, UserRoleEnum
 
+
 class UserService:
     """
     Handles the business logic for user management.
@@ -14,14 +15,18 @@ class UserService:
     def __init__(self):
         self.user_repo = UserRepository()
 
-    def create_user_if_not_exists(self, uid: str, email: str, name: str, picture: str) -> User:
+    def create_user_if_not_exists(
+        self, email: str, name: str, picture: str
+    ) -> User:
         """
         Retrieves a user by their UID. If the user exists, it updates their
         last login time. If the user doesn't exist, it creates a new user
         document with the current time as the last login.
         """
+
         # 1. Check if the user already exists in the database.
-        existing_user = self.user_repo.get_by_id(uid)
+        # existing_user = self.user_repo.get_by_id(uid)
+        existing_user = self.user_repo.get_by_email(email)
 
         if existing_user:
             return existing_user
@@ -29,7 +34,6 @@ class UserService:
         # 2. If the user does not exist, create a new User model instance
         #    The document ID is the Firebase UID
         new_user = User(
-            id=uid,
             email=email,
             roles=[
                 UserRoleEnum.USER

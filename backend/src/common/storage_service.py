@@ -18,9 +18,8 @@ import os
 import pathlib
 from typing import Optional
 
-from google.cloud import storage
 from google.api_core import exceptions
-
+from google.cloud import storage
 from src.config.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -90,6 +89,28 @@ class GcsService:
 
             blob = self.bucket.blob(destination_blob_name)
             blob.upload_from_filename(local_path, content_type=mime_type)
+            return f"gs://{self.bucket_name}/{destination_blob_name}"
+        except exceptions.NotFound:
+            logger.error(f"Blob '{destination_blob_name}' not found.")
+            return None
+        except exceptions.GoogleAPICallError as e:
+            logger.error(f"Failed to upload '{destination_blob_name}': {e}")
+            return None
+
+    def upload_bytes_to_gcs(
+        self, bytes: bytes, destination_blob_name: str, mime_type: str
+    ):
+        """
+        Uploads bytes it to a GCS blob.
+
+        Args:
+            local_path: Path to the local file to upload.
+            destination_blob_name: The name for the object in GCS.
+        """
+        try:
+
+            blob = self.bucket.blob(destination_blob_name)
+            blob.upload_from_string(bytes, content_type=mime_type)
             return f"gs://{self.bucket_name}/{destination_blob_name}"
         except exceptions.NotFound:
             logger.error(f"Blob '{destination_blob_name}' not found.")

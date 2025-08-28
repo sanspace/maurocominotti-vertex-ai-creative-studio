@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 from typing import Annotated, Dict, List, Optional
 from pydantic import Field, HttpUrl
 from src.common.base_dto import (
@@ -11,6 +12,14 @@ from src.common.base_dto import (
     LightingEnum,
 )
 from src.common.base_repository import BaseDocument
+
+
+class JobStatusEnum(str, Enum):
+    """Defines the states for a long-running generation job."""
+
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class MediaItemModel(BaseDocument):
@@ -38,12 +47,13 @@ class MediaItemModel(BaseDocument):
     composition: Optional[CompositionEnum] = None
     negative_prompt: Optional[str] = None
     add_watermark: Optional[bool] = None
+    status: JobStatusEnum = Field(default=JobStatusEnum.PROCESSING)
 
     # URI fields
     gcs_uris: Annotated[
         List[str],
         Field(
-            min_length=1,
+            min_length=0,  # As on the video generation we return a placeholder this can be 0
             description="A list of public URLs for the media to be displayed (e.g., video or image).",
         ),
     ]

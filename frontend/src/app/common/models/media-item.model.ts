@@ -17,6 +17,15 @@
 import {PaginatedResponse} from './paginated-response.model';
 
 /**
+ * Defines the states for a long-running generation job.
+ */
+export enum JobStatus {
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+/**
  * Represents a single media item, mirroring the Pydantic model from the backend.
  */
 export interface MediaItem {
@@ -48,6 +57,7 @@ export interface MediaItem {
   lastReferenceImage?: string;
   enhancedPromptUsed?: boolean;
   comment?: string;
+  status?: JobStatus; // Tracks the state of the generation job
 
   // Image specific
   modifiers?: string[];

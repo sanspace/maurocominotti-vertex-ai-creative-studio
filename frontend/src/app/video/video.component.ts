@@ -1,7 +1,7 @@
-import {Component} from '@angular/core';
+import {Component, OnDestroy} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {finalize} from 'rxjs';
+import {finalize, Observable, Subscription, switchMap, timer} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
 import {VeoRequest} from '../common/models/search.model';
@@ -10,7 +10,7 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
-import {MediaItem} from '../common/models/media-item.model';
+import {JobStatus, MediaItem} from '../common/models/media-item.model';
 
 @Component({
   selector: 'app-video',
@@ -18,6 +18,10 @@ import {MediaItem} from '../common/models/media-item.model';
   styleUrl: './video.component.scss',
 })
 export class VideoComponent {
+  // This observable will always reflect the current job's state
+  activeVideoJob$: Observable<MediaItem | null>;
+  public readonly JobStatus = JobStatus; // Expose enum to the template
+
   templateParams: GenerationParameters | undefined;
 
   // --- Component State ---
@@ -122,6 +126,8 @@ export class VideoComponent {
     public router: Router,
     private _snackBar: MatSnackBar,
   ) {
+    this.activeVideoJob$ = this.service.activeVideoJob$;
+
     this.matIconRegistry
       .addSvgIcon(
         'content-type-icon',
@@ -149,19 +155,6 @@ export class VideoComponent {
 
   private setPath(url: string): SafeResourceUrl {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
-
-  private processSearchResults(searchResponse: MediaItem) {
-    this.videoDocuments = searchResponse;
-
-    const hasVideonResults =
-      (this.videoDocuments?.presignedUrls?.length || 0) > 0;
-
-    if (hasVideonResults) {
-      this.showDefaultDocuments = false;
-    } else {
-      this.showDefaultDocuments = true;
-    }
   }
 
   selectModel(model: {value: string; viewValue: string}): void {
@@ -254,13 +247,17 @@ export class VideoComponent {
     this.videoDocuments = null;
 
     this.service
-      .searchVeo(this.searchRequest)
+      .startVeoGeneration(this.searchRequest)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: (searchResponse: MediaItem) => {
-          this.processSearchResults(searchResponse);
+        next: (initialResponse: MediaItem) => {
+          // This logic is now handled by the 'tap' operator in the service,
+          // but it's fine to also have it here. The key is the 'error' block.
+          console.log('Job started successfully:', initialResponse);
+          // The component's main display will be driven by the service's observable
         },
         error: error => {
+          // This block will now execute correctly if the POST request fails.
           console.error('Search error:', error);
           const errorMessage =
             error?.error?.detail?.[0]?.msg ||

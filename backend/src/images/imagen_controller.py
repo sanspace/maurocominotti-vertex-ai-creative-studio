@@ -12,25 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fastapi import APIRouter, HTTPException, status as Status
-
-from src.galleries.dto.gallery_response_dto import MediaItemResponse
-from src.users.user_model import User, UserRoleEnum
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import status as Status
 from src.auth.auth_guard import RoleChecker, get_current_user
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
-from src.images.schema.imagen_result_model import ImageGenerationResult
+from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.imagen_service import ImagenService
-from fastapi import APIRouter, Depends
+from src.images.schema.imagen_result_model import ImageGenerationResult
+from src.users.user_model import User, UserRoleEnum
 
 # Define role checkers for convenience
-creator_only = Depends(RoleChecker(allowed_roles=[UserRoleEnum.CREATOR, UserRoleEnum.ADMIN]))
+user_only = Depends(
+    RoleChecker(allowed_roles=[UserRoleEnum.USER, UserRoleEnum.ADMIN])
+)
 
 router = APIRouter(
     prefix="/api/images",
     tags=["Google Imagen APIs"],
     responses={404: {"description": "Not found"}},
-    dependencies=[creator_only],
+    dependencies=[user_only],
 )
 
 
@@ -75,7 +77,9 @@ def recontextualize_product_in_scene(
 ) -> list[str]:
     try:
         service = ImagenService()
-        return service.recontextualize_product_in_scene(image_uris_list, prompt, sample_count)
+        return service.recontextualize_product_in_scene(
+            image_uris_list, prompt, sample_count
+        )
     except Exception as e:
         raise HTTPException(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
@@ -90,4 +94,25 @@ def edit_image(image_request: EditImagenDto) -> list[ImageGenerationResult]:
     except Exception as e:
         raise HTTPException(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.post("/upscale-image")
+async def upscale_image(
+    image_request: UpscaleImagenDto,
+) -> ImageGenerationResult | None:
+    try:
+        service = ImagenService()
+        return await service.upscale_image(request_dto=image_request)
+    except HTTPException as http_exception:
+        raise http_exception
+    except ValueError as value_error:
+        raise HTTPException(
+            status_code=Status.HTTP_400_BAD_REQUEST,
+            detail=str(value_error),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
         )

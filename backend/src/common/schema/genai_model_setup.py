@@ -36,7 +36,6 @@ class GenAIModelSetup:
         """
         if cls._client is None:
             try:
-                cfg = ConfigService()
                 config = ConfigService()
                 project_id = config.PROJECT_ID
                 location = config.LOCATION
@@ -44,9 +43,15 @@ class GenAIModelSetup:
                 if None in [project_id, location, model_id]:
                     raise ValueError("All parameters must be set.")
 
-                logger.info(f"Initializing shared GenAI client for project '{project_id}' in location '{cfg.LOCATION}'")
+                logger.info(
+                    f"Initializing shared GenAI client for project '{project_id}' in location '{location}'"
+                )
 
-                cls._client = Client(project=project_id, location=cfg.LOCATION, vertexai=cfg.INIT_VERTEX)
+                cls._client = Client(
+                    project=project_id,
+                    location=location,
+                    vertexai=config.INIT_VERTEX,
+                )
             except Exception as e:
                 logger.error(f"Failed to initialize GenAI client: {e}")
                 raise

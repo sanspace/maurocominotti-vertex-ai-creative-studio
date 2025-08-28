@@ -1,17 +1,16 @@
-from typing import Annotated, List, Optional
-from fastapi import Query
-from pydantic import Field, field_validator
-from pydantic.alias_generators import to_camel
-from google.genai import types
+from typing import Annotated, Literal, Optional
 
+from fastapi import Query
+from google.genai import types
+from pydantic import Field, field_validator
 from src.common.base_dto import (
+    AspectRatioEnum,
     BaseDto,
     ColorAndToneEnum,
-    GenerationModelEnum,
-    AspectRatioEnum,
-    StyleEnum,
-    LightingEnum,
     CompositionEnum,
+    GenerationModelEnum,
+    LightingEnum,
+    StyleEnum,
 )
 
 
@@ -57,6 +56,10 @@ class CreateImagenDto(BaseDto):
     add_watermark: bool = Field(
         default=False,
         description="Whether to add a watermark to the generated image.",
+    )
+    upscale_factor: Literal["", "x2", "x4"] = Field(
+        default="x4",
+        description="""Factor of the upscale, either x2 or x4. If empty it will not upscale""",
     )
 
     @field_validator("prompt")

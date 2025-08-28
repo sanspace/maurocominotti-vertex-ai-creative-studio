@@ -59,9 +59,9 @@ export class LoginComponent {
     this.errorMessage = '';
 
     // This will use the Google Identity Services library to get an FIREBASE-compatible token.
-    this.authService.signInWithGoogleFirebase().subscribe({
+    this.authService.signInForGoogleIap().subscribe({
       next: (firebaseToken: string) => {
-        // The signInWithGoogleFirebase method already stored the token and minimal user details
+        // The signInForGoogleIap method already stored the token and minimal user details
         // in localStorage. We just need to redirect to trigger the AuthGuard.
         this.ngZone.run(() => {
           this.loader = false;
