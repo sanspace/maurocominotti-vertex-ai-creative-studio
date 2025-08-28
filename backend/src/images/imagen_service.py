@@ -15,9 +15,13 @@
 
 import asyncio
 import datetime
+import io
 import logging
 import time
+from dataclasses import dataclass
 from typing import List
+from typing import Tuple
+
 from google.genai import types, Client
 from tenacity import (
     retry,
@@ -45,6 +49,67 @@ from google.cloud import aiplatform
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class ImageDTO:
+    mime_type: str
+    gcs_uri: str
+
+@dataclass
+class ImageWrapperDTO:
+    image: ImageDTO
+
+
+def gemini_flash_image_preview_generate_image(
+    gcs_service: GcsService,
+    vertexai_client: Client,
+    prompt: str,
+    destination_gcs_folder: str,
+    bucket_name: str,
+) -> ImageWrapperDTO | None:
+    """
+    Generates an image using the Gemini API and returns the image data in a buffer.
+    This is a blocking function.
+
+    Returns:
+        A tuple containing the BytesIO buffer and the content type, or (None, None) if failed.
+    """
+    model = GenerationModelEnum.GEMINI_25_FLASH_IMAGE_PREVIEW
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+    generate_content_config = types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"])
+
+    logging.debug(f"Generating image for prompt: '{prompt}'...")
+    stream = vertexai_client.models.generate_content_stream(
+        model=model,
+        contents=contents,
+        config=generate_content_config,
+    )
+
+    for chunk in stream:
+        for candidate in chunk.candidates:
+            for part in candidate.content.parts:
+                if part.inline_data:
+                    # The API returns image data as a base64 encoded string
+                    image_data_base64 = part.inline_data.data
+                    content_type = part.inline_data.mime_type
+
+                    # Upload using our GCS service
+                    image_url = gcs_service.store_to_gcs(
+                        folder="gemini_images",
+                        file_name=str(uuid.uuid4()),
+                        mime_type=content_type,
+                        contents=image_data_base64,
+                        bucket_name=bucket_name,
+                    )
+                    return ImageWrapperDTO(
+                        image=ImageDTO(
+                            gcs_uri=image_url,
+                            mime_type=content_type,
+                        )
+                    )
+
+    logging.debug("No image data found in the API response stream.")
+    return None # Return None if no image was found
 
 
 class ImagenService:
@@ -109,6 +174,19 @@ class ImagenService:
                 api_responses = await asyncio.gather(*tasks)
                 for response in api_responses:
                     all_generated_images.extend(response.generated_images or [])
+            elif request_dto.generation_model == GenerationModelEnum.GEMINI_25_FLASH_IMAGE_PREVIEW:
+                tasks = [
+                    asyncio.to_thread(
+                        gemini_flash_image_preview_generate_image,
+                        gcs_service=self.gcs_service,
+                        vertexai_client=client,
+                        prompt=request_dto.prompt,
+                        destination_gcs_folder=gcs_output_directory,
+                        bucket_name=self.gcs_service.bucket_name,
+                    )
+                    for _ in range(request_dto.number_of_media)
+                ]
+                all_generated_images = await asyncio.gather(*tasks)
             else:
                 # --- OTHER IMAGEN MODELS: Single Batch API Call ---
                 images_imagen_response = await asyncio.to_thread(
@@ -211,10 +289,10 @@ class ImagenService:
                 # Run the synchronous SDK call in a separate thread
                 gemini_api_response = await asyncio.to_thread(
                     client.models.generate_content,
-                    model="gemini-2.0-flash-preview-image-generation",
+                    model=GenerationModelEnum.GEMINI_25_FLASH_IMAGE_PREVIEW,
                     contents=gemini_prompt_text,
                     config=types.GenerateContentConfig(
-                        response_modalities=["TEXT", "IMAGE"]
+                        response_modalities=["IMAGE"]
                     ),
                 )
 
