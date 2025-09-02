@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
-from enum import Enum
 
 
 class MimeTypeEnum(str, Enum):
@@ -37,12 +38,14 @@ class GenerationModelEnum(str, Enum):
     IMAGEGEN_005 = "imagegeneration@005"
     IMAGEGEN_002 = "imagegeneration@002"
     GEMINI_25_FLASH_IMAGE_PREVIEW = "gemini-2.5-flash-image-preview"
+    VTO = "virtual-try-on-preview-08-04"
 
     # Video-Specific Models
     VEO_3_FAST = "veo-3.0-fast-generate-preview"
     VEO_3_QUALITY = "veo-3.0-generate-preview"
     VEO_2_FAST = "veo-2.0-generate-001"
     VEO_2_QUALITY = "veo-2.0-fast-generate-001"
+
 
 class AspectRatioEnum(str, Enum):
     """Enum representing the supported aspect ratios."""
