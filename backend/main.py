@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# --- Setup Logging Globally First ---
+from src.config.logger_config import setup_logging
+
+setup_logging()
 
 import logging
-import sys
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from os import getenv
@@ -22,8 +25,6 @@ from os import getenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from google.cloud.logging import Client as LoggerClient
-from google.cloud.logging.handlers import CloudLoggingHandler
 from src.audios.audio_controller import router as audio_router
 from src.auth import firebase_client_service
 from src.galleries.gallery_controller import router as gallery_router
@@ -37,34 +38,6 @@ from src.media_templates.media_templates_controller import (
 from src.multimodal.gemini_controller import router as gemini_router
 from src.users.user_controller import router as user_router
 from src.videos.veo_controller import router as video_router
-
-# Get the logger instance that Uvicorn is using
-# Check the environment to provide readable logs locally
-# and structured JSON logs in production.
-# Attach the Google Cloud Logging handler.
-# This handler automatically formats logs as JSON and sends them to Cloud Logging.
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)  # Set the minimum level for all handlers
-
-# Clear any existing handlers to prevent duplicate logs
-if root_logger.handlers:
-    for handler in root_logger.handlers:
-        root_logger.removeHandler(handler)
-
-if getenv("ENVIRONMENT") == "production":
-    # In PRODUCTION, attach the Google Cloud Logging handler.
-    # This sends logs as structured JSON to Google Cloud.
-    client = LoggerClient()
-    handler = CloudLoggingHandler(client, name="creative-studio-main")
-    root_logger.addHandler(handler)
-else:
-    # In DEVELOPMENT, use a simple stream handler for readable console output.
-    handler = logging.StreamHandler(sys.stderr)
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-    root_logger.addHandler(handler)
 
 # Get a logger instance for use in this file. It will inherit the root setup.
 logger = logging.getLogger(__name__)
