@@ -53,35 +53,26 @@ from tenacity import (
 
 logger = logging.getLogger(__name__)
 
-@dataclass
-class ImageDTO:
-    mime_type: str
-    gcs_uri: str
-
-@dataclass
-class ImageWrapperDTO:
-    image: ImageDTO
-
 
 def gemini_flash_image_preview_generate_image(
     gcs_service: GcsService,
     vertexai_client: Client,
     prompt: str,
-    destination_gcs_folder: str,
     bucket_name: str,
-) -> ImageWrapperDTO | None:
+) -> types.GeneratedImage | None:
     """
     Generates an image using the Gemini API and returns the image data in a buffer.
     This is a blocking function.
 
     Returns:
-        A tuple containing the BytesIO buffer and the content type, or (None, None) if failed.
+        A types.GeneratedImage object, or None if failed.
     """
     model = GenerationModelEnum.GEMINI_25_FLASH_IMAGE_PREVIEW
-    contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+    contents: list[types.ContentUnionDict] = [
+        types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
+    ]
     generate_content_config = types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"])
 
-    logging.debug(f"Generating image for prompt: '{prompt}'...")
     stream = vertexai_client.models.generate_content_stream(
         model=model,
         contents=contents,
@@ -89,30 +80,38 @@ def gemini_flash_image_preview_generate_image(
     )
 
     for chunk in stream:
+        if not chunk.candidates:
+            continue
         for candidate in chunk.candidates:
-            for part in candidate.content.parts:
-                if part.inline_data:
-                    # The API returns image data as a base64 encoded string
-                    image_data_base64 = part.inline_data.data
-                    content_type = part.inline_data.mime_type
+            if candidate.content and candidate.content.parts:
+                for part in candidate.content.parts:
+                    if part.inline_data:
+                        # The API returns image data as a base64 encoded string
+                        image_data_base64 = part.inline_data.data or ""
+                        content_type = part.inline_data.mime_type or "image/png"
 
-                    # Upload using our GCS service
-                    image_url = gcs_service.store_to_gcs(
-                        folder="gemini_images",
-                        file_name=str(uuid.uuid4()),
-                        mime_type=content_type,
-                        contents=image_data_base64,
-                        bucket_name=bucket_name,
-                    )
-                    return ImageWrapperDTO(
-                        image=ImageDTO(
+                        # Upload using our GCS service
+                        image_url = gcs_service.store_to_gcs(
+                            folder="gemini_images",
+                            file_name=str(uuid.uuid4()),
+                            mime_type=content_type,
+                            contents=image_data_base64,
+                            bucket_name=bucket_name,
+                        )
+                        if not image_url:
+                            logging.debug("Error: image url not generated ")
+                            return None
+
+                        # Create a standard types.Image object
+                        image_object = types.Image(
                             gcs_uri=image_url,
                             mime_type=content_type,
                         )
-                    )
+                        # Wrap it in a types.GeneratedImage and return
+                        return types.GeneratedImage(image=image_object)
 
     logging.debug("No image data found in the API response stream.")
-    return None # Return None if no image was found
+    return None  # Return None if no image was found
 
 
 class ImagenService:
@@ -154,7 +153,6 @@ class ImagenService:
         all_generated_images: List[types.GeneratedImage] = []
 
         try:
-
             if (
                 request_dto.generation_model
                 == GenerationModelEnum.IMAGEN_4_ULTRA
@@ -185,12 +183,14 @@ class ImagenService:
                         gcs_service=self.gcs_service,
                         vertexai_client=client,
                         prompt=request_dto.prompt,
-                        destination_gcs_folder=gcs_output_directory,
                         bucket_name=self.gcs_service.bucket_name,
                     )
                     for _ in range(request_dto.number_of_media)
                 ]
-                all_generated_images = await asyncio.gather(*tasks)
+                gemini_images_response = await asyncio.gather(*tasks)
+                all_generated_images = [
+                    img for img in gemini_images_response if img
+                ]
             else:
                 # --- OTHER IMAGEN MODELS: Single Batch API Call ---
                 images_imagen_response = await asyncio.to_thread(
