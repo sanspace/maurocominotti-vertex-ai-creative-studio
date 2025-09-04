@@ -514,6 +514,7 @@ class ImagenService:
                 user_email=user_email,
                 mime_type=mime_type,
                 model=GenerationModelEnum.VTO,
+                # TODO: Important! Let's calculate the aspect ratio for vto images!
                 aspect_ratio=AspectRatioEnum.RATIO_1_1,
                 # Common Props
                 prompt="vto",
