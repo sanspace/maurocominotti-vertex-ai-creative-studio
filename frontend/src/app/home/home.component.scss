@@ -162,3 +162,10 @@
     z-index: 10;
   }
 }
+
+::ng-deep .image-selector-dialog {
+  @media (min-width: 1200px) {
+    width: 70vw !important;
+    max-width: 70vw !important;
+  }
+}

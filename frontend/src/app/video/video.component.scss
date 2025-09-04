@@ -114,6 +114,13 @@
   }
 }
 
+::ng-deep .image-selector-dialog {
+  @media (min-width: 1200px) {
+    width: 70vw !important;
+    max-width: 70vw !important;
+  }
+}
+
 // XX-Large devices (larger desktops, 1400px and up)
 @media (min-width: 1400px) {
 }

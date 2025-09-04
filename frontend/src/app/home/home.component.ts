@@ -521,8 +521,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openImageSelector(imageNumber: 1 | 2) {
     const dialogRef = this.dialog.open(ImageSelectorComponent, {
-      width: '80vw',
+      width: '90vw',
       height: '80vh',
+      panelClass: 'image-selector-dialog',
     });
 
     dialogRef.afterClosed().subscribe(result => {
