@@ -8,6 +8,8 @@ import {VeoRequest} from '../common/models/search.model';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {MatDialog} from '@angular/material/dialog';
+import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
@@ -28,6 +30,8 @@ export class VideoComponent {
   videoDocuments: MediaItem | null = null;
   isLoading = false;
   isAudioGenerationDisabled = false;
+  image1: string | null = null;
+  image2: string | null = null;
   showDefaultDocuments = false;
 
   // --- Search Request Object ---
@@ -125,6 +129,7 @@ export class VideoComponent {
     private service: SearchService,
     public router: Router,
     private _snackBar: MatSnackBar,
+    public dialog: MatDialog,
   ) {
     this.activeVideoJob$ = this.service.activeVideoJob$;
 
@@ -392,6 +397,43 @@ export class VideoComponent {
         .map((p: string) => p.trim())
         .filter(Boolean);
       this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
+    }
+  }
+
+  openImageSelector(imageNumber: 1 | 2) {
+    const dialogRef = this.dialog.open(ImageSelectorComponent, {
+      width: '80vw',
+      height: '80vh',
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (imageNumber === 1) {
+          this.image1 = result;
+        } else {
+          this.image2 = result;
+        }
+      }
+    });
+  }
+
+  onDrop(event: DragEvent, imageNumber: 1 | 2) {
+    event.preventDefault();
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) =>
+        (this[imageNumber === 1 ? 'image1' : 'image2'] = e.target.result);
+      reader.readAsDataURL(file);
+    }
+  }
+
+  clearImage(imageNumber: 1 | 2, event: MouseEvent) {
+    event.stopPropagation();
+    if (imageNumber === 1) {
+      this.image1 = null;
+    } else {
+      this.image2 = null;
     }
   }
 }
