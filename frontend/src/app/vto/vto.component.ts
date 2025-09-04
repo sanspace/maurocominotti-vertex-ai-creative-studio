@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, Validators, FormGroup } from '@angular/forms';
 import {MediaItem} from '../common/models/media-item.model';
 import {HttpClient} from '@angular/common/http';
-import {VtoImageData, VtoRequest} from './vto.model';
+import {ImageDataRequest, VtoRequest} from './vto.model';
 import {environment} from '../../environments/environment';
 
 interface Garment {
@@ -381,7 +381,7 @@ export class VtoComponent {
     });
   }
 
-  private createImageData(imageUrl: string): Promise<VtoImageData> {
+  private createImageData(imageUrl: string): Promise<ImageDataRequest> {
     return new Promise((resolve, reject) => {
       if (imageUrl.startsWith('data:image')) {
         // It's a base64 string; extract the data part.
@@ -447,7 +447,7 @@ export class VtoComponent {
     this.isLoading = true;
 
     try {
-      let personImage: VtoImageData;
+      let personImage: ImageDataRequest;
 
       // If we have a previous result, use its GCS URI for the next generation.
       // Otherwise, use the initially selected model image as a base64 string.
@@ -467,7 +467,9 @@ export class VtoComponent {
       };
 
       if (this.selectedTop) {
-        payload.top_image = await this.createImageData(this.selectedTop.imageUrl);
+        payload.top_image = await this.createImageData(
+          this.selectedTop.imageUrl,
+        );
       }
       if (this.selectedBottom) {
         payload.bottom_image = await this.createImageData(

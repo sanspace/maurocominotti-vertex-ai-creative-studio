@@ -433,12 +433,23 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchTerm() {
     if (!this.searchRequest.prompt) return;
 
-    this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
+    const payload: ImagenRequest = {
+      ...this.searchRequest,
+      negativePrompt: this.negativePhrases.join(', '),
+    };
+
+    if (this.image1) {
+      payload.image1 = {b64: this.image1.split(',')[1]};
+    }
+    if (this.image2) {
+      payload.image2 = {b64: this.image2.split(',')[1]};
+    }
+
     this.isLoading = true;
     this.imagenDocuments = null;
 
     this.service
-      .searchImagen(this.searchRequest)
+      .searchImagen(payload)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (searchResponse: MediaItem) => {

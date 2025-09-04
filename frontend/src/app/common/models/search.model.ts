@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import {ImageDataRequest} from '../../vto/vto.model';
+
 export type ImagenRequest = {
   prompt: string;
   generationModel: string;
@@ -25,6 +27,8 @@ export type ImagenRequest = {
   composition: string;
   addWatermark: boolean;
   negativePrompt: string;
+  image1?: ImageDataRequest;
+  image2?: ImageDataRequest;
 };
 
 export type VeoRequest = {

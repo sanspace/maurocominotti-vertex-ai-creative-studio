@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-export interface VtoImageData {
+export interface ImageDataRequest {
   b64?: string;
   gcs_uri?: string;
 }
 
 export interface VtoRequest {
   number_of_media: number;
-  person_image: VtoImageData;
-  top_image?: VtoImageData;
-  bottom_image?: VtoImageData;
-  dress_image?: VtoImageData;
-  shoe_image?: VtoImageData;
+  person_image: ImageDataRequest;
+  top_image?: ImageDataRequest;
+  bottom_image?: ImageDataRequest;
+  dress_image?: ImageDataRequest;
+  shoe_image?: ImageDataRequest;
 }
 

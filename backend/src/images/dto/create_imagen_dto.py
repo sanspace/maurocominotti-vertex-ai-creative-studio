@@ -12,6 +12,7 @@ from src.common.base_dto import (
     LightingEnum,
     StyleEnum,
 )
+from src.images.dto.image_data_dto import ImageDataDto
 
 
 class CreateImagenDto(BaseDto):
@@ -60,6 +61,12 @@ class CreateImagenDto(BaseDto):
     upscale_factor: Literal["", "x2", "x4"] = Field(
         default="x4",
         description="""Factor of the upscale, either x2 or x4. If empty it will not upscale""",
+    )
+    image_1: Optional[ImageDataDto] = Field(
+        default=None, description="Input image 1"
+    )
+    image_2: Optional[ImageDataDto] = Field(
+        default=None, description="Input image 2"
     )
 
     @field_validator("prompt")
