@@ -547,7 +547,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  clearImage(imageNumber: 1 | 2) {
+  clearImage(imageNumber: 1 | 2, event: MouseEvent) {
+    event.stopPropagation();
     if (imageNumber === 1) {
       this.image1 = null;
     } else {
