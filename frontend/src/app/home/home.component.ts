@@ -49,6 +49,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   showDefaultDocuments = false;
   image1: string | null = null;
   image2: string | null = null;
+  image1Preview: string | null = null;
+  image2Preview: string | null = null;
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
@@ -439,10 +441,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     if (this.image1) {
-      payload.image1 = {b64: this.image1.split(',')[1]};
+      this.image1.startsWith('gs://')
+        ? (payload.image1 = {gcs_uri: this.image1})
+        : (payload.image1 = {b64: this.image1.split(',')[1]});
     }
     if (this.image2) {
-      payload.image2 = {b64: this.image2.split(',')[1]};
+      this.image2.startsWith('gs://')
+        ? (payload.image2 = {gcs_uri: this.image2})
+        : (payload.image2 = {b64: this.image2.split(',')[1]});
     }
 
     this.isLoading = true;
@@ -537,12 +543,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       panelClass: 'image-selector-dialog',
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result: MediaItem | string) => {
       if (result) {
-        if (imageNumber === 1) {
-          this.image1 = result;
+        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+        const targetPreview =
+          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+
+        if (typeof result === 'string') {
+          // Uploaded image (base64)
+          this[targetImage] = result;
+          this[targetPreview] = result;
         } else {
-          this.image2 = result;
+          // Gallery image (MediaItem)
+          this[targetImage] = result.gcsUris[0];
+          this[targetPreview] = result.presignedUrls![0];
         }
       }
     });
@@ -553,8 +567,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const file = event.dataTransfer?.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e: any) =>
-        (this[imageNumber === 1 ? 'image1' : 'image2'] = e.target.result);
+      reader.onload = (e: any) => {
+        const result = e.target.result;
+        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+        const targetPreview =
+          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+        this[targetImage] = result;
+        this[targetPreview] = result;
+      };
       reader.readAsDataURL(file);
     }
   }
@@ -563,8 +583,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     event.stopPropagation();
     if (imageNumber === 1) {
       this.image1 = null;
+      this.image1Preview = null;
     } else {
       this.image2 = null;
+      this.image2Preview = null;
     }
   }
 }

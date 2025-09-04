@@ -32,6 +32,8 @@ export class VideoComponent {
   isAudioGenerationDisabled = false;
   image1: string | null = null;
   image2: string | null = null;
+  image1Preview: string | null = null;
+  image2Preview: string | null = null;
   showDefaultDocuments = false;
 
   // --- Search Request Object ---
@@ -407,12 +409,20 @@ export class VideoComponent {
       panelClass: 'image-selector-dialog',
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result: MediaItem | string) => {
       if (result) {
-        if (imageNumber === 1) {
-          this.image1 = result;
+        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+        const targetPreview =
+          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+
+        if (typeof result === 'string') {
+          // Uploaded image (base64)
+          this[targetImage] = result;
+          this[targetPreview] = result;
         } else {
-          this.image2 = result;
+          // Gallery image (MediaItem)
+          this[targetImage] = result.gcsUris[0];
+          this[targetPreview] = result.presignedUrls![0];
         }
       }
     });
@@ -423,8 +433,14 @@ export class VideoComponent {
     const file = event.dataTransfer?.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e: any) =>
-        (this[imageNumber === 1 ? 'image1' : 'image2'] = e.target.result);
+      reader.onload = (e: any) => {
+        const result = e.target.result;
+        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+        const targetPreview =
+          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+        this[targetImage] = result;
+        this[targetPreview] = result;
+      };
       reader.readAsDataURL(file);
     }
   }
@@ -433,8 +449,10 @@ export class VideoComponent {
     event.stopPropagation();
     if (imageNumber === 1) {
       this.image1 = null;
+      this.image1Preview = null;
     } else {
       this.image2 = null;
+      this.image2Preview = null;
     }
   }
 }

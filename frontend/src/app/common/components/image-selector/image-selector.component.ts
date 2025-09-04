@@ -25,9 +25,7 @@ export class ImageSelectorComponent {
   }
 
   onMediaItemSelected(mediaItem: MediaItem): void {
-    if (mediaItem.presignedUrls && mediaItem.presignedUrls.length > 0) {
-      this.dialogRef.close(mediaItem.presignedUrls[0]);
-    }
+    this.dialogRef.close(mediaItem);
   }
 
   onDragOver(event: DragEvent) {
@@ -48,5 +46,3 @@ export class ImageSelectorComponent {
     }
   }
 }
-
-

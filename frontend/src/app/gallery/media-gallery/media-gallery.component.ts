@@ -1,4 +1,11 @@
-import {Component, HostListener, OnDestroy, OnInit} from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  Output,
+} from '@angular/core';
 import {Subscription, fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
@@ -14,6 +21,7 @@ import {UserService} from '../../common/services/user.service';
   styleUrl: './media-gallery.component.scss',
 })
 export class MediaGalleryComponent implements OnInit, OnDestroy {
+  @Output() mediaItemSelected = new EventEmitter<MediaItem>();
   public images: MediaItem[] = [];
   public columns: MediaItem[][] = [];
   allImagesLoaded = false;
@@ -147,6 +155,16 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
     const currentIndex = this.currentImageIndices[imageId] || 0;
     this.currentImageIndices[imageId] =
       (currentIndex - 1 + urlsLength) % urlsLength;
+  }
+
+  get isSelectionMode(): boolean {
+    return this.mediaItemSelected.observed;
+  }
+
+  selectMedia(media: MediaItem, event: MouseEvent) {
+    if (this.isSelectionMode) {
+      this.mediaItemSelected.emit(media);
+    }
   }
 
   public onMouseEnter(media: MediaItem): void {

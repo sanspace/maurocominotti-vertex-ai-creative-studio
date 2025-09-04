@@ -398,12 +398,12 @@
           (dragover)="$event.preventDefault()"
           (drop)="onDrop($event, 1)"
         >
-          <div *ngIf="!image1" class="drop-zone-placeholder">
+          <div *ngIf="!image1Preview" class="drop-zone-placeholder">
             <mat-icon>add_photo_alternate</mat-icon>
             <span>Drop image to start video or click to select</span>
           </div>
-          <div *ngIf="image1" class="image-preview-container">
-            <img [src]="image1" alt="Dropped Image 1" />
+          <div *ngIf="image1Preview" class="image-preview-container">
+            <img [src]="image1Preview" alt="Dropped Image 1" />
             <button (click)="clearImage(1, $event)" class="clear-button" mat-icon-button>
                 <mat-icon>close</mat-icon>
             </button>
@@ -415,12 +415,12 @@
           (dragover)="$event.preventDefault()"
           (drop)="onDrop($event, 2)"
         >
-          <div *ngIf="!image2" class="drop-zone-placeholder">
+          <div *ngIf="!image2Preview" class="drop-zone-placeholder">
             <mat-icon>add_photo_alternate</mat-icon>
             <span>Drop image to finish video or click to select</span>
           </div>
-          <div *ngIf="image2" class="image-preview-container">
-            <img [src]="image2" alt="Dropped Image 2" />
+          <div *ngIf="image2Preview" class="image-preview-container">
+            <img [src]="image2Preview" alt="Dropped Image 2" />
             <button (click)="clearImage(2, $event)" class="clear-button" mat-icon-button>
                 <mat-icon>close</mat-icon>
             </button>

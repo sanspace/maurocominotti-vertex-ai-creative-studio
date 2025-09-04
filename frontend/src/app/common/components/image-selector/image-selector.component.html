@@ -20,8 +20,9 @@
       </div>
     </mat-tab>
     <mat-tab label="From Gallery">
-      <app-media-gallery></app-media-gallery>
+      <app-media-gallery
+        (mediaItemSelected)="onMediaItemSelected($event)"
+      ></app-media-gallery>
     </mat-tab>
   </mat-tab-group>
 </mat-dialog-content>
-

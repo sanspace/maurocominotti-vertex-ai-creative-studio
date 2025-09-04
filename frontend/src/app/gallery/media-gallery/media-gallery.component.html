@@ -172,8 +172,10 @@
           (mouseleave)="onMouseLeave(media)"
         >
           <a
-            [routerLink]="['/gallery', media.id]"
+            [routerLink]="isSelectionMode ? null : ['/gallery', media.id]"
             [state]="{mediaItem: media}"
+            (click)="selectMedia(media, $event)"
+            [class.cursor-pointer]="isSelectionMode"
             class="transition-opacity duration-500 block"
           >
             <ng-container *ngIf="media.mimeType === 'image/png'">
