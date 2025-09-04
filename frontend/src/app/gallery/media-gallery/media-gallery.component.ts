@@ -4,6 +4,7 @@ import {
   HostListener,
   OnDestroy,
   OnInit,
+  Input,
   Output,
 } from '@angular/core';
 import {Subscription, fromEvent} from 'rxjs';
@@ -22,6 +23,7 @@ import {UserService} from '../../common/services/user.service';
 })
 export class MediaGalleryComponent implements OnInit, OnDestroy {
   @Output() mediaItemSelected = new EventEmitter<MediaItem>();
+  @Input() filterByType: 'image/png' | 'video/mp4' | 'audio/mpeg' | null = null;
   public images: MediaItem[] = [];
   public columns: MediaItem[][] = [];
   allImagesLoaded = false;
@@ -74,6 +76,10 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (this.filterByType) {
+      this.mediaTypeFilter = this.filterByType;
+    }
+
     this.loadingSubscription = this.galleryService.isLoading$.subscribe(
       loading => {
         this.isLoading = loading;
@@ -96,7 +102,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
       }
 
       if (!images || images.length === 0) {
-        this.galleryService.loadGallery(true);
+        this.searchTerm();
       }
     });
 
@@ -163,7 +169,22 @@ export class MediaGalleryComponent implements OnInit, OnDestroy {
 
   selectMedia(media: MediaItem, event: MouseEvent) {
     if (this.isSelectionMode) {
-      this.mediaItemSelected.emit(media);
+      const selectedIndex = this.currentImageIndices[media.id] || 0;
+      const selectedGcsUri = media.gcsUris?.[selectedIndex];
+      const selectedPresignedUrl = media.presignedUrls?.[selectedIndex];
+
+      if (selectedGcsUri && selectedPresignedUrl) {
+        // Create a new MediaItem that represents the single selected image
+        // from the carousel, so the consumer of the event gets the correct one.
+        const selectedMediaItem: MediaItem = {
+          ...media,
+          gcsUris: [selectedGcsUri],
+          presignedUrls: [selectedPresignedUrl],
+        };
+        this.mediaItemSelected.emit(selectedMediaItem);
+      } else {
+        this.mediaItemSelected.emit(media);
+      }
     }
   }
 

@@ -22,6 +22,7 @@
     <mat-tab label="From Gallery">
       <app-media-gallery
         (mediaItemSelected)="onMediaItemSelected($event)"
+        filterByType="image/png"
       ></app-media-gallery>
     </mat-tab>
   </mat-tab-group>
