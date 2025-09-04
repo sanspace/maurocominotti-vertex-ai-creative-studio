@@ -68,31 +68,97 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // --- Dropdown Options ---
   generationModels = [
     {
-      value: 'imagen-4.0-ultra-generate-preview-06-06',
-      viewValue: 'Imagen 4 Ultra',
+      value: 'gemini-2.5-flash-image-preview',
+      viewValue: 'Nano Banana',
+      isImage: true,
+      imageSrc: 'assets/images/banana-peel.png',
     },
-    {value: 'imagen-3.0-generate-002', viewValue: 'Imagen 3'},
-    {value: 'imagen-3.0-fast-generate-001', viewValue: 'Imagen 3 Fast'},
-    {value: 'imagen-3.0-generate-001', viewValue: 'Imagen 3 (001)'},
-    {value: 'imagegeneration@006', viewValue: 'ImageGen (006)'},
-    {value: 'imagegeneration@005', viewValue: 'ImageGen (005)'},
-    {value: 'imagegeneration@002', viewValue: 'ImageGen (002)'},
-    {value: 'gemini-2.5-flash-image-preview', viewValue: 'Gemini 2.5 Flash Image Preview'},
+    {
+      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      viewValue: 'Imagen 4 Ultra', // Keeping gemini-spark-icon for Ultra
+      icon: 'gemini-spark-icon',
+      isSvg: true,
+    },
+    {
+      value: 'imagen-3.0-generate-002',
+      viewValue: 'Imagen 3',
+      icon: 'auto_awesome',
+    },
+    {
+      value: 'imagen-3.0-fast-generate-001',
+      viewValue: 'Imagen 3 Fast',
+      icon: 'auto_awesome',
+    },
   ];
+  selectedGenerationModelObject = this.generationModels[0];
   selectedGenerationModel = this.generationModels[0].viewValue;
-  aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
-    [
-      {value: '1:1', viewValue: '1080x1080 \n Post', disabled: false},
-      {value: '16:9', viewValue: '1200x628 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: false},
-      {value: '3:4', viewValue: '1080x1350 \n Portrait', disabled: false},
-      {value: '4:3', viewValue: '1000x1500 \n Pin', disabled: false},
-      {value: '', viewValue: '300x250 \n Medium Banner', disabled: true},
-      {value: '', viewValue: '728x90 \n Leaderboard', disabled: true},
-      {value: '', viewValue: '160x600 \n Wide Skyscraper', disabled: true},
-      {value: '1:2', viewValue: '300x600 \n Half Page', disabled: true},
-      {value: '', viewValue: '970x90 \n L. Leaderboard', disabled: true},
-    ];
+  aspectRatioOptions: {
+    value: string;
+    viewValue: string;
+    disabled: boolean;
+    icon: string;
+  }[] = [
+    {
+      value: '1:1',
+      viewValue: '1080x1080 \n Post',
+      disabled: false,
+      icon: 'crop_square',
+    },
+    {
+      value: '16:9',
+      viewValue: '1200x628 \n Landscape',
+      disabled: false,
+      icon: 'crop_16_9',
+    },
+    {
+      value: '9:16',
+      viewValue: '1080x1920 \n Story',
+      disabled: false,
+      icon: 'crop_portrait',
+    },
+    {
+      value: '3:4',
+      viewValue: '1080x1350 \n Portrait',
+      disabled: false,
+      icon: 'crop_portrait',
+    },
+    {
+      value: '4:3',
+      viewValue: '1000x1500 \n Pin',
+      disabled: false,
+      icon: 'crop_landscape',
+    },
+    {
+      value: '',
+      viewValue: '300x250 \n Medium Banner',
+      disabled: true,
+      icon: 'web_asset',
+    },
+    {
+      value: '',
+      viewValue: '728x90 \n Leaderboard',
+      disabled: true,
+      icon: 'web_asset',
+    },
+    {
+      value: '',
+      viewValue: '160x600 \n Wide Skyscraper',
+      disabled: true,
+      icon: 'web_asset',
+    },
+    {
+      value: '1:2',
+      viewValue: '300x600 \n Half Page',
+      disabled: true,
+      icon: 'web_asset',
+    },
+    {
+      value: '',
+      viewValue: '970x90 \n L. Leaderboard',
+      disabled: true,
+      icon: 'web_asset',
+    },
+  ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   imageStyles = [
     'Photorealistic',
@@ -311,9 +377,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  selectModel(model: {value: string; viewValue: string}): void {
+  selectModel(model: any): void {
     this.searchRequest.generationModel = model.value;
     this.selectedGenerationModel = model.viewValue;
+    this.selectedGenerationModelObject = model;
   }
 
   selectAspectRatio(ratio: string): void {

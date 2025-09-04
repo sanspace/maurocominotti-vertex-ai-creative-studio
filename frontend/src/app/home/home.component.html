@@ -123,6 +123,7 @@
             mat-menu-item
             (click)="selectAspectRatio(ratio.value)"
           >
+            <mat-icon>{{ ratio.icon }}</mat-icon>
             <span>{{ ratio.viewValue }}</span>
           </button>
         </mat-menu>
@@ -139,7 +140,9 @@
         >
           <mat-icon svgIcon="content-type-icon"></mat-icon>
         </button>
-        <div class="text-center justify-center text-neutral-200 text-base mt-2">
+        <div
+          class="text-center justify-center text-neutral-200 text-base mt-2 inline-flex items-center"
+        >
           {{ selectedGenerationModel }}
         </div>
         <mat-menu #modelMenu="matMenu">
@@ -148,6 +151,19 @@
             mat-menu-item
             (click)="selectModel(model)"
           >
+            <img
+              *ngIf="model.isImage"
+              [src]="model.imageSrc"
+              class="menu-image-icon"
+              alt="model icon"
+            />
+            <mat-icon *ngIf="!model.isImage && !model.isSvg">{{
+              model.icon
+            }}</mat-icon>
+            <mat-icon
+              *ngIf="!model.isImage && model.isSvg"
+              [svgIcon]="model.icon"
+            ></mat-icon>
             <span>{{ model.viewValue }}</span>
           </button>
         </mat-menu>
@@ -367,7 +383,7 @@
         <textarea
           id="promptId"
           [(ngModel)]="searchRequest.prompt"
-          class="self-stretch w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          class="self-stretch w-full h-48 p-4 bg-transparent md:bg-zinc-700 rounded-2xl text-stone-300 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           placeholder="Enter your prompt here..."
         ></textarea>
         <div
@@ -393,19 +409,6 @@
           </div>
           <button mat-stroked-button class="!text-white" (click)="resetAllFilters()" [disabled]="isLoading">Clear</button>
         </div>
-      </div>
-      <div class="lg:col-span-1 flex flex-col justify-start items-start gap-4">
-        <div
-          class="justify-end text-neutral-200 text-base font-bold leading-7"
-          style="align-self: flex-end"
-        >
-          Magazine Editor
-        </div>
-        <textarea
-          id="magazinId"
-          class="w-full h-56 p-4 bg-transparent md:bg-zinc-700 rounded-xl text-neutral-200 text-base font-normal leading-7 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          placeholder="This image has a great energy and captures the sophisticated, modern aesthetic of the Cymbal brand perfectly."
-        ></textarea>
       </div>
     </div>
   </div>

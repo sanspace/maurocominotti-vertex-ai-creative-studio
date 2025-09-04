@@ -48,6 +48,17 @@
   transform: scale(1.5);
 }
 
+.menu-image-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+::ng-deep .mat-mdc-menu-item-text {
+  display: flex;
+  align-items: center;
+}
+
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 375px) {
   .title-font {
