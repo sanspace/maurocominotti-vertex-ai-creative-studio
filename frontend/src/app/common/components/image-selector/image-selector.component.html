@@ -1,0 +1,27 @@
+<h2 mat-dialog-title>Select an Image</h2>
+<mat-dialog-content>
+  <mat-tab-group>
+    <mat-tab label="Upload Image">
+      <div
+        class="upload-area"
+        (click)="fileInput.click()"
+        (dragover)="onDragOver($event)"
+        (drop)="onDrop($event)"
+      >
+        <mat-icon>upload_file</mat-icon>
+        <p>Drag & drop a file here or click to select a file</p>
+        <input
+          hidden
+          type="file"
+          #fileInput
+          (change)="onFileSelected($event)"
+          accept="image/*"
+        />
+      </div>
+    </mat-tab>
+    <mat-tab label="From Gallery">
+      <app-media-gallery></app-media-gallery>
+    </mat-tab>
+  </mat-tab-group>
+</mat-dialog-content>
+

@@ -27,12 +27,14 @@ import {MatChipInputEvent} from '@angular/material/chips';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {finalize} from 'rxjs/operators';
+import {MatDialog} from '@angular/material/dialog';
 import {SearchService} from '../services/search/search.service';
 import {ImagenRequest} from '../common/models/search.model';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {MediaItem} from '../common/models/media-item.model';
+import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
 
 @Component({
   selector: 'app-home',
@@ -45,6 +47,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoading = false;
   templateParams: GenerationParameters | undefined;
   showDefaultDocuments = false;
+  image1: string | null = null;
+  image2: string | null = null;
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
@@ -230,6 +234,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     public matIconRegistry: MatIconRegistry,
     private service: SearchService,
     private _snackBar: MatSnackBar,
+    public dialog: MatDialog,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -513,4 +518,40 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.animationFrameId = requestAnimationFrame(this.move);
   };
+
+  openImageSelector(imageNumber: 1 | 2) {
+    const dialogRef = this.dialog.open(ImageSelectorComponent, {
+      width: '80vw',
+      height: '80vh',
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        if (imageNumber === 1) {
+          this.image1 = result;
+        } else {
+          this.image2 = result;
+        }
+      }
+    });
+  }
+
+  onDrop(event: DragEvent, imageNumber: 1 | 2) {
+    event.preventDefault();
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) =>
+        (this[imageNumber === 1 ? 'image1' : 'image2'] = e.target.result);
+      reader.readAsDataURL(file);
+    }
+  }
+
+  clearImage(imageNumber: 1 | 2) {
+    if (imageNumber === 1) {
+      this.image1 = null;
+    } else {
+      this.image2 = null;
+    }
+  }
 }

@@ -75,6 +75,8 @@ import {ScrollingModule} from '@angular/cdk/scrolling';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
 import { MediaLightboxComponent } from './common/components/media-lightbox/media-lightbox.component';
 import {VtoComponent} from './vto/vto.component';
+import {ImageSelectorComponent} from './common/components/image-selector/image-selector.component';
+import {MatDialogModule} from '@angular/material/dialog';
 
 @NgModule({
   declarations: [
@@ -92,6 +94,7 @@ import {VtoComponent} from './vto/vto.component';
     MediaDetailComponent,
     MediaLightboxComponent,
     VtoComponent,
+    ImageSelectorComponent,
   ],
   imports: [
     BrowserModule,
@@ -120,6 +123,7 @@ import {VtoComponent} from './vto/vto.component';
     MatProgressBarModule,
     MatExpansionModule,
     MatTabsModule,
+    MatDialogModule,
   ],
   providers: [
     provideClientHydration(),
