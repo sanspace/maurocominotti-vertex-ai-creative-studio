@@ -267,9 +267,10 @@ gcloud auth list
 gcloud config list
 ```
 
-### 3. Add environment variables
+### 3. Add environment variables (an example you can copy in .local.env)
 ```
-. local.env
+# Copy the file .local.env and paste it as '.env'
+export $(grep -v '^#' .env | xargs)
 ```
 
 Check that the env variables has been taken into account, running:

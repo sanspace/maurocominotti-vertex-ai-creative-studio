@@ -9,7 +9,11 @@ class ConfigService:
     """ConfigService class"""
 
     # Google Identity Platform Auth
-    IAP_AUDIENCE = getenv("IAP_AUDIENCE", "")
+    GOOGLE_TOKEN_AUDIENCE = getenv("GOOGLE_TOKEN_AUDIENCE", "")
+    ALLOWED_ORGS_STR = getenv("IDENTITY_PLATFORM_ALLOWED_ORGS", "")
+    ALLOWED_ORGS = set(
+        org.strip() for org in ALLOWED_ORGS_STR.split(",") if org.strip()
+    )
 
     # Gemini
     _, project_id = google.auth.default()

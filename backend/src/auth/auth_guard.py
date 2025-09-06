@@ -1,17 +1,15 @@
 import logging
-import os
 from typing import List
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
-
-# --- Google Auth for IAP ---
-from google.auth.transport import requests as google_auth_requests
-from google.oauth2 import id_token
 from src.config.config_service import ConfigService
 from src.users.user_model import User, UserRoleEnum
 from src.users.user_service import UserService
+
+# --- Google Auth for Identity Platform ---
+from google.auth.transport import requests as google_auth_requests
+from google.oauth2 import id_token
 
 # Initialize the service once to be used by dependencies.
 user_service = UserService()
@@ -19,11 +17,7 @@ config = ConfigService()
 
 # This scheme will require the client to send a token in the Authorization header.
 # It tells FastAPI how to find the token but doesn't validate it itself.
-oauth2_scheme = (
-    OAuth2PasswordBearer(tokenUrl="token")
-    if os.getenv("ENVIRONMENT") != "local"
-    else OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
-)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 logger = logging.getLogger(__name__)
@@ -39,32 +33,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     4. If the user is new, creates their document ("Just-In-Time Provisioning").
     5. Returns a Pydantic model with the user's data.
     """
-    if os.getenv("ENVIRONMENT") == "local":
-        # Bypass auth for local development and return mock user
-        return User(
-            uid="local_user_uid",
-            email="local_user@example.com",
-            name="Local User",
-            picture="https://example.com/picture.jpg",
-            roles=[UserRoleEnum.USER, UserRoleEnum.CREATOR, UserRoleEnum.ADMIN],
-            is_active=True,
-            is_superuser=False,
-            created_at="2023-01-01T00:00:00Z",
-            updated_at="2023-01-01T00:00:00Z",
-        )
     try:
-        # Use the official Firebase Admin SDK to verify the token.
-        # This is the most secure method.
-        # decoded_token = auth.verify_id_token(token)
-
         # Verify the Google-issued OIDC ID token from the Authorization header.
-        # The audience (aud) must be the OAuth 2.0 client ID of the IAP-protected resource.
-        # This client ID must be configured as the IAP_AUDIENCE environment variable.
-        IAP_AUDIENCE = config.IAP_AUDIENCE
+        # The audience (aud) must be the OAuth 2.0 client ID of the Identity Platform-protected resource.
+        # This client ID must be configured as the GOOGLE_TOKEN_AUDIENCE environment variable.
+        GOOGLE_TOKEN_AUDIENCE = config.GOOGLE_TOKEN_AUDIENCE
         decoded_token = id_token.verify_oauth2_token(
             token,
             google_auth_requests.Request(),  # Use google.auth.transport.requests for fetching public keys
-            audience=IAP_AUDIENCE,
+            audience=GOOGLE_TOKEN_AUDIENCE,
         )
 
         email = decoded_token.get("email")
@@ -72,11 +49,20 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         picture = decoded_token.get("picture")
         token_info_hd = decoded_token.get("hd")
 
-        if not email or token_info_hd != "google.com":
+        # Restrict by particular organizations if it's a closed environment
+        if not email:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Forbidden: User identity could not be confirmed from token.",
             )
+
+        # If ALLOWED_ORGS is configured, check the user's organization.
+        if config.ALLOWED_ORGS:
+            if not token_info_hd or token_info_hd not in config.ALLOWED_ORGS:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"User from '{token_info_hd}' is not part of an allowed organization.",
+                )
 
         # Just-In-Time (JIT) User Provisioning:
         # Create a user profile in our database on their first API call.
@@ -104,10 +90,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid authentication token: {e}",
         )
+    except HTTPException as e:
+        logger.error(f"[get_current_user - Exception]: {e}")
+        raise e
     except Exception as e:
         logger.error(f"[get_current_user - Exception]: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=getattr(
+                e, "status_code", status.HTTP_500_INTERNAL_SERVER_ERROR
+            ),
             detail=f"An unexpected error occurred during authentication: {e}",
         )
 

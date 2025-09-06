@@ -33,7 +33,7 @@ be_env_vars = {
     FRONTEND_URL = "http://localhost:4200"
     CORS_ORIGINS = "[\"http://localhost:4200\",\"http://127.0.0.1:4200\"]"
     ENVIRONMENT  = "development"
-    IAP_AUDIENCE = "703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com"
+    GOOGLE_TOKEN_AUDIENCE = "703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com"
   }
   # But override the production values with specific settings
   production = {

@@ -15,18 +15,8 @@
         "--port",
         "8080"
       ],
-      "env": {
-        "FRONTEND_URL": "http://localhost:4200",
-        "ENVIRONMENT": "development",
-        // "GENMEDIA_BUCKET": "creative-studio-arena-genmedia",
-        // "SIGNING_SA_EMAIL": "sa-genmedia-creative-studio@creative-studio-arena.iam.gserviceaccount.com",
-        "GENMEDIA_BUCKET": "creative-studio-dev-cs-be-development-bucket",
-        "SIGNING_SA_EMAIL": "cs-be-development-read@creative-studio-dev.iam.gserviceaccount.com",
-        "IAP_AUDIENCE": "703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com",
-        "PROJECT_ID": "creative-studio-dev",
-        "LOG_LEVEL": "INFO"
-      },
       "cwd": "${workspaceFolder}/backend",
+      "envFile": "${workspaceFolder}/backend/.env",
       "jinja": true
     },
     {

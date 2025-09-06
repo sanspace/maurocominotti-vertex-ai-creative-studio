@@ -101,7 +101,9 @@ export class AuthService {
       }),
       catchError((error: any) => {
         console.error('An error occurred during the sign-in process:', error);
-        return throwError(() => new Error('Sign-in failed. Please try again.'));
+        return throwError(
+          () => new Error(`Sign-in failed. Please try again. ${error}`),
+        );
       }),
     );
   }
@@ -147,12 +149,12 @@ export class AuthService {
   }
 
   /**
-   * A test sign-in method to get a Google ID token compatible with IAP.
+   * A test sign-in method to get a Google ID token compatible with Identity Platform.
    *
-   * @returns An Observable that emits the IAP-compatible ID token.
+   * @returns An Observable that emits the Identity Platform-compatible ID token.
    */
-  signInForGoogleIap(): Observable<string> {
-    return this.promptForIapToken$().pipe(
+  signInForGoogleIdentityPlatform(): Observable<string> {
+    return this.promptForIdentityPlatformToken$().pipe(
       switchMap(idToken => {
         const payload = JSON.parse(atob(idToken.split('.')[1]));
         const userEmail = payload.email?.toLowerCase();
@@ -175,8 +177,8 @@ export class AuthService {
     );
   }
 
-  private promptForIapToken$(): Observable<string> {
-    const IAP_CLIENT_ID = environment.IAP_CLIENT_ID;
+  private promptForIdentityPlatformToken$(): Observable<string> {
+    const GOOGLE_CLIENT_ID = environment.GOOGLE_CLIENT_ID;
 
     return new Observable<string>(observer => {
       if (typeof google === 'undefined') {
@@ -197,7 +199,7 @@ export class AuthService {
 
       try {
         google.accounts.id.initialize({
-          client_id: IAP_CLIENT_ID,
+          client_id: GOOGLE_CLIENT_ID,
           callback: (response: any) => {
             clearTimeout(loginTimeout);
             const idToken = response.credential;
@@ -219,19 +221,22 @@ export class AuthService {
         google.accounts.id.prompt();
       } catch (error) {
         clearTimeout(loginTimeout);
-        console.error('Error during Google IAP sign-in initialization:', error);
+        console.error(
+          'Error during Google Identity Platform sign-in initialization:',
+          error,
+        );
         observer.error(error);
       }
     });
   }
 
   /**
-   * Asynchronously gets a valid IAP token.
+   * Asynchronously gets a valid Identity Platform token.
    * 1. Checks for a valid, non-expired token in memory/cache.
    * 2. If expired or missing, attempts a silent refresh.
    * 3. If silent refresh fails, it emits an error, signaling a required re-login.
    */
-  getValidIapToken$(): Observable<string> {
+  getValidIdentityPlatformToken$(): Observable<string> {
     // First, check our own session info which is loaded from localStorage.
     // This is synchronous and tells us if we have a valid, non-expired token.
     if (!this.isLoggedIn()) {
@@ -261,7 +266,10 @@ export class AuthService {
           // This is a critical error, so we should propagate it.
           return throwError(
             () =>
-              new Error('Could not synchronize user profile with the server.'),
+              new Error(
+                error?.error?.detail ||
+                  `Could not synchronize user profile with the server. ${error?.error?.detail}`,
+              ),
           );
         }),
       );
