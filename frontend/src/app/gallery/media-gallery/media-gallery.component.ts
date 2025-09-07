@@ -44,15 +44,17 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
   public showOnlyMyMedia = false;
   public generationModels = [
     {
+      value: 'gemini-2.5-flash-image-preview',
+      viewValue: 'Nano Banana',
+    },
+    {
       value: 'imagen-4.0-ultra-generate-preview-06-06',
       viewValue: 'Imagen 4 Ultra',
     },
-    {value: 'imagen-3.0-generate-002', viewValue: 'Imagen 3'},
-    {value: 'imagen-3.0-fast-generate-001', viewValue: 'Imagen 3 Fast'},
-    {value: 'imagen-3.0-generate-001', viewValue: 'Imagen 3 (001)'},
-    {value: 'imagegeneration@006', viewValue: 'ImageGen (006)'},
-    {value: 'imagegeneration@005', viewValue: 'ImageGen (005)'},
-    {value: 'imagegeneration@002', viewValue: 'ImageGen (002)'},
+    {
+      value: 'imagen-4.0-fast-generate-preview-06-06',
+      viewValue: 'Imagen 4 Ultra',
+    },
   ];
   private autoSlideIntervals: {[id: string]: any} = {};
   public currentImageIndices: {[id: string]: number} = {};

@@ -17,7 +17,6 @@ import asyncio
 import base64
 import logging
 import time
-from dataclasses import dataclass
 import uuid
 from typing import List
 
@@ -32,7 +31,7 @@ from src.common.base_dto import (
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
 from src.common.storage_service import GcsService
-from src.config.config_service import ConfigService
+from src.config.config_service import config_service
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.images.dto.edit_imagen_dto import EditImagenDto
@@ -121,7 +120,7 @@ class ImagenService:
         self.media_repo = MediaRepository()
         self.gemini_service = GeminiService()
         self.gcs_service = GcsService()
-        self.cfg = ConfigService()
+        self.cfg = config_service
 
     @retry(
         wait=wait_exponential(
@@ -169,6 +168,7 @@ class ImagenService:
                             aspect_ratio=request_dto.aspect_ratio,
                             negative_prompt=request_dto.negative_prompt,
                             add_watermark=request_dto.add_watermark,
+                            image_size="2K",
                         ),
                     )
                     for _ in range(request_dto.number_of_media)
@@ -674,6 +674,7 @@ class ImagenService:
         client = GenAIModelSetup.init()
         new_gcs_uri = None
         try:
+            # TODO: Detect if image size is not already scaled up
             if request_dto.user_image[:5] == "gs://":
                 image = types.Image(gcs_uri=request_dto.user_image)
                 uri_parts = request_dto.user_image.split("/")

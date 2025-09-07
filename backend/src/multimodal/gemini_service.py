@@ -43,7 +43,7 @@ from src.multimodal.rewriters import (
 )
 from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.multimodal.schema.gemini_model_setup import GeminiModelSetup
-from src.config.config_service import ConfigService
+from src.config.config_service import config_service
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class GeminiService:
     def __init__(self):
         """Initializes the Gemini client and configuration."""
         self.client: Client = GeminiModelSetup.init()
-        self.cfg = ConfigService()
+        self.cfg = config_service
         self.rewriter_model = self.cfg.GEMINI_MODEL_ID
 
     def _get_response_schema(self, target: PromptTargetEnum) -> Type[BaseModel]:

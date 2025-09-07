@@ -22,6 +22,8 @@ from google.auth.exceptions import RefreshError
 from google.cloud import resourcemanager_v3
 from google.cloud.firestore import Client
 
+from src.config.config_service import config_service
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,9 +75,9 @@ class FirebaseClient:
             )
             raise RuntimeError(f"Failed to initialize Firebase Admin SDK: {e}")
 
-        # Init Firestore DB
-        self.db = firestore.client()
-
+        db_name = config_service.FIREBASE_DB
+        logger.info(f"Connecting to Firestore database: '{db_name}'")
+        self.db = firestore.client(database_id=db_name)
 
     def check_adc_authentication(self):
         """

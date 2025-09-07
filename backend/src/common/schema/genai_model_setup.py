@@ -17,7 +17,7 @@ import logging
 from typing import Optional
 import google.auth
 from google.genai import Client
-from src.config.config_service import ConfigService
+from src.config.config_service import config_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class GenAIModelSetup:
         """
         if cls._client is None:
             try:
-                config = ConfigService()
+                config = config_service
                 project_id = config.PROJECT_ID
                 location = config.LOCATION
                 model_id = config.GEMINI_MODEL_ID

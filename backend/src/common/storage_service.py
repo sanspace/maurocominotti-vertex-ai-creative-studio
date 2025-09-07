@@ -20,7 +20,7 @@ from typing import Optional
 
 from google.api_core import exceptions
 from google.cloud import storage
-from src.config.config_service import ConfigService
+from src.config.config_service import config_service
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class GcsService:
 
     def __init__(self, bucket_name: Optional[str] = None):
         """Initializes the GCS client and bucket."""
-        self.cfg = ConfigService()
+        self.cfg = config_service
         self.client = storage.Client(project=self.cfg.PROJECT_ID)
         self.bucket_name = bucket_name or self.cfg.GENMEDIA_BUCKET
         self.bucket = self.client.bucket(self.bucket_name)

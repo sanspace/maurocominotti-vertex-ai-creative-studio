@@ -3,7 +3,7 @@ from typing import List
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
-from src.config.config_service import ConfigService
+from src.config.config_service import config_service
 from src.users.user_model import User, UserRoleEnum
 from src.users.user_service import UserService
 
@@ -13,7 +13,6 @@ from google.oauth2 import id_token
 
 # Initialize the service once to be used by dependencies.
 user_service = UserService()
-config = ConfigService()
 
 # This scheme will require the client to send a token in the Authorization header.
 # It tells FastAPI how to find the token but doesn't validate it itself.
@@ -37,7 +36,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         # Verify the Google-issued OIDC ID token from the Authorization header.
         # The audience (aud) must be the OAuth 2.0 client ID of the Identity Platform-protected resource.
         # This client ID must be configured as the GOOGLE_TOKEN_AUDIENCE environment variable.
-        GOOGLE_TOKEN_AUDIENCE = config.GOOGLE_TOKEN_AUDIENCE
+        GOOGLE_TOKEN_AUDIENCE = config_service.GOOGLE_TOKEN_AUDIENCE
         decoded_token = id_token.verify_oauth2_token(
             token,
             google_auth_requests.Request(),  # Use google.auth.transport.requests for fetching public keys
@@ -57,8 +56,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             )
 
         # If ALLOWED_ORGS is configured, check the user's organization.
-        if config.ALLOWED_ORGS:
-            if not token_info_hd or token_info_hd not in config.ALLOWED_ORGS:
+        if config_service.ALLOWED_ORGS:
+            if (
+                not token_info_hd
+                or token_info_hd not in config_service.ALLOWED_ORGS
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail=f"User from '{token_info_hd}' is not part of an allowed organization.",

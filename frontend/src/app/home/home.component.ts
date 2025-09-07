@@ -57,7 +57,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchRequest: ImagenRequest = {
     prompt:
       'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
-    generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
+    generationModel: 'gemini-2.5-flash-image-preview',
     aspectRatio: '1:1',
     style: 'Modern',
     numberOfMedia: 4,
@@ -81,19 +81,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     },
     {
       value: 'imagen-4.0-ultra-generate-preview-06-06',
-      viewValue: 'Imagen 4 Ultra', // Keeping gemini-spark-icon for Ultra
+      viewValue: 'Imagen 4 Ultra', // Keeping gemini-spark-icon for Imagen
       icon: 'gemini-spark-icon',
       isSvg: true,
     },
     {
-      value: 'imagen-3.0-generate-002',
-      viewValue: 'Imagen 3',
-      icon: 'auto_awesome',
-    },
-    {
-      value: 'imagen-3.0-fast-generate-001',
-      viewValue: 'Imagen 3 Fast',
-      icon: 'auto_awesome',
+      value: 'imagen-4.0-fast-generate-preview-06-06',
+      viewValue: 'Imagen 4 Fast', // Keeping gemini-spark-icon for Imagen
+      icon: 'gemini-spark-icon',
+      isSvg: true,
     },
   ];
   selectedGenerationModelObject = this.generationModels[0];
@@ -508,7 +504,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   resetAllFilters() {
     this.searchRequest = {
       prompt: '',
-      generationModel: 'imagen-4.0-ultra-generate-preview-06-06',
+      generationModel: 'gemini-2.5-flash-image-preview',
       aspectRatio: '1:1',
       style: 'Modern',
       numberOfMedia: 4,

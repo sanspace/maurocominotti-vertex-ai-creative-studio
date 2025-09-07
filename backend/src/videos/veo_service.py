@@ -14,7 +14,6 @@
 
 
 import asyncio
-import json
 import logging
 import os
 import shutil
@@ -32,7 +31,7 @@ from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
 from src.images.repository.media_item_repository import MediaRepository
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.config.config_service import ConfigService
+from src.config.config_service import config_service
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
 from concurrent.futures import ProcessPoolExecutor
 from google.cloud.logging.handlers import CloudLoggingHandler
@@ -130,7 +129,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
         gcs_service = GcsService()
         try:
             client = GenAIModelSetup.init()
-            cfg = ConfigService()
+            cfg = config_service
             gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
             rewritten_prompt = gemini_service.enhance_prompt_from_dto(

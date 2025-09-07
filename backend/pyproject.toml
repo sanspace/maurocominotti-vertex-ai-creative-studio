@@ -24,6 +24,7 @@ dependencies = [
     "google-cloud-iam>=2.0.0",
     "python-multipart>=0.0.20",
     "pydantic[email]>=2.11.7",
+    "pydantic-settings>=2.10.1",
 ]
 
 [project.optional-dependencies]
