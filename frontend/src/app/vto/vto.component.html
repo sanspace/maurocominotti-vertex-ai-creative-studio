@@ -135,15 +135,23 @@
 
           <br />
 
-          <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden />
-          <button
-            type="button"
-            mat-raised-button
-            color="primary"
-            (click)="fileInput.click()"
+          <div
+            class="drop-zone"
+            (click)="openImageSelector()"
+            (dragover)="$event.preventDefault()"
+            (drop)="onDrop($event)"
           >
-            <mat-icon>upload_file</mat-icon> Upload your photo
-          </button>
+            <div *ngIf="firstFormGroup.get('model')?.value?.id !== 'uploaded'" class="drop-zone-placeholder">
+              <mat-icon>add_photo_alternate</mat-icon>
+              <span>Drop your photo or click to select</span>
+            </div>
+            <div *ngIf="firstFormGroup.get('model')?.value?.id === 'uploaded'" class="image-preview-container">
+              <img [src]="firstFormGroup.get('model')?.value.imageUrl" alt="Uploaded Model" />
+              <button (click)="clearImage($event)" class="clear-button" mat-icon-button>
+                  <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
 
           <div class="mt-4">
             <button mat-button matStepperNext>Next</button>
@@ -224,14 +232,14 @@
             <div class="right-column">
               <div class="preview-pane">
                 <h4>Preview</h4>
-                <div class="preview-image-container" *ngIf="selectedModel">
+                <div class="preview-image-container" *ngIf="firstFormGroup.get('model')?.value as selectedModel">
                   <img
                     [src]="selectedModel.imageUrl"
                     alt="Selected Model"
                     class="model-image"
                   />
                 </div>
-                <p *ngIf="!selectedModel">
+                <p *ngIf="!firstFormGroup.get('model')?.value">
                   Select a model in Step 1 to see a preview.
                 </p>
               </div>
@@ -258,7 +266,7 @@
               mat-raised-button
               color="primary"
               (click)="tryOn()"
-              [disabled]="!selectedModel"
+              [disabled]="!firstFormGroup.valid"
             >
               Try on!
             </button>

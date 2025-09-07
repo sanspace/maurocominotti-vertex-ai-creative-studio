@@ -404,14 +404,12 @@ class ImagenService:
         gcs_output_directory = f"gs://{self.cfg.IMAGE_BUCKET}/{self.cfg.IMAGEN_RECONTEXT_SUBFOLDER}"
 
         person_image_part = None
-        if request_dto.person_image.gcs_uri:
-            person_image_part = types.Image(
-                gcs_uri=request_dto.person_image.gcs_uri,
-            )
-        elif request_dto.person_image.b64:
-            person_image_part = types.Image(
-                image_bytes=base64.b64decode(request_dto.person_image.b64)
-            )
+        if not request_dto.person_image.gcs_uri:
+            raise ValueError("VTO Image generation failed, no gcs uri found.")
+
+        person_image_part = types.Image(
+            gcs_uri=request_dto.person_image.gcs_uri,
+        )
 
         product_images = []
         products = []
@@ -425,15 +423,9 @@ class ImagenService:
             products.append(request_dto.shoe_image)
 
         for product in products:
-            if product and product.gcs_uri:
-                product_image_part = types.Image(
-                    gcs_uri=product.gcs_uri,
-                )
-            else:
-                product_image_part = types.Image(
-                    image_bytes=base64.b64decode(product.b64)
-                )
-
+            product_image_part = types.Image(
+                gcs_uri=product.gcs_uri,
+            )
             product_images.append(
                 types.ProductImage(product_image=product_image_part)
             )
@@ -498,7 +490,7 @@ class ImagenService:
                 mime_type=mime_type,
                 model=GenerationModelEnum.VTO,
                 # TODO: Important! Let's calculate the aspect ratio for vto images!
-                aspect_ratio=AspectRatioEnum.RATIO_1_1,
+                aspect_ratio=AspectRatioEnum.RATIO_9_16,
                 # Common Props
                 prompt="vto",
                 original_prompt="vto",

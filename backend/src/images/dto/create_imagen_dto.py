@@ -62,6 +62,7 @@ class CreateImagenDto(BaseDto):
         default="",
         description="""Factor of the upscale, either x2 or x4. If empty it will not upscale""",
     )
+    # TODO: Change to use gcs uri
     image_1: Optional[ImageDataDto] = Field(
         default=None, description="Input image 1"
     )

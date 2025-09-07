@@ -2,8 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, Validators, FormGroup } from '@angular/forms';
 import {MediaItem} from '../common/models/media-item.model';
 import {HttpClient} from '@angular/common/http';
-import {ImageDataRequest, VtoRequest} from './vto.model';
+import {VtoRequest} from './vto.model';
 import {environment} from '../../environments/environment';
+import {MatDialog} from '@angular/material/dialog';
+import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
+import {UserAssetResponseDto} from '../common/services/user-asset.service';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {finalize, Observable} from 'rxjs';
+import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 
 interface Garment {
   id: string;
@@ -16,6 +22,7 @@ interface Model {
   id: string;
   name: string;
   imageUrl: string;
+  gcsUri?: string;
   size: string;
 }
 
@@ -31,7 +38,6 @@ export class VtoComponent {
   isLoading = false;
   imagenDocuments: MediaItem | null = null;
 
-  selectedModel: Model | null = null;
   selectedTop: Garment | null = null;
   selectedBottom: Garment | null = null;
   selectedDress: Garment | null = null;
@@ -326,6 +332,8 @@ export class VtoComponent {
   constructor(
     private readonly _formBuilder: FormBuilder,
     private readonly http: HttpClient,
+    public dialog: MatDialog,
+    private _snackBar: MatSnackBar,
   ) {
     this.firstFormGroup = this._formBuilder.group({
       modelType: ['female', Validators.required],
@@ -342,14 +350,11 @@ export class VtoComponent {
     this.firstFormGroup.get('modelType')?.valueChanges.subscribe(val => {
       this.modelsToShow =
         val === 'female' ? this.femaleModels : this.maleModels;
-      this.firstFormGroup.get('model')?.reset();
-      this.selectedModel = null;
+      this.firstFormGroup.get('model')?.reset(); // Also clear uploaded model
       this.imagenDocuments = null;
     });
 
-    this.firstFormGroup.get('model')?.valueChanges.subscribe(model => {
-      this.selectedModel = model;
-      // Reset any previous generation when the model changes
+    this.firstFormGroup.get('model')?.valueChanges.subscribe(() => {
       this.imagenDocuments = null;
     });
 
@@ -381,52 +386,71 @@ export class VtoComponent {
     });
   }
 
-  private createImageData(imageUrl: string): Promise<ImageDataRequest> {
-    return new Promise((resolve, reject) => {
-      if (imageUrl.startsWith('data:image')) {
-        // It's a base64 string; extract the data part.
-        resolve({b64: imageUrl.split(',')[1]});
-        return;
-      }
-
-      // It's a path to an asset. Fetch it and convert to base64.
-      this.http.get(imageUrl, {responseType: 'blob'}).subscribe({
-        next: blob => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64data = reader.result as string;
-            // The result includes the data URL prefix, so we need to split it.
-            resolve({b64: base64data.split(',')[1]});
-          };
-          reader.onerror = error => {
-            reject(error);
-          };
-          reader.readAsDataURL(blob);
-        },
-        error: err => {
-          reject(err);
-        },
-      });
+  openImageSelector() {
+    const dialogRef = this.dialog.open(ImageSelectorComponent, {
+      width: '90vw',
+      height: '80vh',
+      maxWidth: '90vw',
+      panelClass: 'image-selector-dialog',
     });
+
+    dialogRef
+      .afterClosed()
+      .subscribe((result: MediaItem | UserAssetResponseDto) => {
+        if (result) {
+          const uploadedModel: Model = {
+            id: 'uploaded',
+            name: 'Uploaded Model',
+            imageUrl:
+              'presignedUrl' in result
+                ? result.presignedUrl
+                : result.presignedUrls![0],
+            gcsUri: 'gcsUri' in result ? result.gcsUri : result.gcsUris[0],
+            size: 'custom',
+          };
+
+          this.firstFormGroup.get('model')?.setValue(uploadedModel);
+        }
+      });
   }
 
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const uploadedModel: Model = {
-          id: 'uploaded',
-          name: file.name,
-          imageUrl: e.target.result,
-          size: 'custom',
-        };
-        this.selectedModel = uploadedModel;
-        this.firstFormGroup.get('model')?.setValue(uploadedModel);
-      };
-      reader.readAsDataURL(file);
+  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<UserAssetResponseDto>(
+      `${environment.backendURL}/user_assets/upload`,
+      formData,
+    );
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      this.isLoading = true;
+      this.uploadAsset(file)
+        .pipe(finalize(() => (this.isLoading = false)))
+        .subscribe({
+          next: asset => {
+            const uploadedModel: Model = {
+              id: 'uploaded',
+              name: asset.originalFilename,
+              imageUrl: asset.presignedUrl,
+              gcsUri: asset.gcsUri,
+              size: 'custom',
+            };
+            this.firstFormGroup.get('model')?.setValue(uploadedModel);
+          },
+          error: error => {
+            handleErrorSnackbar(this._snackBar, error, 'Image upload');
+          },
+        });
     }
+  }
+
+  clearImage(event: MouseEvent) {
+    event.stopPropagation();
+    this.firstFormGroup.get('model')?.reset();
   }
 
   selectGarment(garment: Garment, type: 'top' | 'bottom' | 'dress' | 'shoes') {
@@ -439,7 +463,8 @@ export class VtoComponent {
   }
 
   async tryOn() {
-    if (!this.selectedModel) {
+    const selectedModel = this.firstFormGroup.get('model')?.value;
+    if (!selectedModel) {
       console.error('No model selected.');
       return;
     }
@@ -447,45 +472,38 @@ export class VtoComponent {
     this.isLoading = true;
 
     try {
-      let personImage: ImageDataRequest;
+      let personGcsUri: string;
 
-      // If we have a previous result, use its GCS URI for the next generation.
-      // Otherwise, use the initially selected model image as a base64 string.
       if (
         this.imagenDocuments &&
         this.imagenDocuments.gcsUris &&
         this.imagenDocuments.gcsUris.length > 0
       ) {
-        personImage = {gcs_uri: this.imagenDocuments.gcsUris[0]};
+        personGcsUri = this.imagenDocuments.gcsUris[0];
+      } else if (selectedModel.gcsUri) {
+        personGcsUri = selectedModel.gcsUri;
       } else {
-        personImage = await this.createImageData(this.selectedModel.imageUrl);
+        // This case is for pre-loaded models that don't have a GCS URI yet.
+        // The backend will need to handle resolving the asset path.
+        // For this to work, the backend needs to know how to map this path to a GCS URI.
+        // A better long-term solution would be to ensure all models have a GCS URI.
+        personGcsUri = selectedModel.imageUrl;
       }
 
       const payload: VtoRequest = {
         number_of_media: 1, // Defaulting to 1 as per DTO
-        person_image: personImage,
+        person_image: {gcs_uri: personGcsUri},
       };
 
-      if (this.selectedTop) {
-        payload.top_image = await this.createImageData(
-          this.selectedTop.imageUrl,
-        );
-      }
-      if (this.selectedBottom) {
-        payload.bottom_image = await this.createImageData(
-          this.selectedBottom.imageUrl,
-        );
-      }
-      if (this.selectedDress) {
-        payload.dress_image = await this.createImageData(
-          this.selectedDress.imageUrl,
-        );
-      }
-      if (this.selectedShoes) {
-        payload.shoe_image = await this.createImageData(
-          this.selectedShoes.imageUrl,
-        );
-      }
+      // For garments, we assume the imageUrl is a GCS URI or a path the backend can resolve.
+      if (this.selectedTop)
+        payload.top_image = {gcs_uri: this.selectedTop.imageUrl};
+      if (this.selectedBottom)
+        payload.bottom_image = {gcs_uri: this.selectedBottom.imageUrl};
+      if (this.selectedDress)
+        payload.dress_image = {gcs_uri: this.selectedDress.imageUrl};
+      if (this.selectedShoes)
+        payload.shoe_image = {gcs_uri: this.selectedShoes.imageUrl};
 
       console.log('Triggering VTO request with:', payload);
 
@@ -501,11 +519,14 @@ export class VtoComponent {
             // Also update the preview model to reflect the latest generation
             // for the next iterative step.
             if (
-              this.selectedModel &&
+              selectedModel &&
               response.presignedUrls &&
               response.presignedUrls.length > 0
             ) {
-              this.selectedModel.imageUrl = response.presignedUrls[0];
+              selectedModel.imageUrl = response.presignedUrls[0];
+              if (response.gcsUris && response.gcsUris.length > 0) {
+                selectedModel.gcsUri = response.gcsUris[0];
+              }
             }
           },
           error: err => {

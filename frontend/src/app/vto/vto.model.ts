@@ -15,8 +15,7 @@
  */
 
 export interface ImageDataRequest {
-  b64?: string;
-  gcs_uri?: string;
+  gcs_uri: string;
 }
 
 export interface VtoRequest {

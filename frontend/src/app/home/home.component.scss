@@ -59,65 +59,6 @@
   align-items: center;
 }
 
-// Small devices (landscape phones, 576px and up)
-@media (min-width: 375px) {
-  .title-font {
-    font-size: 1.4rem;
-  }
-}
-
-.drop-zone-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-// Small devices (landscape phones, 576px and up)
-@media (min-width: 425px) {
-  .title-font {
-    font-size: 1.7rem;
-  }
-}
-
-// Small devices (landscape phones, 576px and up)
-@media (min-width: 576px) {
-  .title-font {
-    font-size: 1.5rem;
-  }
-}
-
-// Medium devices (tablets, 768px and up)
-@media (min-width: 768px) {
-  .video-container {
-    height: 45vh;
-  }
-}
-
-// Large devices (desktops, 992px and up)
-@media (min-width: 992px) {
-}
-
-// X-Large devices (large desktops, 1200px and up)
-@media (min-width: 1200px) {
-  .home-margin {
-    margin: 2rem auto;
-  }
-}
-
-// XX-Large devices (larger desktops, 1400px and up)
-@media (min-width: 1400px) {
-}
-
-// 4K Displays (Ultra HD) (Projectors or Higher Resolution Screens, 2160px and up)
-@media screen and (min-width: 2160px) {
-  .video-container {
-    video {
-      margin-top: -10%;
-    }
-  }
-}
-
 .drop-zone {
   border: 2px dashed #666;
   border-radius: 8px;
@@ -163,9 +104,66 @@
   }
 }
 
-::ng-deep .image-selector-dialog {
-  @media (min-width: 1200px) {
+.drop-zone-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// Small devices (landscape phones, 576px and up)
+@media (min-width: 375px) {
+  .title-font {
+    font-size: 1.4rem;
+  }
+}
+
+// Small devices (landscape phones, 576px and up)
+@media (min-width: 425px) {
+  .title-font {
+    font-size: 1.7rem;
+  }
+}
+
+// Small devices (landscape phones, 576px and up)
+@media (min-width: 576px) {
+  .title-font {
+    font-size: 1.5rem;
+  }
+}
+
+// Medium devices (tablets, 768px and up)
+@media (min-width: 768px) {
+  .video-container {
+    height: 45vh;
+  }
+}
+
+// Large devices (desktops, 992px and up)
+@media (min-width: 992px) {
+}
+
+// X-Large devices (large desktops, 1200px and up)
+@media (min-width: 1200px) {
+  .home-margin {
+    margin: 2rem auto;
+  }
+
+  ::ng-deep .image-selector-dialog {
     width: 70vw !important;
     max-width: 70vw !important;
+  }
+}
+
+// XX-Large devices (larger desktops, 1400px and up)
+@media (min-width: 1400px) {
+}
+
+// 4K Displays (Ultra HD) (Projectors or Higher Resolution Screens, 2160px and up)
+@media screen and (min-width: 2160px) {
+  .video-container {
+    video {
+      margin-top: -10%;
+    }
   }
 }

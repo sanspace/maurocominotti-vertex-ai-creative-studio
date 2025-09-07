@@ -408,6 +408,7 @@ export class VideoComponent {
     const dialogRef = this.dialog.open(ImageSelectorComponent, {
       width: '90vw',
       height: '80vh',
+      maxWidth: '90vw',
       panelClass: 'image-selector-dialog',
     });
 
