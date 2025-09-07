@@ -23,10 +23,9 @@ import {
   ViewChild,
 } from '@angular/core';
 import {Router} from '@angular/router';
-import {MatChipInputEvent} from '@angular/material/chips';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
-import {finalize} from 'rxjs/operators';
+import {finalize, Observable} from 'rxjs';
 import {MatDialog} from '@angular/material/dialog';
 import {SearchService} from '../services/search/search.service';
 import {ImagenRequest} from '../common/models/search.model';
@@ -35,6 +34,10 @@ import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {MediaItem} from '../common/models/media-item.model';
 import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
+import {HttpClient} from '@angular/common/http';
+import {MatChipInputEvent} from '@angular/material/chips';
+import {UserAssetResponseDto} from '../common/services/user-asset.service';
+import {environment} from '../../environments/environment';
 
 @Component({
   selector: 'app-home',
@@ -233,6 +236,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private service: SearchService,
     private _snackBar: MatSnackBar,
     public dialog: MatDialog,
+    private http: HttpClient,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -300,8 +304,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyTemplateParameters(): void {
-    console.log('Applying template parameters:', this.templateParams);
-
     if (!this.templateParams) {
       return;
     }
@@ -437,14 +439,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     if (this.image1) {
-      this.image1.startsWith('gs://')
-        ? (payload.image1 = {gcs_uri: this.image1})
-        : (payload.image1 = {b64: this.image1.split(',')[1]});
+      payload.image1 = {gcs_uri: this.image1};
     }
     if (this.image2) {
-      this.image2.startsWith('gs://')
-        ? (payload.image2 = {gcs_uri: this.image2})
-        : (payload.image2 = {b64: this.image2.split(',')[1]});
+      payload.image2 = {gcs_uri: this.image2};
     }
 
     this.isLoading = true;
@@ -539,39 +537,55 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       panelClass: 'image-selector-dialog',
     });
 
-    dialogRef.afterClosed().subscribe((result: MediaItem | string) => {
-      if (result) {
-        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
-        const targetPreview =
-          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+    dialogRef
+      .afterClosed()
+      .subscribe((result: MediaItem | UserAssetResponseDto) => {
+        if (result) {
+          const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+          const targetPreview =
+            imageNumber === 1 ? 'image1Preview' : 'image2Preview';
 
-        if (typeof result === 'string') {
-          // Uploaded image (base64)
-          this[targetImage] = result;
-          this[targetPreview] = result;
-        } else {
-          // Gallery image (MediaItem)
-          this[targetImage] = result.gcsUris[0];
-          this[targetPreview] = result.presignedUrls![0];
+          if ('gcsUri' in result) {
+            // Uploaded image (UserAssetResponseDto)
+            this[targetImage] = result.gcsUri;
+            this[targetPreview] = result.presignedUrl;
+          } else {
+            // Gallery image (MediaItem)
+            this[targetImage] = result.gcsUris[0];
+            this[targetPreview] = result.presignedUrls![0];
+          }
         }
-      }
-    });
+      });
+  }
+
+  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<UserAssetResponseDto>(
+      `${environment.backendURL}/user_assets/upload`,
+      formData,
+    );
   }
 
   onDrop(event: DragEvent, imageNumber: 1 | 2) {
     event.preventDefault();
     const file = event.dataTransfer?.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const result = e.target.result;
-        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
-        const targetPreview =
-          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-        this[targetImage] = result;
-        this[targetPreview] = result;
-      };
-      reader.readAsDataURL(file);
+      this.isLoading = true;
+      this.uploadAsset(file)
+        .pipe(finalize(() => (this.isLoading = false)))
+        .subscribe({
+          next: asset => {
+            const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+            const targetPreview =
+              imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+            this[targetImage] = asset.gcsUri;
+            this[targetPreview] = asset.presignedUrl;
+          },
+          error: error => {
+            handleErrorSnackbar(this._snackBar, error, 'Image upload');
+          },
+        });
     }
   }
 

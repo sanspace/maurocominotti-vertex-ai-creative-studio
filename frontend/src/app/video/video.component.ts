@@ -1,18 +1,21 @@
 import {Component, OnDestroy} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {finalize, Observable, Subscription, switchMap, timer} from 'rxjs';
+import {finalize, Observable} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
 import {VeoRequest} from '../common/models/search.model';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {MatDialog} from '@angular/material/dialog';
 import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
+import {UserAssetResponseDto} from '../common/services/user-asset.service';
+import {HttpClient} from '@angular/common/http';
+import {environment} from '../../environments/environment';
+import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 
 @Component({
   selector: 'app-video',
@@ -132,6 +135,7 @@ export class VideoComponent {
     public router: Router,
     private _snackBar: MatSnackBar,
     public dialog: MatDialog,
+    private http: HttpClient,
   ) {
     this.activeVideoJob$ = this.service.activeVideoJob$;
 
@@ -337,8 +341,6 @@ export class VideoComponent {
   }
 
   private applyTemplateParameters(): void {
-    console.log('Applying template parameters:', this.templateParams);
-
     if (!this.templateParams) {
       return;
     }
@@ -409,23 +411,23 @@ export class VideoComponent {
       panelClass: 'image-selector-dialog',
     });
 
-    dialogRef.afterClosed().subscribe((result: MediaItem | string) => {
-      if (result) {
-        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
-        const targetPreview =
-          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+    dialogRef
+      .afterClosed()
+      .subscribe((result: MediaItem | UserAssetResponseDto) => {
+        if (result) {
+          const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+          const targetPreview =
+            imageNumber === 1 ? 'image1Preview' : 'image2Preview';
 
-        if (typeof result === 'string') {
-          // Uploaded image (base64)
-          this[targetImage] = result;
-          this[targetPreview] = result;
-        } else {
-          // Gallery image (MediaItem)
-          this[targetImage] = result.gcsUris[0];
-          this[targetPreview] = result.presignedUrls![0];
+          if ('gcsUri' in result) {
+            this[targetImage] = result.gcsUri;
+            this[targetPreview] = result.presignedUrl;
+          } else {
+            this[targetImage] = result.gcsUris[0];
+            this[targetPreview] = result.presignedUrls![0];
+          }
         }
-      }
-    });
+      });
   }
 
   onDrop(event: DragEvent, imageNumber: 1 | 2) {
@@ -433,16 +435,31 @@ export class VideoComponent {
     const file = event.dataTransfer?.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const result = e.target.result;
-        const targetImage = imageNumber === 1 ? 'image1' : 'image2';
-        const targetPreview =
-          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-        this[targetImage] = result;
-        this[targetPreview] = result;
-      };
-      reader.readAsDataURL(file);
+      this.isLoading = true;
+      this.uploadAsset(file)
+        .pipe(finalize(() => (this.isLoading = false)))
+        .subscribe({
+          next: asset => {
+            const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+            const targetPreview =
+              imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+            this[targetImage] = asset.gcsUri;
+            this[targetPreview] = asset.presignedUrl;
+          },
+          error: error => {
+            handleErrorSnackbar(this._snackBar, error, 'Image upload');
+          },
+        });
     }
+  }
+
+  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<UserAssetResponseDto>(
+      `${environment.backendURL}/user_assets/upload`,
+      formData,
+    );
   }
 
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {

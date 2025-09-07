@@ -100,7 +100,6 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
       if (images) {
         this.images = images;
-        console.log('Images:', this.images);
         this.images.forEach(image => {
           if (this.currentImageIndices[image.id] === undefined) {
             this.currentImageIndices[image.id] = 0;

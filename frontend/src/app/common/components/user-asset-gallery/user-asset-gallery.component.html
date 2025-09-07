@@ -1,0 +1,21 @@
+<div *ngIf="isLoading" class="loading-container">
+  <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
+  <p>Loading your assets...</p>
+</div>
+
+<div *ngIf="!isLoading && assets.length === 0" class="no-assets-container">
+  <p>You have not uploaded any assets yet.</p>
+</div>
+
+<div class="asset-grid" *ngIf="assets.length > 0">
+  <div
+    *ngFor="let asset of assets; trackBy: trackByAsset"
+    class="asset-item"
+    (click)="selectAsset(asset)"
+  >
+    <img [src]="asset.presignedUrl" [alt]="asset.originalFilename" />
+  </div>
+</div>
+
+<!-- Sentinel element for infinite scroll -->
+<div #sentinel></div>

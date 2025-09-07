@@ -42,9 +42,6 @@ class UpscaleImagenDto(BaseDto):
             GenerationModelEnum.IMAGEGEN_006,
             GenerationModelEnum.IMAGEN_3_001,
             GenerationModelEnum.IMAGEN_3_002,
-            GenerationModelEnum.IMAGEN_3_FAST,
-            GenerationModelEnum.IMAGEN_4_ULTRA,
-            GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         ]
         if value not in valid_video_ratios:
             raise ValueError("Invalid generation model for imagen.")

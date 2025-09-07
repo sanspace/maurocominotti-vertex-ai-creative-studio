@@ -1,6 +1,13 @@
 import {Component} from '@angular/core';
 import {MatDialogRef} from '@angular/material/dialog';
 import {MediaItem} from '../../models/media-item.model';
+import {HttpClient} from '@angular/common/http';
+import {environment} from '../../../../environments/environment';
+import {Observable, finalize} from 'rxjs';
+import {
+  UserAssetResponseDto,
+  UserAssetService,
+} from '../../services/user-asset.service';
 
 @Component({
   selector: 'app-image-selector',
@@ -8,7 +15,22 @@ import {MediaItem} from '../../models/media-item.model';
   styleUrls: ['./image-selector.component.scss'],
 })
 export class ImageSelectorComponent {
-  constructor(public dialogRef: MatDialogRef<ImageSelectorComponent>) {}
+  isUploading = false;
+
+  constructor(
+    public dialogRef: MatDialogRef<ImageSelectorComponent>,
+    private http: HttpClient,
+    private userAssetService: UserAssetService,
+  ) {}
+
+  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<UserAssetResponseDto>(
+      `${environment.backendURL}/user_assets/upload`,
+      formData,
+    );
+  }
 
   onFileSelected(event: Event): void {
     const element = event.currentTarget as HTMLInputElement;
@@ -16,16 +38,22 @@ export class ImageSelectorComponent {
 
     if (fileList && fileList[0]) {
       const file = fileList[0];
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        this.dialogRef.close(e.target?.result);
-      };
-      reader.readAsDataURL(file);
+      this.isUploading = true;
+      this.uploadAsset(file)
+        .pipe(finalize(() => (this.isUploading = false)))
+        .subscribe(asset => {
+          this.userAssetService.addAsset(asset);
+          this.dialogRef.close(asset);
+        });
     }
   }
 
   onMediaItemSelected(mediaItem: MediaItem): void {
     this.dialogRef.close(mediaItem);
+  }
+
+  onAssetSelected(asset: UserAssetResponseDto): void {
+    this.dialogRef.close(asset);
   }
 
   onDragOver(event: DragEvent) {
@@ -38,11 +66,13 @@ export class ImageSelectorComponent {
     event.stopPropagation();
     if (event.dataTransfer?.files[0]) {
       const file = event.dataTransfer.files[0];
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        this.dialogRef.close(e.target?.result);
-      };
-      reader.readAsDataURL(file);
+      this.isUploading = true;
+      this.uploadAsset(file)
+        .pipe(finalize(() => (this.isUploading = false)))
+        .subscribe(asset => {
+          this.userAssetService.addAsset(asset);
+          this.dialogRef.close(asset);
+        });
     }
   }
 }

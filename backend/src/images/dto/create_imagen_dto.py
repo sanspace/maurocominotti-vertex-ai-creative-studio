@@ -59,7 +59,7 @@ class CreateImagenDto(BaseDto):
         description="Whether to add a watermark to the generated image.",
     )
     upscale_factor: Literal["", "x2", "x4"] = Field(
-        default="x4",
+        default="",
         description="""Factor of the upscale, either x2 or x4. If empty it will not upscale""",
     )
     image_1: Optional[ImageDataDto] = Field(

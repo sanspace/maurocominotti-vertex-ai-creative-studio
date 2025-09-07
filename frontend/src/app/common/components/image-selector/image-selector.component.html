@@ -4,19 +4,37 @@
     <mat-tab label="Upload Image">
       <div
         class="upload-area"
-        (click)="fileInput.click()"
+        [class.uploading]="isUploading"
+        (click)="!isUploading && fileInput.click()"
         (dragover)="onDragOver($event)"
-        (drop)="onDrop($event)"
+        (drop)="!isUploading && onDrop($event)"
       >
-        <mat-icon>upload_file</mat-icon>
-        <p>Drag & drop a file here or click to select a file</p>
+        <ng-container *ngIf="!isUploading; else uploading">
+          <mat-icon>upload_file</mat-icon>
+          <p>Drag & drop a file here or click to select a file</p>
+        </ng-container>
+        <ng-template #uploading>
+          <mat-progress-spinner
+            color="primary"
+            mode="indeterminate"
+            [diameter]="50"
+          ></mat-progress-spinner>
+          <p>Uploading...</p>
+        </ng-template>
         <input
           hidden
           type="file"
           #fileInput
           (change)="onFileSelected($event)"
-          accept="image/*"
+          accept="image/png, image/jpeg"
+          [disabled]="isUploading"
         />
+      </div>
+      <div class="my-uploads-container">
+        <h3 class="mat-h3">My Uploads</h3>
+        <app-user-asset-gallery
+          (assetSelected)="onAssetSelected($event)"
+        ></app-user-asset-gallery>
       </div>
     </mat-tab>
     <mat-tab label="From Gallery">

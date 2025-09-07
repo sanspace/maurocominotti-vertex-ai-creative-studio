@@ -653,11 +653,16 @@ class ImagenService:
                 image = types.Image(
                     image_bytes=base64.b64decode(request_dto.user_image)
                 )
+
+            http_opts = types.HttpOptions(
+                timeout=300
+            )  # 300 seconds = 5 minutes
             response = client.models.upscale_image(
                 model=GenerationModelEnum.IMAGEN_3_002,
                 image=image,
                 upscale_factor=request_dto.upscale_factor,
                 config=types.UpscaleImageConfig(
+                    http_options=http_opts,
                     include_rai_reason=request_dto.include_rai_reason,
                 ),
             )
