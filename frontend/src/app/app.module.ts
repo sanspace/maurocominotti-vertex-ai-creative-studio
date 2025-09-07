@@ -77,7 +77,7 @@ import { MediaLightboxComponent } from './common/components/media-lightbox/media
 import {VtoComponent} from './vto/vto.component';
 import {ImageSelectorComponent} from './common/components/image-selector/image-selector.component';
 import {MatDialogModule} from '@angular/material/dialog';
-import {UserAssetGalleryComponent} from './common/components/user-asset-gallery/user-asset-gallery.component';
+import {SourceAssetGalleryComponent} from './common/components/source-asset-gallery/source-asset-gallery.component';
 
 @NgModule({
   declarations: [
@@ -96,7 +96,7 @@ import {UserAssetGalleryComponent} from './common/components/user-asset-gallery/
     MediaLightboxComponent,
     VtoComponent,
     ImageSelectorComponent,
-    UserAssetGalleryComponent,
+    SourceAssetGalleryComponent,
   ],
   imports: [
     BrowserModule,

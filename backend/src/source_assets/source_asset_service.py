@@ -12,46 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import asyncio
+import hashlib
 import logging
-from typing import Optional
 import uuid
-from fastapi import UploadFile, HTTPException, status
+from typing import Optional
 
-from src.common.dto.pagination_response_dto import PaginationResponseDto
-from src.user_assets.dto.user_asset_search_dto import UserAssetSearchDto
-from src.user_assets.repository.user_asset_repository import UserAssetRepository
-from src.user_assets.schema.user_asset_model import UserAssetModel
+from fastapi import HTTPException, UploadFile, status
+
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
+from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.common.storage_service import GcsService
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.imagen_service import ImagenService
-from src.user_assets.dto.user_asset_response_dto import UserAssetResponseDto
+from src.source_assets.dto.source_asset_response_dto import \
+    SourceAssetResponseDto
+from src.source_assets.dto.source_asset_search_dto import SourceAssetSearchDto
+from src.source_assets.repository.source_asset_repository import \
+    SourceAssetRepository
+from src.source_assets.schema.source_asset_model import SourceAssetModel
 from src.users.user_model import User
-from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
 
 logger = logging.getLogger(__name__)
 
-class UserAssetService:
+class SourceAssetService:
     """Provides business logic for managing user-uploaded assets."""
 
     def __init__(self):
-        self.repo = UserAssetRepository()
+        self.repo = SourceAssetRepository()
         self.gcs_service = GcsService()
         self.iam_signer = IamSignerCredentials()
         self.imagen_service = ImagenService() # Service to perform the upscale
 
-    async def _create_asset_response(self, asset: UserAssetModel) -> UserAssetResponseDto:
+    async def _create_asset_response(self, asset: SourceAssetModel) -> SourceAssetResponseDto:
         """Generates a presigned URL for the asset."""
         presigned_url = await asyncio.to_thread(
             self.iam_signer.generate_presigned_url, asset.gcs_uri
         )
-        return UserAssetResponseDto(**asset.model_dump(), presigned_url=presigned_url)
+        return SourceAssetResponseDto(**asset.model_dump(), presigned_url=presigned_url)
 
     async def upload_asset(
         self, user: User, file: UploadFile
-    ) -> UserAssetResponseDto:
+    ) -> SourceAssetResponseDto:
         """
         Handles uploading, de-duplicating, upscaling, and saving a new user asset.
         """
@@ -72,7 +75,7 @@ class UserAssetService:
         # 2. If it's a new file, upload the original to GCS in the user's folder
         logger.info(f"New asset for user {user.email}. Uploading original file.")
         original_gcs_uri = self.gcs_service.store_to_gcs(
-            folder=f"user_assets/{user.id}/originals",
+            folder=f"source_assets/{user.id}/originals",
             file_name=str(uuid.uuid4()),
             mime_type=file.content_type or "image/jpeg",
             contents=contents,
@@ -110,7 +113,7 @@ class UserAssetService:
             final_gcs_uri = original_gcs_uri
 
         # 4. Create and save the new UserAsset document
-        new_asset = UserAssetModel(
+        new_asset = SourceAssetModel(
             user_id=user.id,
             gcs_uri=final_gcs_uri,
             original_filename=file.filename or "untitled",
@@ -122,8 +125,8 @@ class UserAssetService:
         return await self._create_asset_response(new_asset)
 
     async def list_assets_for_user(
-        self, search_dto: UserAssetSearchDto, target_user_id: Optional[str] = None
-    ) -> PaginationResponseDto[UserAssetResponseDto]:
+        self, search_dto: SourceAssetSearchDto, target_user_id: Optional[str] = None
+    ) -> PaginationResponseDto[SourceAssetResponseDto]:
         """
         Performs a paginated search, scoped to a target_user_id if provided.
         """
@@ -135,7 +138,7 @@ class UserAssetService:
         response_tasks = [self._create_asset_response(asset) for asset in assets]
         enriched_assets = await asyncio.gather(*response_tasks)
 
-        return PaginationResponseDto[UserAssetResponseDto](
+        return PaginationResponseDto[SourceAssetResponseDto](
             count=assets_query_result.count,
             next_page_cursor=assets_query_result.next_page_cursor,
             data=enriched_assets,

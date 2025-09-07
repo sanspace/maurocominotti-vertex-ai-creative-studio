@@ -1,7 +1,9 @@
 from typing import Optional
+
 from src.common.base_dto import BaseDto
 
-class UserAssetSearchDto(BaseDto):
+
+class SourceAssetSearchDto(BaseDto):
     """
     Defines the query parameters for paginated search of user assets.
     """

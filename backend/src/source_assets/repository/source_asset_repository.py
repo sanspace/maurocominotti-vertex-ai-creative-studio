@@ -1,21 +1,22 @@
 from typing import Optional
+
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_aggregation import AggregationResult
 from google.cloud.firestore_v1.query_results import QueryResultsList
 
-from src.user_assets.dto.user_asset_search_dto import UserAssetSearchDto
 from src.common.base_repository import BaseRepository
 from src.common.dto.pagination_response_dto import PaginationResponseDto
-from src.user_assets.schema.user_asset_model import UserAssetModel
+from src.source_assets.dto.source_asset_search_dto import SourceAssetSearchDto
+from src.source_assets.schema.source_asset_model import SourceAssetModel
 
 
-class UserAssetRepository(BaseRepository[UserAssetModel]):
+class SourceAssetRepository(BaseRepository[SourceAssetModel]):
     """Handles database operations for UserAsset objects in Firestore."""
 
     def __init__(self):
-        super().__init__(collection_name="user_assets", model=UserAssetModel)
+        super().__init__(collection_name="source_assets", model=SourceAssetModel)
 
-    def find_by_hash(self, user_id: str, file_hash: str) -> Optional[UserAssetModel]:
+    def find_by_hash(self, user_id: str, file_hash: str) -> Optional[SourceAssetModel]:
         """Finds a user asset by its file hash to prevent duplicates."""
         query = (
             self.collection_ref.where("user_id", "==", user_id)
@@ -28,8 +29,8 @@ class UserAssetRepository(BaseRepository[UserAssetModel]):
         return self.model.model_validate(docs[0].to_dict())
 
     def query(
-        self, search_dto: UserAssetSearchDto, target_user_id: Optional[str] = None
-    ) -> PaginationResponseDto[UserAssetModel]:
+        self, search_dto: SourceAssetSearchDto, target_user_id: Optional[str] = None
+    ) -> PaginationResponseDto[SourceAssetModel]:
         """
         Performs a paginated query for assets. If target_user_id is provided,
         it scopes the search to that specific user.
@@ -76,7 +77,7 @@ class UserAssetRepository(BaseRepository[UserAssetModel]):
             # The cursor is the ID of the last document fetched.
             next_page_cursor = documents[-1].id
 
-        return PaginationResponseDto[UserAssetModel](
+        return PaginationResponseDto[SourceAssetModel](
             count=total_count,
             next_page_cursor=next_page_cursor,
             data=media_item_data,

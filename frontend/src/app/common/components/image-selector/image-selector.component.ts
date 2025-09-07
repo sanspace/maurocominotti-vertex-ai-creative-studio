@@ -5,9 +5,9 @@ import {HttpClient} from '@angular/common/http';
 import {environment} from '../../../../environments/environment';
 import {Observable, finalize} from 'rxjs';
 import {
-  UserAssetResponseDto,
-  UserAssetService,
-} from '../../services/user-asset.service';
+  SourceAssetResponseDto,
+  SourceAssetService,
+} from '../../services/source-asset.service';
 
 @Component({
   selector: 'app-image-selector',
@@ -20,14 +20,14 @@ export class ImageSelectorComponent {
   constructor(
     public dialogRef: MatDialogRef<ImageSelectorComponent>,
     private http: HttpClient,
-    private userAssetService: UserAssetService,
+    private sourceAssetService: SourceAssetService,
   ) {}
 
-  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<UserAssetResponseDto>(
-      `${environment.backendURL}/user_assets/upload`,
+    return this.http.post<SourceAssetResponseDto>(
+      `${environment.backendURL}/source_assets/upload`,
       formData,
     );
   }
@@ -42,7 +42,7 @@ export class ImageSelectorComponent {
       this.uploadAsset(file)
         .pipe(finalize(() => (this.isUploading = false)))
         .subscribe(asset => {
-          this.userAssetService.addAsset(asset);
+          this.sourceAssetService.addAsset(asset);
           this.dialogRef.close(asset);
         });
     }
@@ -52,7 +52,7 @@ export class ImageSelectorComponent {
     this.dialogRef.close(mediaItem);
   }
 
-  onAssetSelected(asset: UserAssetResponseDto): void {
+  onAssetSelected(asset: SourceAssetResponseDto): void {
     this.dialogRef.close(asset);
   }
 
@@ -70,7 +70,7 @@ export class ImageSelectorComponent {
       this.uploadAsset(file)
         .pipe(finalize(() => (this.isUploading = false)))
         .subscribe(asset => {
-          this.userAssetService.addAsset(asset);
+          this.sourceAssetService.addAsset(asset);
           this.dialogRef.close(asset);
         });
     }

@@ -4,7 +4,7 @@ import {BehaviorSubject, Observable, of} from 'rxjs';
 import {tap, catchError, finalize, shareReplay} from 'rxjs/operators';
 import {environment} from '../../../environments/environment';
 
-export interface UserAssetResponseDto {
+export interface SourceAssetResponseDto {
   id: string;
   userId: string;
   gcsUri: string;
@@ -16,7 +16,7 @@ export interface UserAssetResponseDto {
   presignedUrl: string;
 }
 
-export interface UserAssetSearchDto {
+export interface SourceAssetSearchDto {
   limit?: number;
   startAfter?: string;
   mimeType?: string;
@@ -32,20 +32,22 @@ export interface PaginationResponseDto<T> {
 @Injectable({
   providedIn: 'root',
 })
-export class UserAssetService {
-  private assets$ = new BehaviorSubject<UserAssetResponseDto[]>([]);
+export class SourceAssetService {
+  private assets$ = new BehaviorSubject<SourceAssetResponseDto[]>([]);
   public isLoading$ = new BehaviorSubject<boolean>(false);
   private allAssetsLoaded$ = new BehaviorSubject<boolean>(false);
   private nextPageCursor: string | null = null;
-  private allFetchedAssets: UserAssetResponseDto[] = [];
-  private filters$ = new BehaviorSubject<UserAssetSearchDto>({});
+  private allFetchedAssets: SourceAssetResponseDto[] = [];
+  private filters$ = new BehaviorSubject<SourceAssetSearchDto>({});
 
   // Cache the request observable to prevent multiple API calls for the same filters.
-  private assetsRequest$: Observable<PaginationResponseDto<UserAssetResponseDto>> | null = null;
+  private assetsRequest$: Observable<
+    PaginationResponseDto<SourceAssetResponseDto>
+  > | null = null;
 
   constructor(private http: HttpClient) {}
 
-  get assets(): Observable<UserAssetResponseDto[]> {
+  get assets(): Observable<SourceAssetResponseDto[]> {
     return this.assets$.asObservable();
   }
 
@@ -53,7 +55,7 @@ export class UserAssetService {
     return this.allAssetsLoaded$.asObservable();
   }
 
-  setFilters(filters: UserAssetSearchDto) {
+  setFilters(filters: SourceAssetSearchDto) {
     const currentFilters = this.filters$.value;
     // Do not re-fetch if the filters are the same and we've already loaded data.
     // This prevents re-fetching every time the gallery is opened.
@@ -119,19 +121,24 @@ export class UserAssetService {
     this.assetsRequest$.subscribe();
   }
 
-  private fetchAssets(): Observable<PaginationResponseDto<UserAssetResponseDto>> {
-    const assetsUrl = `${environment.backendURL}/user_assets/search`;
+  private fetchAssets(): Observable<
+    PaginationResponseDto<SourceAssetResponseDto>
+  > {
+    const assetsUrl = `${environment.backendURL}/source_assets/search`;
     const currentFilters = this.filters$.value;
 
-    const body: UserAssetSearchDto = {
+    const body: SourceAssetSearchDto = {
       limit: 20,
       ...currentFilters,
       startAfter: this.nextPageCursor ?? undefined,
     };
-    return this.http.post<PaginationResponseDto<UserAssetResponseDto>>(assetsUrl, body);
+    return this.http.post<PaginationResponseDto<SourceAssetResponseDto>>(
+      assetsUrl,
+      body,
+    );
   }
 
-  addAsset(asset: UserAssetResponseDto) {
+  addAsset(asset: SourceAssetResponseDto) {
     // Prepend the new asset to our local cache and notify subscribers.
     this.allFetchedAssets.unshift(asset);
     this.assets$.next(this.allFetchedAssets);

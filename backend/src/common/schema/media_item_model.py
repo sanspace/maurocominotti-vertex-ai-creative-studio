@@ -48,6 +48,8 @@ class MediaItemModel(BaseDocument):
     negative_prompt: Optional[str] = None
     add_watermark: Optional[bool] = None
     status: JobStatusEnum = Field(default=JobStatusEnum.PROCESSING)
+    # Stores a list of IDs from the UserAsset collection
+    source_asset_ids: Optional[List[str]] = None
 
     # URI fields
     gcs_uris: Annotated[

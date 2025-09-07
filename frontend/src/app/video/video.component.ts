@@ -12,7 +12,7 @@ import {ImageSelectorComponent} from '../common/components/image-selector/image-
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
-import {UserAssetResponseDto} from '../common/services/user-asset.service';
+import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
@@ -414,7 +414,7 @@ export class VideoComponent {
 
     dialogRef
       .afterClosed()
-      .subscribe((result: MediaItem | UserAssetResponseDto) => {
+      .subscribe((result: MediaItem | SourceAssetResponseDto) => {
         if (result) {
           const targetImage = imageNumber === 1 ? 'image1' : 'image2';
           const targetPreview =
@@ -454,11 +454,11 @@ export class VideoComponent {
     }
   }
 
-  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<UserAssetResponseDto>(
-      `${environment.backendURL}/user_assets/upload`,
+    return this.http.post<SourceAssetResponseDto>(
+      `${environment.backendURL}/source_assets/upload`,
       formData,
     );
   }

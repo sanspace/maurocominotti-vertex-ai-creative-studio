@@ -11,23 +11,23 @@ import {
 } from '@angular/core';
 import {Subscription} from 'rxjs';
 import {
-  UserAssetService,
-  UserAssetResponseDto,
-} from '../../services/user-asset.service';
+  SourceAssetService,
+  SourceAssetResponseDto,
+} from '../../services/source-asset.service';
 import {UserService} from '../../services/user.service';
 
 @Component({
-  selector: 'app-user-asset-gallery',
-  templateUrl: './user-asset-gallery.component.html',
-  styleUrls: ['./user-asset-gallery.component.scss'],
+  selector: 'app-source-asset-gallery',
+  templateUrl: './source-asset-gallery.component.html',
+  styleUrls: ['./source-asset-gallery.component.scss'],
 })
-export class UserAssetGalleryComponent
+export class SourceAssetGalleryComponent
   implements OnInit, OnDestroy, AfterViewInit
 {
-  @Output() assetSelected = new EventEmitter<UserAssetResponseDto>();
+  @Output() assetSelected = new EventEmitter<SourceAssetResponseDto>();
   @ViewChild('sentinel') private sentinel!: ElementRef<HTMLElement>;
 
-  public assets: UserAssetResponseDto[] = [];
+  public assets: SourceAssetResponseDto[] = [];
   public isLoading = true;
   public allAssetsLoaded = false;
   private assetsSubscription: Subscription | undefined;
@@ -36,32 +36,32 @@ export class UserAssetGalleryComponent
   private scrollObserver!: IntersectionObserver;
 
   constructor(
-    private userAssetService: UserAssetService,
+    private sourceAssetService: SourceAssetService,
     private userService: UserService,
     private elementRef: ElementRef,
     private ngZone: NgZone,
   ) {}
 
   ngOnInit(): void {
-    this.loadingSubscription = this.userAssetService.isLoading$.subscribe(
+    this.loadingSubscription = this.sourceAssetService.isLoading$.subscribe(
       loading => {
         this.isLoading = loading;
       },
     );
 
     this.allAssetsLoadedSubscription =
-      this.userAssetService.allAssetsLoaded.subscribe(loaded => {
+      this.sourceAssetService.allAssetsLoaded.subscribe(loaded => {
         this.allAssetsLoaded = loaded;
       });
 
-    this.assetsSubscription = this.userAssetService.assets.subscribe(assets => {
+    this.assetsSubscription = this.sourceAssetService.assets.subscribe(assets => {
       this.assets = assets;
     });
 
     // Load assets for the current user
     const userDetails = this.userService.getUserDetails();
     if (userDetails?.email) {
-      this.userAssetService.setFilters({
+      this.sourceAssetService.setFilters({
         userEmail: userDetails.email,
         mimeType: 'image/png',
       });
@@ -96,13 +96,9 @@ export class UserAssetGalleryComponent
 
     this.scrollObserver = new IntersectionObserver(
       ([entry]) => {
-        if (
-          entry.isIntersecting &&
-          !this.isLoading &&
-          !this.allAssetsLoaded
-        ) {
+        if (entry.isIntersecting && !this.isLoading && !this.allAssetsLoaded) {
           this.ngZone.run(() => {
-            this.userAssetService.loadAssets();
+            this.sourceAssetService.loadAssets();
           });
         }
       },
@@ -114,11 +110,11 @@ export class UserAssetGalleryComponent
     this.scrollObserver.observe(this.sentinel.nativeElement);
   }
 
-  selectAsset(asset: UserAssetResponseDto): void {
+  selectAsset(asset: SourceAssetResponseDto): void {
     this.assetSelected.emit(asset);
   }
 
-  trackByAsset(index: number, asset: UserAssetResponseDto): string {
+  trackByAsset(index: number, asset: SourceAssetResponseDto): string {
     return asset.id;
   }
 }

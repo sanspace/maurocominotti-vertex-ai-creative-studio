@@ -25,6 +25,7 @@ from os import getenv
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from src.audios.audio_controller import router as audio_router
 from src.auth import firebase_client_service
 from src.galleries.gallery_controller import router as gallery_router
@@ -36,9 +37,11 @@ from src.media_templates.media_templates_controller import (
     router as media_template_router,
 )
 from src.multimodal.gemini_controller import router as gemini_router
+from src.source_assets.source_asset_controller import (
+    router as source_asset_router,
+)
 from src.users.user_controller import router as user_router
 from src.videos.veo_controller import router as video_router
-from src.user_assets.user_asset_controller import router as user_asset_router
 
 # Get a logger instance for use in this file. It will inherit the root setup.
 logger = logging.getLogger(__name__)
@@ -147,4 +150,4 @@ app.include_router(gemini_router)
 app.include_router(user_router)
 app.include_router(generation_options_router)
 app.include_router(media_template_router)
-app.include_router(user_asset_router)
+app.include_router(source_asset_router)

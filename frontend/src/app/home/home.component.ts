@@ -36,7 +36,7 @@ import {MediaItem} from '../common/models/media-item.model';
 import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
 import {HttpClient} from '@angular/common/http';
 import {MatChipInputEvent} from '@angular/material/chips';
-import {UserAssetResponseDto} from '../common/services/user-asset.service';
+import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {environment} from '../../environments/environment';
 
 @Component({
@@ -540,14 +540,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dialogRef
       .afterClosed()
-      .subscribe((result: MediaItem | UserAssetResponseDto) => {
+      .subscribe((result: MediaItem | SourceAssetResponseDto) => {
         if (result) {
           const targetImage = imageNumber === 1 ? 'image1' : 'image2';
           const targetPreview =
             imageNumber === 1 ? 'image1Preview' : 'image2Preview';
 
           if ('gcsUri' in result) {
-            // Uploaded image (UserAssetResponseDto)
+            // Uploaded image (SourceAssetResponseDto)
             this[targetImage] = result.gcsUri;
             this[targetPreview] = result.presignedUrl;
           } else {
@@ -559,11 +559,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<UserAssetResponseDto>(
-      `${environment.backendURL}/user_assets/upload`,
+    return this.http.post<SourceAssetResponseDto>(
+      `${environment.backendURL}/source_assets/upload`,
       formData,
     );
   }

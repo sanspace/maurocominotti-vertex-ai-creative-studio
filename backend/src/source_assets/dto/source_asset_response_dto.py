@@ -13,10 +13,10 @@
 # limitations under the License.
 
 
-from src.user_assets.schema.user_asset_model import UserAssetModel
+from src.source_assets.schema.source_asset_model import SourceAssetModel
 
 
-class UserAssetResponseDto(UserAssetModel):
+class SourceAssetResponseDto(SourceAssetModel):
     """
     Data transfer object for returning a user asset, including a
     temporary, accessible URL.

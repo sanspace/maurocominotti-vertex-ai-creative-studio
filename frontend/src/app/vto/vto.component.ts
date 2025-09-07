@@ -6,7 +6,7 @@ import {VtoRequest} from './vto.model';
 import {environment} from '../../environments/environment';
 import {MatDialog} from '@angular/material/dialog';
 import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
-import {UserAssetResponseDto} from '../common/services/user-asset.service';
+import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {finalize, Observable} from 'rxjs';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
@@ -396,7 +396,7 @@ export class VtoComponent {
 
     dialogRef
       .afterClosed()
-      .subscribe((result: MediaItem | UserAssetResponseDto) => {
+      .subscribe((result: MediaItem | SourceAssetResponseDto) => {
         if (result) {
           const uploadedModel: Model = {
             id: 'uploaded',
@@ -414,11 +414,11 @@ export class VtoComponent {
       });
   }
 
-  private uploadAsset(file: File): Observable<UserAssetResponseDto> {
+  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<UserAssetResponseDto>(
-      `${environment.backendURL}/user_assets/upload`,
+    return this.http.post<SourceAssetResponseDto>(
+      `${environment.backendURL}/source_assets/upload`,
       formData,
     );
   }
@@ -462,7 +462,7 @@ export class VtoComponent {
     }
   }
 
-  async tryOn() {
+  tryOn() {
     const selectedModel = this.firstFormGroup.get('model')?.value;
     if (!selectedModel) {
       console.error('No model selected.');
@@ -471,72 +471,66 @@ export class VtoComponent {
 
     this.isLoading = true;
 
-    try {
-      let personGcsUri: string;
+    let personGcsUri: string;
 
-      if (
-        this.imagenDocuments &&
-        this.imagenDocuments.gcsUris &&
-        this.imagenDocuments.gcsUris.length > 0
-      ) {
-        personGcsUri = this.imagenDocuments.gcsUris[0];
-      } else if (selectedModel.gcsUri) {
-        personGcsUri = selectedModel.gcsUri;
-      } else {
-        // This case is for pre-loaded models that don't have a GCS URI yet.
-        // The backend will need to handle resolving the asset path.
-        // For this to work, the backend needs to know how to map this path to a GCS URI.
-        // A better long-term solution would be to ensure all models have a GCS URI.
-        personGcsUri = selectedModel.imageUrl;
-      }
-
-      const payload: VtoRequest = {
-        number_of_media: 1, // Defaulting to 1 as per DTO
-        person_image: {gcs_uri: personGcsUri},
-      };
-
-      // For garments, we assume the imageUrl is a GCS URI or a path the backend can resolve.
-      if (this.selectedTop)
-        payload.top_image = {gcs_uri: this.selectedTop.imageUrl};
-      if (this.selectedBottom)
-        payload.bottom_image = {gcs_uri: this.selectedBottom.imageUrl};
-      if (this.selectedDress)
-        payload.dress_image = {gcs_uri: this.selectedDress.imageUrl};
-      if (this.selectedShoes)
-        payload.shoe_image = {gcs_uri: this.selectedShoes.imageUrl};
-
-      console.log('Triggering VTO request with:', payload);
-
-      this.http
-        .post<MediaItem>(
-          `${environment.backendURL}/images/generate-images-for-vto`,
-          payload,
-        )
-        .subscribe({
-          next: response => {
-            this.isLoading = false;
-            this.imagenDocuments = response;
-            // Also update the preview model to reflect the latest generation
-            // for the next iterative step.
-            if (
-              selectedModel &&
-              response.presignedUrls &&
-              response.presignedUrls.length > 0
-            ) {
-              selectedModel.imageUrl = response.presignedUrls[0];
-              if (response.gcsUris && response.gcsUris.length > 0) {
-                selectedModel.gcsUri = response.gcsUris[0];
-              }
-            }
-          },
-          error: err => {
-            this.isLoading = false;
-            console.error('VTO request failed:', err);
-          },
-        });
-    } catch (error) {
-      this.isLoading = false;
-      console.error('Failed to create image data for VTO request:', error);
+    if (
+      this.imagenDocuments &&
+      this.imagenDocuments.gcsUris &&
+      this.imagenDocuments.gcsUris.length > 0
+    ) {
+      personGcsUri = this.imagenDocuments.gcsUris[0];
+    } else if (selectedModel.gcsUri) {
+      personGcsUri = selectedModel.gcsUri;
+    } else {
+      // This case is for pre-loaded models that don't have a GCS URI yet.
+      // The backend will need to handle resolving the asset path.
+      // For this to work, the backend needs to know how to map this path to a GCS URI.
+      // A better long-term solution would be to ensure all models have a GCS URI.
+      personGcsUri = selectedModel.imageUrl;
     }
+
+    const payload: VtoRequest = {
+      number_of_media: 1, // Defaulting to 1 as per DTO
+      person_image: {gcs_uri: personGcsUri},
+    };
+
+    // For garments, we assume the imageUrl is a GCS URI or a path the backend can resolve.
+    if (this.selectedTop)
+      payload.top_image = {gcs_uri: this.selectedTop.imageUrl};
+    if (this.selectedBottom)
+      payload.bottom_image = {gcs_uri: this.selectedBottom.imageUrl};
+    if (this.selectedDress)
+      payload.dress_image = {gcs_uri: this.selectedDress.imageUrl};
+    if (this.selectedShoes)
+      payload.shoe_image = {gcs_uri: this.selectedShoes.imageUrl};
+
+    console.log('Triggering VTO request with:', payload);
+
+    this.http
+      .post<MediaItem>(
+        `${environment.backendURL}/images/generate-images-for-vto`,
+        payload,
+      )
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: response => {
+          this.imagenDocuments = response;
+          // Also update the preview model to reflect the latest generation
+          // for the next iterative step.
+          if (
+            selectedModel &&
+            response.presignedUrls &&
+            response.presignedUrls.length > 0
+          ) {
+            selectedModel.imageUrl = response.presignedUrls[0];
+            if (response.gcsUris && response.gcsUris.length > 0) {
+              selectedModel.gcsUri = response.gcsUris[0];
+            }
+          }
+        },
+        error: err => {
+          handleErrorSnackbar(this._snackBar, err, 'Virtual Try-On');
+        },
+      });
   }
 }

@@ -13,26 +13,29 @@
 # limitations under the License.
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, File, UploadFile
-from src.common.dto.pagination_response_dto import PaginationResponseDto
-from src.user_assets.dto.user_asset_search_dto import UserAssetSearchDto
+
 from src.auth.auth_guard import RoleChecker, get_current_user
-from src.user_assets.dto.user_asset_response_dto import UserAssetResponseDto
-from src.user_assets.user_asset_service import UserAssetService
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.source_assets.dto.source_asset_response_dto import \
+    SourceAssetResponseDto
+from src.source_assets.dto.source_asset_search_dto import SourceAssetSearchDto
+from src.source_assets.source_asset_service import SourceAssetService
 from src.users.user_model import User, UserRoleEnum
 
 router = APIRouter(
-    prefix="/api/user_assets",
+    prefix="/api/source_assets",
     tags=["User Assets"],
     responses={404: {"description": "Not found"}},
     dependencies=[Depends(RoleChecker(allowed_roles=[UserRoleEnum.USER, UserRoleEnum.ADMIN]))],
 )
 
-@router.post("/upload", response_model=UserAssetResponseDto)
-async def upload_user_asset(
+@router.post("/upload", response_model=SourceAssetResponseDto)
+async def upload_source_asset(
     file: UploadFile = File(),
     current_user: User = Depends(get_current_user),
-    service: UserAssetService = Depends(),
+    service: SourceAssetService = Depends(),
 ):
     """
     Uploads a new image asset for the current user.
@@ -41,11 +44,11 @@ async def upload_user_asset(
     """
     return await service.upload_asset(user=current_user, file=file)
 
-@router.post("/search", response_model=PaginationResponseDto[UserAssetResponseDto])
-async def list_user_assets(
-    search_dto: UserAssetSearchDto,
+@router.post("/search", response_model=PaginationResponseDto[SourceAssetResponseDto])
+async def list_source_assets(
+    search_dto: SourceAssetSearchDto,
     current_user: User = Depends(get_current_user),
-    service: UserAssetService = Depends(),
+    service: SourceAssetService = Depends(),
     # user_repo: UserRepository = Depends(), # Add this dependency for user lookups
 ):
     """

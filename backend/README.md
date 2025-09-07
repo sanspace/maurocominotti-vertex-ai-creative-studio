@@ -159,25 +159,25 @@ gcloud firestore indexes composite create \
   --field-config=field-path=created_at,order=DESCENDING \
 
 
-# For User Assets
+# For Source Assets
 # For de-duplication (user_id == AND file_hash ==)
 gcloud firestore indexes composite create \
-  --collection-group=user_assets \
+  --collection-group=source_assets \
   --query-scope=COLLECTION \
   --field-config=field-path=user_id,order=ASCENDING \
   --field-config=field-path=file_hash,order=ASCENDING
 
 # For paginated search of a user's assets (user_id == ORDER BY created_at DESC)
 gcloud firestore indexes composite create \
-  --collection-group=user_assets \
+  --collection-group=source_assets \
   --query-scope=COLLECTION \
   --field-config=field-path=user_id,order=ASCENDING \
   --field-config=field-path=created_at,order=DESCENDING
 
-# For paginated search of a user's assets filtered by mime_type
+# For paginated search of a source's assets filtered by mime_type
 # (user_id == AND mime_type == ORDER BY created_at DESC)
 gcloud firestore indexes composite create \
-  --collection-group=user_assets \
+  --collection-group=source_assets \
   --query-scope=COLLECTION \
   --field-config=field-path=user_id,order=ASCENDING \
   --field-config=field-path=mime_type,order=ASCENDING \
@@ -185,7 +185,7 @@ gcloud firestore indexes composite create \
 
 # For queries that filter by mime_type and order by creation date
 gcloud firestore indexes composite create \
-  --collection-group=user_assets \
+  --collection-group=source_assets \
   --query-scope=COLLECTION \
   --field-config=field-path=mime_type,order=ASCENDING \
   --field-config=field-path=created_at,order=DESCENDING \
