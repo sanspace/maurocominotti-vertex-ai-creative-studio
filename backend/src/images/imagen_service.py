@@ -66,7 +66,7 @@ def gemini_flash_image_preview_generate_image(
     Returns:
         A types.GeneratedImage object, or None if failed.
     """
-    model = GenerationModelEnum.GEMINI_25_FLASH_IMAGE_PREVIEW
+    model = GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
     contents: list[types.ContentUnionDict] = [
         types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
     ]
@@ -122,16 +122,6 @@ class ImagenService:
         self.gcs_service = GcsService()
         self.cfg = config_service
 
-    @retry(
-        wait=wait_exponential(
-            multiplier=1, min=1, max=10
-        ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
-        stop=stop_after_attempt(3),  # Stop after 3 attempts
-        retry=retry_if_exception_type(
-            Exception
-        ),  # Retry on all exceptions for robustness
-        reraise=True,  # re-raise the last exception if all retries fail
-    )
     async def generate_images(
         self, request_dto: CreateImagenDto, user_email: str
     ) -> MediaItemResponse | None:
@@ -176,7 +166,10 @@ class ImagenService:
                 api_responses = await asyncio.gather(*tasks)
                 for response in api_responses:
                     all_generated_images.extend(response.generated_images or [])
-            elif request_dto.generation_model == GenerationModelEnum.GEMINI_25_FLASH_IMAGE_PREVIEW:
+            elif (
+                request_dto.generation_model
+                == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+            ):
                 tasks = [
                     asyncio.to_thread(
                         gemini_flash_image_preview_generate_image,
@@ -402,16 +395,6 @@ class ImagenService:
             logger.error(f"Error during Gemini generation: {e}")
             return []
 
-    @retry(
-        wait=wait_exponential(
-            multiplier=1, min=1, max=10
-        ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
-        stop=stop_after_attempt(3),  # Stop after 3 attempts
-        retry=retry_if_exception_type(
-            Exception
-        ),  # Retry on all exceptions for robustness
-        reraise=True,  # re-raise the last exception if all retries fail
-    )
     async def generate_image_for_vto(
         self, request_dto: VtoDto, user_email: str
     ) -> MediaItemResponse | None:
@@ -579,12 +562,6 @@ class ImagenService:
 
         return gcs_uris
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=1, max=10),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type(Exception),
-        reraise=True,
-    )
     def edit_image(
         self, request_dto: EditImagenDto
     ) -> list[ImageGenerationResult]:
@@ -655,16 +632,6 @@ class ImagenService:
             logger.error(f"API call failed: {e}")
             raise
 
-    @retry(
-        wait=wait_exponential(
-            multiplier=1, min=1, max=10
-        ),  # Exponential backoff (1s, 2s, 4s... up to 10s)
-        stop=stop_after_attempt(3),  # Stop after 3 attempts
-        retry=retry_if_exception_type(
-            Exception
-        ),  # Retry on all exceptions for robustness
-        reraise=True,  # re-raise the last exception if all retries fail
-    )
     async def upscale_image(
         self, request_dto: UpscaleImagenDto
     ) -> ImageGenerationResult | None:
@@ -687,7 +654,7 @@ class ImagenService:
                     image_bytes=base64.b64decode(request_dto.user_image)
                 )
             response = client.models.upscale_image(
-                model=request_dto.generation_model,
+                model=GenerationModelEnum.IMAGEN_3_002,
                 image=image,
                 upscale_factor=request_dto.upscale_factor,
                 config=types.UpscaleImageConfig(

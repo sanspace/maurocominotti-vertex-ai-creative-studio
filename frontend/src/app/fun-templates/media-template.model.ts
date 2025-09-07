@@ -97,8 +97,7 @@ export enum CompositionEnum {
 export enum GenerationModelEnum {
   // Image-Specific Models
   IMAGEN_4_ULTRA = 'imagen-4.0-ultra-generate-preview-06-06',
-  IMAGEN_4_FAST = "imagen-4.0-fast-generate-preview-06-06",
-  GEMINI_25_FLASH_IMAGE_PREVIEW = "gemini-2.5-flash-image-preview",
+  IMAGEN_4_FAST = 'imagen-4.0-fast-generate-preview-06-06',
 
   // Video-Specific Models
   VEO_3_FAST = 'veo-3.0-fast-generate-preview',
