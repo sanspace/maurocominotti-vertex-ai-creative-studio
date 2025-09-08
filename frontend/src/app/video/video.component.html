@@ -37,6 +37,14 @@
           <p class="text-gray-400 text-sm">This may take a few minutes. You can safely navigate away.</p>
         </div>
 
+        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
+          <mat-icon class="text-red-500 !w-16 !h-16 !text-6xl">error_outline</mat-icon>
+          <p class="mt-4 text-white text-lg">Video Generation Failed</p>
+          <p class="text-gray-400 text-sm max-w-md">{{ job.errorMessage || job.error_message }}</p>
+          <button mat-raised-button color="primary" (click)="closeErrorOverlay()" class="mt-4">Close</button>
+        </div>
+
+
         <!-- Video Gallery -->
         <app-media-lightbox
           *ngIf="job.status === JobStatus.COMPLETED"

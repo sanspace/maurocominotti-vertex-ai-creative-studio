@@ -33,11 +33,12 @@ export class VideoComponent {
   videoDocuments: MediaItem | null = null;
   isLoading = false;
   isAudioGenerationDisabled = false;
-  image1: string | null = null;
-  image2: string | null = null;
+  startImageAssetId: string | null = null;
+  endImageAssetId: string | null = null;
   image1Preview: string | null = null;
   image2Preview: string | null = null;
   showDefaultDocuments = false;
+  showErrorOverlay = true;
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
@@ -253,13 +254,44 @@ export class VideoComponent {
 
   searchTerm() {
     if (!this.searchRequest.prompt) return;
+    this.showErrorOverlay = true;
+
+    const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
+    const isVeo3 = [
+      'veo-3.0-generate-preview',
+      'veo-3.0-fast-generate-preview',
+    ].includes(this.searchRequest.generationModel);
+
+    if (hasSourceAssets && isVeo3) {
+      const veo2Model = this.generationModels.find(
+        m => m.value === 'veo-2.0-generate-001',
+      );
+      if (veo2Model) {
+        this.selectModel(veo2Model);
+        this._snackBar.openFromComponent(ToastMessageComponent, {
+          panelClass: ['green-toast'],
+          duration: 8000,
+          data: {
+            text: "Veo 3 doesn't support images as input, so we've switched to Veo 2 for you.",
+            matIcon: 'info_outline',
+          },
+        });
+        return;
+      }
+    }
 
     this.isLoading = true;
     this.videoDocuments = null;
 
+    const payload: VeoRequest = {
+      ...this.searchRequest,
+      startImageAssetId: this.startImageAssetId ?? undefined,
+      endImageAssetId: this.endImageAssetId ?? undefined,
+    };
+
     // TODO: Add notification when video is completed after the pooling
     this.service
-      .startVeoGeneration(this.searchRequest)
+      .startVeoGeneration(payload)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: (initialResponse: MediaItem) => {
@@ -416,16 +448,18 @@ export class VideoComponent {
       .afterClosed()
       .subscribe((result: MediaItem | SourceAssetResponseDto) => {
         if (result) {
-          const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+          const targetAssetId =
+            imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
           const targetPreview =
             imageNumber === 1 ? 'image1Preview' : 'image2Preview';
 
           if ('gcsUri' in result) {
-            this[targetImage] = result.gcsUri;
+            this[targetAssetId] = result.id;
             this[targetPreview] = result.presignedUrl;
           } else {
-            this[targetImage] = result.gcsUris[0];
-            this[targetPreview] = result.presignedUrls![0];
+            // Assuming a MediaItem used as a source should have an ID that can be treated as a source asset ID.
+            this[targetAssetId] = result.id;
+            this[targetPreview] = result.presignedUrls?.[0] || null;
           }
         }
       });
@@ -441,11 +475,12 @@ export class VideoComponent {
         .pipe(finalize(() => (this.isLoading = false)))
         .subscribe({
           next: asset => {
-            const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+            const targetAssetId =
+              imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
             const targetPreview =
               imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-            this[targetImage] = asset.gcsUri;
-            this[targetPreview] = asset.presignedUrl;
+            this[targetAssetId] = asset.id;
+            this[targetPreview] = asset.presignedUrl || null;
           },
           error: error => {
             handleErrorSnackbar(this._snackBar, error, 'Image upload');
@@ -466,11 +501,15 @@ export class VideoComponent {
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {
     event.stopPropagation();
     if (imageNumber === 1) {
-      this.image1 = null;
+      this.startImageAssetId = null;
       this.image1Preview = null;
     } else {
-      this.image2 = null;
+      this.endImageAssetId = null;
       this.image2Preview = null;
     }
+  }
+
+  closeErrorOverlay() {
+    this.showErrorOverlay = false;
   }
 }

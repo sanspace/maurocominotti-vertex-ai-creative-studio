@@ -44,6 +44,8 @@ export type VeoRequest = {
   negativePrompt: string;
   generateAudio: boolean;
   durationSeconds: number;
+  startImageAssetId?: string;
+  endImageAssetId?: string;
 };
 
 export type SearchResponse = {

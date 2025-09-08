@@ -86,6 +86,7 @@ export interface MediaItem {
 
   // Debugging field
   rawData?: Record<string, any>;
+  errorMessage?: string;
 }
 
 /**

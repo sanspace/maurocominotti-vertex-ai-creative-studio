@@ -1,15 +1,17 @@
-from typing import  Optional
+from typing import Optional
+
 from fastapi import Query
-from pydantic import  Field, field_validator
+from pydantic import Field, field_validator
 from typing_extensions import Annotated
+
 from src.common.base_dto import (
+    AspectRatioEnum,
     BaseDto,
     ColorAndToneEnum,
-    GenerationModelEnum,
-    AspectRatioEnum,
-    StyleEnum,
-    LightingEnum,
     CompositionEnum,
+    GenerationModelEnum,
+    LightingEnum,
+    StyleEnum,
 )
 
 
@@ -61,6 +63,14 @@ class CreateVeoDto(BaseDto):
         ge=1,
         le=8,
         description="Duration in seconds for the videos to generate (between 1 and 8 secs).",
+    )
+    start_image_asset_id: Optional[str] = Field(
+        default=None,
+        description="The ID of the SourceAsset to use as the starting image.",
+    )
+    end_image_asset_id: Optional[str] = Field(
+        default=None,
+        description="The ID of the SourceAsset to use as the ending image.",
     )
 
     @field_validator("prompt")

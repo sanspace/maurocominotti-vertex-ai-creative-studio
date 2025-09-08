@@ -31,12 +31,20 @@ from google.genai import types
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import MimeTypeEnum
 from src.common.schema.genai_model_setup import GenAIModelSetup
-from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
+from src.common.schema.media_item_model import (
+    AssetRoleEnum,
+    JobStatusEnum,
+    MediaItemModel,
+    SourceAssetLink,
+)
 from src.common.storage_service import GcsService
 from src.config.config_service import config_service
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.repository.media_item_repository import MediaRepository
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
+from src.source_assets.repository.source_asset_repository import (
+    SourceAssetRepository,
+)
 from src.users.user_model import UserModel
 from src.videos.dto.create_veo_dto import CreateVeoDto
 
@@ -130,6 +138,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
         media_repo = MediaRepository()
         gemini_service = GeminiService()
         gcs_service = GcsService()
+        source_asset_repo = SourceAssetRepository()
         try:
             client = GenAIModelSetup.init()
             cfg = config_service
@@ -140,6 +149,28 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
             )
             request_dto.prompt = rewritten_prompt
 
+            # --- Handle Source Assets for API Call ---
+            start_image_for_api: Optional[types.Image] = None
+            end_image_for_api: Optional[types.Image] = None
+
+            if request_dto.start_image_asset_id:
+                start_asset = source_asset_repo.get_by_id(
+                    request_dto.start_image_asset_id
+                )
+                if start_asset:
+                    start_image_for_api = types.Image(
+                        gcs_uri=start_asset.gcs_uri, mime_type=start_asset.mime_type
+                    )
+
+            if request_dto.end_image_asset_id:
+                end_asset = source_asset_repo.get_by_id(
+                    request_dto.end_image_asset_id
+                )
+                if end_asset:
+                    end_image_for_api = types.Image(
+                        gcs_uri=end_asset.gcs_uri, mime_type=end_asset.mime_type
+                    )
+
             all_generated_videos: List[types.GeneratedVideo] = []
 
             start_time = time.monotonic()
@@ -148,6 +179,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                 client.models.generate_videos(
                     model="veo-3.0-generate-preview",
                     prompt=request_dto.prompt,
+                    image=start_image_for_api,
                     config=types.GenerateVideosConfig(
                         number_of_videos=request_dto.number_of_media,
                         output_gcs_uri=gcs_output_directory,
@@ -155,6 +187,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                         negative_prompt=request_dto.negative_prompt,
                         generate_audio=request_dto.generate_audio,
                         duration_seconds=request_dto.duration_seconds,
+                        last_frame=end_image_for_api,  # end_image is passed as last_frame
                     ),
                 )
             )
@@ -302,6 +335,7 @@ class VeoService:
         self.media_repo = MediaRepository()
         self.gemini_service = GeminiService()
         self.gcs_service = GcsService()
+        self.source_asset_repo = SourceAssetRepository()
 
     def start_video_generation_job(
         self,
@@ -319,6 +353,21 @@ class VeoService:
         # 1. Generate an ID beforehand
         media_item_id = str(uuid.uuid4())
 
+        # 2. Prepare source asset links if they exist
+        source_assets: List[SourceAssetLink] = []
+        if request_dto.start_image_asset_id:
+            source_assets.append(
+                SourceAssetLink(
+                    asset_id=request_dto.start_image_asset_id,
+                    role=AssetRoleEnum.START_FRAME,
+                )
+            )
+        if request_dto.end_image_asset_id:
+            source_assets.append(
+                SourceAssetLink(
+                    asset_id=request_dto.end_image_asset_id, role=AssetRoleEnum.END_FRAME
+                )
+            )
         # 2. Create a placeholder document
         placeholder_item = MediaItemModel(
             id=media_item_id,
@@ -336,6 +385,7 @@ class VeoService:
             composition=request_dto.composition,
             negative_prompt=request_dto.negative_prompt,
             duration_seconds=request_dto.duration_seconds,
+            source_assets=source_assets or None,
             gcs_uris=[],
         )
 
