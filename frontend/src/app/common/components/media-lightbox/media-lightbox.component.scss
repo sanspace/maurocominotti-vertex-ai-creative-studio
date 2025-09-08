@@ -238,4 +238,10 @@
         font-weight: 500;
       }
   }
+
+  .share-menu-list li.coming-soon.youtube-highlight button {
+    background-color: #ff0000; /* YouTube Red */
+    color: #ffffff;
+    opacity: 1;
+  }
 }

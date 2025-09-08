@@ -18,10 +18,11 @@ import base64
 import logging
 import time
 import uuid
-from typing import List
+from typing import List, Optional
 
 from google.cloud import aiplatform
 from google.genai import Client, types
+
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import (
     AspectRatioEnum,
@@ -29,7 +30,12 @@ from src.common.base_dto import (
     MimeTypeEnum,
 )
 from src.common.schema.genai_model_setup import GenAIModelSetup
-from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
+from src.common.schema.media_item_model import (
+    AssetRoleEnum,
+    JobStatusEnum,
+    MediaItemModel,
+    SourceAssetLink,
+)
 from src.common.storage_service import GcsService
 from src.config.config_service import config_service
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
@@ -43,12 +49,10 @@ from src.images.schema.imagen_result_model import (
     ImageGenerationResult,
 )
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
+from src.source_assets.repository.source_asset_repository import (
+    SourceAssetRepository,
 )
+from src.users.user_model import UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -58,20 +62,36 @@ def gemini_flash_image_preview_generate_image(
     vertexai_client: Client,
     prompt: str,
     bucket_name: str,
+    reference_images: Optional[List[types.Image]] = None,
 ) -> types.GeneratedImage | None:
     """
-    Generates an image using the Gemini API and returns the image data in a buffer.
+    Generates an image using the Gemini API for text-to-image or image-to-image.
     This is a blocking function.
 
     Returns:
         A types.GeneratedImage object, or None if failed.
     """
     model = GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
-    contents: list[types.ContentUnionDict] = [
-        types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
-    ]
-    generate_content_config = types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"])
 
+    # Build the parts for the content, including the prompt and any reference images
+    parts = [types.Part.from_text(text=prompt)]
+    if reference_images:
+        for img in reference_images:
+            # The from_image helper was removed. We now use from_uri for GCS paths.
+            # The mime_type is automatically inferred by the SDK if not provided.
+            if img.gcs_uri:
+                parts.append(
+                    types.Part.from_uri(
+                        file_uri=img.gcs_uri, mime_type=img.mime_type
+                    )
+                )
+
+    contents: list[types.ContentUnionDict] = [
+        types.Content(role="user", parts=parts)
+    ]
+    generate_content_config = types.GenerateContentConfig(
+        response_modalities=["TEXT", "IMAGE"]
+    )
     stream = vertexai_client.models.generate_content_stream(
         model=model,
         contents=contents,
@@ -120,10 +140,11 @@ class ImagenService:
         self.media_repo = MediaRepository()
         self.gemini_service = GeminiService()
         self.gcs_service = GcsService()
+        self.source_asset_repo = SourceAssetRepository()
         self.cfg = config_service
 
     async def generate_images(
-        self, request_dto: CreateImagenDto, user_email: str
+        self, request_dto: CreateImagenDto, user: UserModel
     ) -> MediaItemResponse | None:
         """
         Generates a batch of images and saves them as a single MediaItem document.
@@ -139,68 +160,139 @@ class ImagenService:
         )
         request_dto.prompt = rewritten_prompt
 
+        source_assets: List[SourceAssetLink] = []
+        reference_images_for_api: List[types.Image] = []
+
+        if request_dto.source_asset_ids:
+            for asset_id in request_dto.source_asset_ids:
+                source_asset = await asyncio.to_thread(
+                    self.source_asset_repo.get_by_id, asset_id
+                )
+                if source_asset:
+                    source_assets.append(
+                        SourceAssetLink(
+                            asset_id=asset_id, role=AssetRoleEnum.INPUT
+                        )
+                    )
+                    reference_images_for_api.append(
+                        types.Image(
+                            gcs_uri=source_asset.gcs_uri,
+                            mime_type=source_asset.mime_type,
+                        )
+                    )
+                else:
+                    logger.warning(
+                        f"Source asset with ID {asset_id} not found."
+                    )
+
         all_generated_images: List[types.GeneratedImage] = []
 
         try:
-            if (
-                request_dto.generation_model
-                == GenerationModelEnum.IMAGEN_4_ULTRA
-            ):
-                # --- IMAGEN 4 ULTRA: Parallel API Calls ---
-                tasks = [
-                    asyncio.to_thread(
+            # --- PATH 1: TEXT-TO-IMAGE GENERATION ---
+            if not reference_images_for_api:
+                if (
+                    request_dto.generation_model
+                    == GenerationModelEnum.IMAGEN_4_ULTRA
+                ):
+                    # --- IMAGEN 4 TEXT-TO-IMAGE: Parallel API Calls ---
+                    tasks = [
+                        asyncio.to_thread(
+                            client.models.generate_images,
+                            model=request_dto.generation_model,
+                            prompt=request_dto.prompt,
+                            config=types.GenerateImagesConfig(
+                                number_of_images=1,
+                                output_gcs_uri=gcs_output_directory,
+                                aspect_ratio=request_dto.aspect_ratio,
+                                negative_prompt=request_dto.negative_prompt,
+                                add_watermark=request_dto.add_watermark,
+                                image_size="2K",
+                            ),
+                        )
+                        for _ in range(request_dto.number_of_media)
+                    ]
+                    api_responses = await asyncio.gather(*tasks)
+                    for response in api_responses:
+                        all_generated_images.extend(
+                            response.generated_images or []
+                        )
+                elif (
+                    request_dto.generation_model
+                    == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+                ):
+                    # --- GEMINI FLASH TEXT-TO-IMAGE ---
+                    tasks = [
+                        asyncio.to_thread(
+                            gemini_flash_image_preview_generate_image,
+                            gcs_service=self.gcs_service,
+                            vertexai_client=client,
+                            prompt=request_dto.prompt,
+                            bucket_name=self.gcs_service.bucket_name,
+                        )
+                        for _ in range(request_dto.number_of_media)
+                    ]
+                    gemini_images_response = await asyncio.gather(*tasks)
+                    all_generated_images = [
+                        img for img in gemini_images_response if img
+                    ]
+                else:
+                    # --- OTHER IMAGEN MODELS (TEXT-TO-IMAGE): Single Batch API Call ---
+                    images_imagen_response = await asyncio.to_thread(
                         client.models.generate_images,
                         model=request_dto.generation_model,
                         prompt=request_dto.prompt,
                         config=types.GenerateImagesConfig(
-                            number_of_images=1,
+                            number_of_images=request_dto.number_of_media,
                             output_gcs_uri=gcs_output_directory,
                             aspect_ratio=request_dto.aspect_ratio,
                             negative_prompt=request_dto.negative_prompt,
                             add_watermark=request_dto.add_watermark,
-                            image_size="2K",
                         ),
                     )
-                    for _ in range(request_dto.number_of_media)
-                ]
-                api_responses = await asyncio.gather(*tasks)
-                for response in api_responses:
-                    all_generated_images.extend(response.generated_images or [])
-            elif (
-                request_dto.generation_model
-                == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
-            ):
-                tasks = [
-                    asyncio.to_thread(
-                        gemini_flash_image_preview_generate_image,
-                        gcs_service=self.gcs_service,
-                        vertexai_client=client,
-                        prompt=request_dto.prompt,
-                        bucket_name=self.gcs_service.bucket_name,
+                    all_generated_images = (
+                        images_imagen_response.generated_images or []
                     )
-                    for _ in range(request_dto.number_of_media)
-                ]
-                gemini_images_response = await asyncio.gather(*tasks)
-                all_generated_images = [
-                    img for img in gemini_images_response if img
-                ]
+            # --- PATH 2: IMAGE EDITING (IMAGE-TO-IMAGE) ---
             else:
-                # --- OTHER IMAGEN MODELS: Single Batch API Call ---
-                images_imagen_response = await asyncio.to_thread(
-                    client.models.generate_images,
-                    model=request_dto.generation_model,
-                    prompt=request_dto.prompt,
-                    config=types.GenerateImagesConfig(
-                        number_of_images=request_dto.number_of_media,
-                        output_gcs_uri=gcs_output_directory,
-                        aspect_ratio=request_dto.aspect_ratio,
-                        negative_prompt=request_dto.negative_prompt,
-                        add_watermark=request_dto.add_watermark,
-                    ),
-                )
-                all_generated_images = (
-                    images_imagen_response.generated_images or []
-                )
+                if (
+                    request_dto.generation_model
+                    == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+                ):
+                    # --- GEMINI FLASH IMAGE-TO-IMAGE ---
+                    tasks = [
+                        asyncio.to_thread(
+                            gemini_flash_image_preview_generate_image,
+                            gcs_service=self.gcs_service,
+                            vertexai_client=client,
+                            prompt=request_dto.prompt,
+                            bucket_name=self.gcs_service.bucket_name,
+                            reference_images=reference_images_for_api,
+                        )
+                        for _ in range(request_dto.number_of_media)
+                    ]
+                    gemini_images_response = await asyncio.gather(*tasks)
+                    all_generated_images = [
+                        img for img in gemini_images_response if img
+                    ]
+                else:
+                    # --- IMAGEN MODELS (IMAGE-TO-IMAGE) ---
+                    # The DTO validation ensures we only have one source image here.
+                    raw_ref_image = types._ReferenceImageAPI(
+                        reference_id=1,
+                        reference_image=reference_images_for_api[0],
+                    )
+                    response = await asyncio.to_thread(
+                        client.models.edit_image,
+                        model=request_dto.generation_model,
+                        prompt=request_dto.prompt,
+                        reference_images=[raw_ref_image],
+                        config=types.EditImageConfig(
+                            edit_mode=types.EditMode.EDIT_MODE_DEFAULT,
+                            number_of_images=request_dto.number_of_media,
+                            output_gcs_uri=gcs_output_directory,
+                        ),
+                    )
+                    all_generated_images.extend(response.generated_images or [])
 
             if not all_generated_images:
                 return None
@@ -270,7 +362,8 @@ class ImagenService:
             # Create and save a SINGLE MediaItem for the entire batch
             media_post_to_save = MediaItemModel(
                 # Core Props
-                user_email=user_email,
+                user_email=user.email,
+                user_id=user.id,
                 mime_type=mime_type,
                 model=request_dto.generation_model,
                 # Common Props
@@ -288,6 +381,8 @@ class ImagenService:
                 composition=request_dto.composition,
                 negative_prompt=request_dto.negative_prompt,
                 add_watermark=request_dto.add_watermark,
+                source_assets=source_assets,
+                parent_media_item_id=request_dto.parent_media_item_id,
             )
             self.media_repo.save(media_post_to_save)
 
@@ -396,7 +491,7 @@ class ImagenService:
             return []
 
     async def generate_image_for_vto(
-        self, request_dto: VtoDto, user_email: str
+        self, request_dto: VtoDto, user: UserModel
     ) -> MediaItemResponse | None:
         """Generates a VTO image using the google.genai client."""
         start_time = time.monotonic()
@@ -486,7 +581,8 @@ class ImagenService:
             # Create and save a SINGLE MediaItem for the entire batch
             media_post_to_save = MediaItemModel(
                 # Core Props
-                user_email=user_email,
+                user_email=user.email,
+                user_id=user.id,
                 mime_type=mime_type,
                 model=GenerationModelEnum.VTO,
                 # TODO: Important! Let's calculate the aspect ratio for vto images!
@@ -498,6 +594,7 @@ class ImagenService:
                 generation_time=generation_time,
                 gcs_uris=permanent_gcs_uris,
                 status=JobStatusEnum.COMPLETED,
+                # source_assets=source_assets,
             )
             self.media_repo.save(media_post_to_save)
 

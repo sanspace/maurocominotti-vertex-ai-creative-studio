@@ -22,13 +22,14 @@ export type ImagenRequest = {
   aspectRatio: string;
   numberOfMedia: number;
   style: string;
-  lighting: string;
-  colorAndTone: string;
-  composition: string;
-  addWatermark: boolean;
   negativePrompt: string;
-  image1?: ImageDataRequest;
-  image2?: ImageDataRequest;
+  colorAndTone?: string;
+  lighting?: string;
+  composition?: string;
+  addWatermark: boolean;
+  upscaleFactor?: '' | 'x2' | 'x4';
+  sourceAssetIds?: string[];
+  parentMediaItemId?: string;
 };
 
 export type VeoRequest = {

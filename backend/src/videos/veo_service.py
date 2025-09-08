@@ -20,22 +20,25 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import List, Optional
 import uuid
+from concurrent.futures import ProcessPoolExecutor
+from typing import List, Optional
+
+from google.cloud.logging import Client as LoggerClient
+from google.cloud.logging.handlers import CloudLoggingHandler
 from google.genai import types
+
+from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import MimeTypeEnum
-from src.galleries.dto.gallery_response_dto import MediaItemResponse
-from src.common.storage_service import GcsService
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import JobStatusEnum, MediaItemModel
-from src.images.repository.media_item_repository import MediaRepository
-from src.videos.dto.create_veo_dto import CreateVeoDto
-from src.auth.iam_signer_credentials_service import IamSignerCredentials
+from src.common.storage_service import GcsService
 from src.config.config_service import config_service
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.images.repository.media_item_repository import MediaRepository
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
-from concurrent.futures import ProcessPoolExecutor
-from google.cloud.logging.handlers import CloudLoggingHandler
-from google.cloud.logging import Client as LoggerClient
+from src.users.user_model import UserModel
+from src.videos.dto.create_veo_dto import CreateVeoDto
 
 logger = logging.getLogger(__name__)
 
@@ -303,7 +306,7 @@ class VeoService:
     def start_video_generation_job(
         self,
         request_dto: CreateVeoDto,
-        user_email: str,
+        user: UserModel,
         executor: ProcessPoolExecutor,
     ) -> MediaItemResponse:
         """
@@ -319,7 +322,8 @@ class VeoService:
         # 2. Create a placeholder document
         placeholder_item = MediaItemModel(
             id=media_item_id,
-            user_email=user_email,
+            user_email=user.email,
+            user_id=user.id,
             mime_type=MimeTypeEnum.VIDEO_MP4,
             model=request_dto.generation_model,
             original_prompt=request_dto.prompt,
@@ -352,7 +356,8 @@ class VeoService:
                 "json_fields": {
                     "message": "Video generation job successfully queued.",
                     "media_id": placeholder_item.id,
-                    "user_email": user_email,
+                    "user_email": user.email,
+                    "user_id": user.id,
                     "model": request_dto.generation_model,
                 }
             },

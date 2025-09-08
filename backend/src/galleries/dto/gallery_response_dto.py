@@ -14,7 +14,16 @@
 
 from typing import List, Optional
 
-from src.common.schema.media_item_model import MediaItemModel
+from src.common.schema.media_item_model import MediaItemModel, SourceAssetLink
+
+
+class SourceAssetLinkResponse(SourceAssetLink):
+    """
+    Extends the source asset link with a presigned URL and GCS URI for frontend display.
+    """
+
+    presigned_url: str
+    gcs_uri: str
 
 
 class MediaItemResponse(MediaItemModel):
@@ -23,5 +32,7 @@ class MediaItemResponse(MediaItemModel):
     It includes all fields from the original MediaItem plus a list of
     temporary, presigned URLs for frontend display.
     """
+
     presigned_urls: List[str] = []
     presigned_thumbnail_urls: Optional[List[str]] = []
+    enriched_source_assets: Optional[List[SourceAssetLinkResponse]] = None

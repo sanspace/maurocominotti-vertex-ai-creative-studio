@@ -1,15 +1,17 @@
 import logging
 from typing import List
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth
-from src.config.config_service import config_service
-from src.users.user_model import User, UserRoleEnum
-from src.users.user_service import UserService
 
 # --- Google Auth for Identity Platform ---
 from google.auth.transport import requests as google_auth_requests
 from google.oauth2 import id_token
+
+from src.config.config_service import config_service
+from src.users.user_model import UserModel, UserRoleEnum
+from src.users.user_service import UserService
 
 # Initialize the service once to be used by dependencies.
 user_service = UserService()
@@ -22,7 +24,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 logger = logging.getLogger(__name__)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(token: str = Depends(oauth2_scheme)) -> UserModel:
     """
     Dependency that handles the entire authentication and user provisioning flow.
 
@@ -114,7 +116,7 @@ class RoleChecker:
     def __init__(self, allowed_roles: List[UserRoleEnum]):
         self.allowed_roles = allowed_roles
 
-    def __call__(self, user: User = Depends(get_current_user)):
+    def __call__(self, user: UserModel = Depends(get_current_user)):
         """
         Checks the user's roles against the allowed roles.
         """

@@ -2,7 +2,7 @@ from typing import Annotated, Literal, Optional
 
 from fastapi import Query
 from google.genai import types
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from src.common.base_dto import (
     AspectRatioEnum,
     BaseDto,
@@ -12,7 +12,6 @@ from src.common.base_dto import (
     LightingEnum,
     StyleEnum,
 )
-from src.images.dto.image_data_dto import ImageDataDto
 
 
 class CreateImagenDto(BaseDto):
@@ -62,12 +61,13 @@ class CreateImagenDto(BaseDto):
         default="",
         description="""Factor of the upscale, either x2 or x4. If empty it will not upscale""",
     )
-    # TODO: Change to use gcs uri
-    image_1: Optional[ImageDataDto] = Field(
-        default=None, description="Input image 1"
+    source_asset_ids: Optional[Annotated[list[str], Field(max_length=2)]] = Field(
+        default=None,
+        description="A list of source asset IDs to be used as input for image-to-image generation.",
     )
-    image_2: Optional[ImageDataDto] = Field(
-        default=None, description="Input image 2"
+    parent_media_item_id: Optional[str] = Field(
+        default=None,
+        description="If editing a previously generated media item, provide its ID to maintain lineage.",
     )
 
     @field_validator("prompt")
@@ -94,3 +94,31 @@ class CreateImagenDto(BaseDto):
         if value not in valid_video_ratios:
             raise ValueError("Invalid generation model for imagen.")
         return value
+
+    @model_validator(mode="after")
+    def validate_source_assets_for_model(self) -> "CreateImagenDto":
+        """
+        Ensures the number of source assets is valid for the selected model.
+        - Gemini Flash allows up to 2 source images.
+        - For other models, only IMAGEN_3_FAST and IMAGEN_3_002 support editing with 1 source image.
+        """
+        if self.source_asset_ids:
+            is_gemini_flash = (
+                self.generation_model
+                == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+            )
+            if not is_gemini_flash:
+                if len(self.source_asset_ids) > 1:
+                    raise ValueError(
+                        "Only one source asset is allowed for image editing with Imagen models."
+                    )
+                allowed_editing_models = [
+                    GenerationModelEnum.IMAGEN_3_FAST,
+                    GenerationModelEnum.IMAGEN_3_002,
+                ]
+                if self.generation_model not in allowed_editing_models:
+                    raise ValueError(
+                        f"Model '{self.generation_model.value}' does not support image editing. "
+                        "Please use 'imagen-3.0-fast-generate-001' or 'imagen-3.0-generate-002' for this feature."
+                    )
+        return self

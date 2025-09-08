@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fastapi import APIRouter, HTTPException, Request, status as Status
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import status as Status
 
+from src.auth.auth_guard import RoleChecker, get_current_user
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.users.user_model import UserModel, UserRoleEnum
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.videos.veo_service import VeoService
-from src.users.user_model import User, UserRoleEnum
-from src.auth.auth_guard import RoleChecker, get_current_user
 
 # Define role checkers for convenience
 user_only = Depends(
@@ -38,7 +38,7 @@ router = APIRouter(
 async def generate_videos(
     video_request: CreateVeoDto,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
     service: VeoService = Depends(),
 ) -> MediaItemResponse | None:
     try:
@@ -47,7 +47,7 @@ async def generate_videos(
 
         placeholder_item = service.start_video_generation_job(
             request_dto=video_request,
-            user_email=current_user.email,
+            user=current_user,
             executor=executor,  # Pass the pool to the service
         )
         return placeholder_item

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from src.common.base_dto import MimeTypeEnum
+from src.common.base_dto import AspectRatioEnum, MimeTypeEnum
 from src.common.base_repository import BaseDocument
 
 
@@ -33,6 +33,7 @@ class SourceAssetModel(BaseDocument):
     gcs_uri: str
     original_filename: str
     mime_type: MimeTypeEnum
+    aspect_ratio: AspectRatioEnum = AspectRatioEnum.RATIO_1_1
     file_hash: str  # SHA-256 hash of the original file for de-duplication
     scope: AssetScopeEnum = AssetScopeEnum.PRIVATE
     asset_type: AssetTypeEnum = AssetTypeEnum.GENERIC_IMAGE

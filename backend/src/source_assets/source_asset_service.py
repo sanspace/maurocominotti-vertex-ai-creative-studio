@@ -39,7 +39,7 @@ from src.source_assets.schema.source_asset_model import (
     AssetTypeEnum,
     SourceAssetModel,
 )
-from src.users.user_model import User, UserRoleEnum
+from src.users.user_model import UserModel, UserRoleEnum
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class SourceAssetService:
 
     async def upload_asset(
         self,
-        user: User,
+        user: UserModel,
         file: UploadFile,
         scope: Optional[AssetScopeEnum] = None,
         asset_type: Optional[AssetTypeEnum] = None,

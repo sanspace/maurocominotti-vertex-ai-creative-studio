@@ -14,6 +14,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as Status
+
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
@@ -22,7 +23,7 @@ from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.dto.vto_dto import VtoDto
 from src.images.imagen_service import ImagenService
 from src.images.schema.imagen_result_model import ImageGenerationResult
-from src.users.user_model import User, UserRoleEnum
+from src.users.user_model import UserModel, UserRoleEnum
 
 # Define role checkers for convenience
 user_only = Depends(
@@ -40,12 +41,12 @@ router = APIRouter(
 @router.post("/generate-images")
 async def generate_images(
     image_request: CreateImagenDto,
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
     try:
         service = ImagenService()
         return await service.generate_images(
-            request_dto=image_request, user_email=current_user.email
+            request_dto=image_request, user=current_user
         )
     except HTTPException as http_exception:
         raise http_exception
@@ -64,13 +65,13 @@ async def generate_images(
 @router.post("/generate-images-for-vto")
 async def generate_images_vto(
     image_request: VtoDto,
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
 
     try:
         service = ImagenService()
         return await service.generate_image_for_vto(
-            request_dto=image_request, user_email=current_user.email
+            request_dto=image_request, user=current_user
         )
     except HTTPException as http_exception:
         raise http_exception

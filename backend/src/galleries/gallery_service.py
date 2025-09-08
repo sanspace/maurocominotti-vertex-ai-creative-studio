@@ -18,9 +18,15 @@ from typing import Optional
 from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.galleries.dto.gallery_response_dto import (
+    MediaItemResponse,
+    SourceAssetLinkResponse,
+)
 from src.images.repository.media_item_repository import MediaRepository
-from src.common.schema.media_item_model import MediaItemModel
+from src.common.schema.media_item_model import MediaItemModel, SourceAssetLink
+from src.source_assets.repository.source_asset_repository import (
+    SourceAssetRepository,
+)
 
 class GalleryService:
     """
@@ -31,6 +37,27 @@ class GalleryService:
         """Initializes the service with its dependencies."""
         self.media_repo = MediaRepository()
         self.iam_signer_credentials = IamSignerCredentials()
+        self.source_asset_repo = SourceAssetRepository()
+
+    async def _enrich_source_asset_link(
+        self, link: SourceAssetLink
+    ) -> Optional[SourceAssetLinkResponse]:
+        """
+        Fetches the source asset document and generates a presigned URL for it.
+        """
+        asset_doc = await asyncio.to_thread(
+            self.source_asset_repo.get_by_id, link.asset_id
+        )
+        if not asset_doc:
+            return None
+
+        presigned_url = await asyncio.to_thread(
+            self.iam_signer_credentials.generate_presigned_url, asset_doc.gcs_uri
+        )
+
+        return SourceAssetLinkResponse(
+            **link.model_dump(), presigned_url=presigned_url, gcs_uri=asset_doc.gcs_uri
+        )
 
     async def _create_gallery_response(
         self, item: MediaItemModel
@@ -41,15 +68,13 @@ class GalleryService:
         """
         all_gcs_uris = item.gcs_uris or []
 
-        # Create a list of tasks to run the synchronous URL generation in parallel threads
-        tasks = [
+        # 1. Create tasks for main media URLs
+        main_url_tasks = [
             asyncio.to_thread(self.iam_signer_credentials.generate_presigned_url, uri)
             for uri in all_gcs_uris if uri
         ]
 
-        # Await all URL generation tasks to complete concurrently
-        presigned_urls = await asyncio.gather(*tasks)
-
+        # 2. Create tasks for thumbnail URLs
         thumbnail_tasks = [
             asyncio.to_thread(
                 self.iam_signer_credentials.generate_presigned_url, uri
@@ -57,13 +82,33 @@ class GalleryService:
             for uri in (item.thumbnail_uris or "")
             if uri
         ]
-        presigned_thumbnail_urls = await asyncio.gather(*thumbnail_tasks)
+
+        # 3. Create tasks for source asset URLs
+        source_asset_tasks = []
+        if item.source_assets:
+            source_asset_tasks = [
+                self._enrich_source_asset_link(link) for link in item.source_assets
+            ]
+
+        # 4. Gather all results concurrently
+        (
+            presigned_urls,
+            presigned_thumbnail_urls,
+            enriched_source_assets_with_nones,
+        ) = await asyncio.gather(
+            asyncio.gather(*main_url_tasks),
+            asyncio.gather(*thumbnail_tasks),
+            asyncio.gather(*source_asset_tasks),
+        )
+
+        enriched_source_assets = [asset for asset in enriched_source_assets_with_nones if asset]
 
         # Create the response DTO, copying all original data and adding the new URLs
         return MediaItemResponse(
-            **item.model_dump(),
+            **item.model_dump(exclude={"source_assets"}),
             presigned_urls=presigned_urls,
-            presigned_thumbnail_urls=presigned_thumbnail_urls
+            presigned_thumbnail_urls=presigned_thumbnail_urls,
+            enriched_source_assets=enriched_source_assets or None,
         )
 
     async def get_paginated_gallery(

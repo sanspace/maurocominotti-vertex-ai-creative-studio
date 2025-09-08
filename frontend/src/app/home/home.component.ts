@@ -38,6 +38,7 @@ import {HttpClient} from '@angular/common/http';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {environment} from '../../environments/environment';
+import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 
 @Component({
   selector: 'app-home',
@@ -50,8 +51,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoading = false;
   templateParams: GenerationParameters | undefined;
   showDefaultDocuments = false;
-  image1: string | null = null;
-  image2: string | null = null;
+  sourceAssetId1: string | null = null;
+  sourceAssetId2: string | null = null;
   image1Preview: string | null = null;
   image2Preview: string | null = null;
 
@@ -93,6 +94,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       viewValue: 'Imagen 4 Fast', // Keeping gemini-spark-icon for Imagen
       icon: 'gemini-spark-icon',
       isSvg: true,
+    },
+    {
+      value: 'imagen-3.0-generate-002',
+      viewValue: 'Imagen 3',
+      icon: 'auto_awesome',
+    },
+    {
+      value: 'imagen-3.0-fast-generate-001',
+      viewValue: 'Imagen 3 Fast',
+      icon: 'auto_awesome',
     },
   ];
   selectedGenerationModelObject = this.generationModels[0];
@@ -433,16 +444,44 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   searchTerm() {
     if (!this.searchRequest.prompt) return;
 
+    const hasSourceAssets = this.sourceAssetId1 || this.sourceAssetId2;
+    const isImagen4 = [
+      'imagen-4.0-ultra-generate-preview-06-06',
+      'imagen-4.0-fast-generate-preview-06-06',
+    ].includes(this.searchRequest.generationModel);
+
+    if (hasSourceAssets && isImagen4) {
+      const imagen3Model = this.generationModels.find(
+        m => m.value === 'imagen-3.0-generate-002',
+      );
+      if (imagen3Model) {
+        this.selectModel(imagen3Model);
+        this._snackBar.openFromComponent(ToastMessageComponent, {
+          panelClass: ['green-toast'],
+          duration: 8000,
+          data: {
+            text: "Imagen 4 doesn't support images as input, so we've switched to Imagen 3 for you!",
+            matIcon: 'info_outline',
+          },
+        });
+        return;
+      }
+    }
+
     const payload: ImagenRequest = {
       ...this.searchRequest,
       negativePrompt: this.negativePhrases.join(', '),
     };
 
-    if (this.image1) {
-      payload.image1 = {gcs_uri: this.image1};
+    const sourceAssetIds = [];
+    if (this.sourceAssetId1) {
+      sourceAssetIds.push(this.sourceAssetId1);
     }
-    if (this.image2) {
-      payload.image2 = {gcs_uri: this.image2};
+    if (this.sourceAssetId2) {
+      sourceAssetIds.push(this.sourceAssetId2);
+    }
+    if (sourceAssetIds.length > 0) {
+      payload.sourceAssetIds = sourceAssetIds;
     }
 
     this.isLoading = true;
@@ -542,17 +581,18 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .afterClosed()
       .subscribe((result: MediaItem | SourceAssetResponseDto) => {
         if (result) {
-          const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+          const targetAssetId =
+            imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
           const targetPreview =
             imageNumber === 1 ? 'image1Preview' : 'image2Preview';
 
           if ('gcsUri' in result) {
             // Uploaded image (SourceAssetResponseDto)
-            this[targetImage] = result.gcsUri;
+            this[targetAssetId] = result.id;
             this[targetPreview] = result.presignedUrl;
           } else {
             // Gallery image (MediaItem)
-            this[targetImage] = result.gcsUris[0];
+            this[targetAssetId] = result.id;
             this[targetPreview] = result.presignedUrls![0];
           }
         }
@@ -577,10 +617,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         .pipe(finalize(() => (this.isLoading = false)))
         .subscribe({
           next: asset => {
-            const targetImage = imageNumber === 1 ? 'image1' : 'image2';
+            const targetAssetId =
+              imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
             const targetPreview =
               imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-            this[targetImage] = asset.gcsUri;
+            this[targetAssetId] = asset.id;
             this[targetPreview] = asset.presignedUrl;
           },
           error: error => {
@@ -593,10 +634,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {
     event.stopPropagation();
     if (imageNumber === 1) {
-      this.image1 = null;
+      this.sourceAssetId1 = null;
       this.image1Preview = null;
     } else {
-      this.image2 = null;
+      this.sourceAssetId2 = null;
       this.image2Preview = null;
     }
   }

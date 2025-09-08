@@ -2,7 +2,7 @@ import datetime
 from enum import Enum
 from typing import Annotated, Dict, List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 from src.common.base_dto import (
     AspectRatioEnum,
@@ -14,6 +14,7 @@ from src.common.base_dto import (
     StyleEnum,
 )
 from src.common.base_repository import BaseDocument
+from pydantic.alias_generators import to_camel
 
 
 class JobStatusEnum(str, Enum):
@@ -57,6 +58,15 @@ class SourceAssetLink(BaseModel):
     Think of this as the character the actor played in a specific movie (e.g., "Forrest Gump").
     """
 
+    # Pydantic v2 configuration for this sub-model
+    model_config = ConfigDict(
+        use_enum_values=True,  # Allows passing enum members like StyleEnum.MODERN
+        extra="ignore",  # Prevents accidental extra fields
+        populate_by_name=True,
+        from_attributes=True,
+        alias_generator=to_camel,
+    )
+
 
 class MediaItemModel(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""
@@ -64,7 +74,7 @@ class MediaItemModel(BaseDocument):
     # Indexes that shouldn't and mustn't be empty
     # created_at is an index but is autopopulated by BaseDocument
     user_email: str
-    # user_id: str  # The User ID of the person who uploaded it
+    user_id: Optional[str] = None  # TODO: Change to required in the near future
     mime_type: MimeTypeEnum
     model: GenerationModelEnum
 

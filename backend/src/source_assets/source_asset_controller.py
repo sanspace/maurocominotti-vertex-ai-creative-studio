@@ -14,7 +14,15 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.common.dto.pagination_response_dto import PaginationResponseDto
@@ -22,13 +30,13 @@ from src.source_assets.dto.source_asset_response_dto import (
     SourceAssetResponseDto,
 )
 from src.source_assets.dto.source_asset_search_dto import SourceAssetSearchDto
-from src.source_assets.source_asset_service import SourceAssetService
+from src.source_assets.dto.vto_assets_response_dto import VtoAssetsResponseDto
 from src.source_assets.schema.source_asset_model import (
     AssetScopeEnum,
     AssetTypeEnum,
 )
-from src.source_assets.dto.vto_assets_response_dto import VtoAssetsResponseDto
-from src.users.user_model import User, UserRoleEnum
+from src.source_assets.source_asset_service import SourceAssetService
+from src.users.user_model import UserModel, UserRoleEnum
 
 router = APIRouter(
     prefix="/api/source_assets",
@@ -47,7 +55,7 @@ async def upload_source_asset(
     file: UploadFile = File(),
     scope: Optional[AssetScopeEnum] = Form(None),
     asset_type: Optional[AssetTypeEnum] = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
     service: SourceAssetService = Depends(),
 ):
     """
@@ -70,7 +78,7 @@ async def upload_source_asset(
 )
 async def list_source_assets(
     search_dto: SourceAssetSearchDto,
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
     service: SourceAssetService = Depends(),
     # user_repo: UserRepository = Depends(), # Add this dependency for user lookups
 ):
@@ -100,7 +108,6 @@ async def list_source_assets(
         #     raise HTTPException(status.HTTP_404_NOT_FOUND, "User with that email not found.")
         # target_user_id = target_user.id
         pass  # Placeholder for user lookup logic
-
 
     return await service.list_assets_for_user(
         search_dto=search_dto, target_user_id=target_user_id

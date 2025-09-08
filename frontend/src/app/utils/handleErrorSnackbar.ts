@@ -8,8 +8,8 @@ export const handleErrorSnackbar: (
 ) => void = (snackBar: MatSnackBar, error: any, context: string) => {
   console.error(`${context} error:`, error);
   const errorMessage =
-    error?.error?.detail ||
     error?.error?.detail?.[0]?.msg ||
+    error?.error?.detail ||
     error?.message ||
     'Something went wrong';
 
