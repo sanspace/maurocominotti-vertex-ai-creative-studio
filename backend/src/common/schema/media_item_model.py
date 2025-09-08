@@ -1,15 +1,17 @@
 import datetime
 from enum import Enum
 from typing import Annotated, Dict, List, Optional
-from pydantic import Field, HttpUrl
+
+from pydantic import BaseModel, Field, HttpUrl
+
 from src.common.base_dto import (
     AspectRatioEnum,
     ColorAndToneEnum,
     CompositionEnum,
     GenerationModelEnum,
+    LightingEnum,
     MimeTypeEnum,
     StyleEnum,
-    LightingEnum,
 )
 from src.common.base_repository import BaseDocument
 
@@ -22,12 +24,47 @@ class JobStatusEnum(str, Enum):
     FAILED = "failed"
 
 
+class AssetRoleEnum(str, Enum):
+    """
+    Defines the specific FUNCTION an asset played in a single generation task.
+    """
+
+    INPUT = "input"  # For general image-to-image or editing
+    STYLE_REFERENCE = "style_reference"  # For style transfer
+    START_FRAME = "start_frame"  # For Veo start image
+    END_FRAME = "end_frame"  # For Veo end image
+    MASK = "mask"  # For inpainting/outpainting masks
+    VTO_PERSON = "vto_person"  # Role for the person model in a VTO generation
+    VTO_TOP = "vto_top"  # Role for the top garment in a VTO generation
+    VTO_BOTTOM = "vto_bottom"  # Role for the bottom garment in a VTO generation
+    VTO_DRESS = "vto_dress"  # Role for the dress in a VTO generation
+    VTO_SHOE = "vto_shoe"  # Role for the shoe in a VTO generation
+
+
+class SourceAssetLink(BaseModel):
+    """
+    A linking object within MediaItemModel that connects a generated result
+    to a specific source asset and its function in that generation.
+    """
+
+    asset_id: str
+    """The unique ID of the document in the 'user_assets' collection."""
+
+    role: AssetRoleEnum
+    """
+    Describes the asset's FUNCTION for this specific creation. It answers "How WAS this file used?".
+    This allows a single asset (e.g., asset_type: 'GENERIC_IMAGE') to be used in many different ways.
+    Think of this as the character the actor played in a specific movie (e.g., "Forrest Gump").
+    """
+
+
 class MediaItemModel(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""
 
     # Indexes that shouldn't and mustn't be empty
     # created_at is an index but is autopopulated by BaseDocument
     user_email: str
+    # user_id: str  # The User ID of the person who uploaded it
     mime_type: MimeTypeEnum
     model: GenerationModelEnum
 
@@ -48,8 +85,19 @@ class MediaItemModel(BaseDocument):
     negative_prompt: Optional[str] = None
     add_watermark: Optional[bool] = None
     status: JobStatusEnum = Field(default=JobStatusEnum.PROCESSING)
-    # Stores a list of IDs from the UserAsset collection
-    source_asset_ids: Optional[List[str]] = None
+    # Stores a list of IDs from the SourceAssetModel collection
+    source_assets: Optional[List[SourceAssetLink]] = None
+    """
+    A list that describes the 'recipe' used to create this media item. It links
+    to the source assets from the 'user_assets' collection and specifies the role
+    each one played in the generation.
+    """
+
+    parent_media_item_id: Optional[str] = None
+    """
+    If this media item is an edit of a previously generated item, this field
+    will store the ID of the parent MediaItem, creating a clear lineage.
+    """
 
     # URI fields
     gcs_uris: Annotated[
@@ -59,18 +107,13 @@ class MediaItemModel(BaseDocument):
             description="A list of public URLs for the media to be displayed (e.g., video or image).",
         ),
     ]
-    source_images_gcs: List[str] = Field(default_factory=list)
 
     # Video specific
     duration_seconds: Optional[float] = None
     thumbnail_uris: List[str] = Field(default_factory=list)
-    reference_image: Optional[str] = None
-    last_reference_image: Optional[str] = None
-    enhanced_prompt_used: Optional[bool] = None
     comment: Optional[str] = None
 
     # Image specific
-    modifiers: List[str] = Field(default_factory=list)
     seed: Optional[int] = None
     critique: Optional[str] = None
 

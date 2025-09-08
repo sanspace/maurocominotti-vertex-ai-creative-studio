@@ -102,7 +102,10 @@ class SourceAssetService:
             upscaled_result = await self.imagen_service.upscale_image(upscale_dto)
 
             if not upscaled_result or not upscaled_result.image.gcs_uri:
-                 raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to upscale image.")
+                raise HTTPException(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "Failed to upscale image.",
+                )
 
             final_gcs_uri = upscaled_result.image.gcs_uri
             logger.info(f"Upscaling complete. Final asset at {final_gcs_uri}")
@@ -113,11 +116,16 @@ class SourceAssetService:
             final_gcs_uri = original_gcs_uri
 
         # 4. Create and save the new UserAsset document
+        mime_type: MimeTypeEnum = (
+            MimeTypeEnum.IMAGE_PNG
+            if file.content_type == MimeTypeEnum.IMAGE_PNG
+            else MimeTypeEnum.IMAGE_JPEG
+        )
         new_asset = SourceAssetModel(
             user_id=user.id,
             gcs_uri=final_gcs_uri,
             original_filename=file.filename or "untitled",
-            mime_type=file.content_type or "image/jpeg",
+            mime_type=mime_type,
             file_hash=file_hash,
         )
         await asyncio.to_thread(self.repo.save, new_asset)

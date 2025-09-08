@@ -190,6 +190,13 @@ gcloud firestore indexes composite create \
   --field-config=field-path=mime_type,order=ASCENDING \
   --field-config=field-path=created_at,order=DESCENDING \
 
+# For querying system-level assets by their type (e.g., for VTO dashboard)
+gcloud firestore indexes composite create \
+  --collection-group=source_assets \
+  --query-scope=COLLECTION \
+  --field-config=field-path=scope,order=ASCENDING \
+  --field-config=field-path=asset_type,order=ASCENDING \
+
 # After a while you can check with
 gcloud beta firestore indexes composite list
 ```
