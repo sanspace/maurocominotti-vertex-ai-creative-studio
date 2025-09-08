@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_aggregation import AggregationResult
@@ -7,7 +7,11 @@ from google.cloud.firestore_v1.query_results import QueryResultsList
 from src.common.base_repository import BaseRepository
 from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.source_assets.dto.source_asset_search_dto import SourceAssetSearchDto
-from src.source_assets.schema.source_asset_model import SourceAssetModel
+from src.source_assets.schema.source_asset_model import (
+    AssetScopeEnum,
+    AssetTypeEnum,
+    SourceAssetModel,
+)
 
 
 class SourceAssetRepository(BaseRepository[SourceAssetModel]):
@@ -37,12 +41,22 @@ class SourceAssetRepository(BaseRepository[SourceAssetModel]):
         """
         base_query = self.collection_ref
 
+        # Apply filters from the DTO
         if search_dto.mime_type:
             base_query = base_query.where(
                 "mime_type", "==", search_dto.mime_type
             )
         if target_user_id:
             base_query = base_query.where("user_id", "==", target_user_id)
+        if search_dto.scope:
+            base_query = base_query.where("scope", "==", search_dto.scope)
+        if search_dto.asset_type:
+            base_query = base_query.where(
+                "asset_type", "==", search_dto.asset_type
+            )
+        if search_dto.original_filename:
+            # This enables prefix searching (e.g., 'file' matches 'file.txt')
+            base_query = base_query.where("original_filename", ">=", search_dto.original_filename).where("original_filename", "<=", search_dto.original_filename + "\uf8ff")
 
         count_query = base_query.count(alias="total")
         aggregation_result = count_query.get()
@@ -82,3 +96,21 @@ class SourceAssetRepository(BaseRepository[SourceAssetModel]):
             next_page_cursor=next_page_cursor,
             data=media_item_data,
         )
+
+    def find_by_scope_and_types(
+        self, scope: AssetScopeEnum, asset_types: List[AssetTypeEnum]
+    ) -> List[SourceAssetModel]:
+        """
+        Finds all assets matching a specific scope and a list of asset types.
+
+        This query requires a composite index on `scope` and `asset_type`.
+        """
+        if not asset_types:
+            return []
+
+        query = self.collection_ref.where("scope", "==", scope).where(
+            "asset_type", "in", asset_types
+        )
+
+        documents = list(query.stream())
+        return [self.model.model_validate(doc.to_dict()) for doc in documents]
