@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, Validators, FormGroup } from '@angular/forms';
+import {Component, OnInit} from '@angular/core';
+import {FormBuilder, Validators, FormGroup} from '@angular/forms';
 import {MediaItem} from '../common/models/media-item.model';
 import {HttpClient} from '@angular/common/http';
 import {VtoRequest} from './vto.model';
@@ -15,7 +15,17 @@ interface Garment {
   id: string;
   name: string;
   imageUrl: string;
+  gcsUri: string;
   type: 'top' | 'bottom' | 'dress' | 'shoes';
+}
+
+interface VtoAssetsResponseDto {
+  male_models: SourceAssetResponseDto[];
+  female_models: SourceAssetResponseDto[];
+  tops: SourceAssetResponseDto[];
+  bottoms: SourceAssetResponseDto[];
+  dresses: SourceAssetResponseDto[];
+  shoes: SourceAssetResponseDto[];
 }
 
 interface Model {
@@ -31,7 +41,7 @@ interface Model {
   templateUrl: './vto.component.html',
   styleUrls: ['./vto.component.scss'],
 })
-export class VtoComponent {
+export class VtoComponent implements OnInit {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
 
@@ -63,269 +73,12 @@ export class VtoComponent {
   ];
 
   // Mock data
-  femaleModels: Model[] = [
-    {
-      id: 'f0',
-      name: 'Female Model 1',
-      imageUrl: 'assets/images/vto/arml_Model-0.png',
-      size: 'XS',
-    },
-    {
-      id: 'f1',
-      name: 'Female Model 2',
-      imageUrl: 'assets/images/vto/arml_Model-1.png',
-      size: 'S',
-    },
-    {
-      id: 'f2',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-2.png',
-      size: 'S',
-    },
-    {
-      id: 'f3',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-3.png',
-      size: 'M',
-    },
-    {
-      id: 'f6',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-6.png',
-      size: 'L',
-    },
-    {
-      id: 'f7',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-7.png',
-      size: 'L',
-    },
-    {
-      id: 'f8',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-8.png',
-      size: 'L',
-    },
-    {
-      id: 'f9',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-9.png',
-      size: 'L',
-    },
-    {
-      id: 'f10',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-10.png',
-      size: 'XL',
-    },
-    {
-      id: 'f11',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-11.png',
-      size: 'XL',
-    },
-    {
-      id: 'f12',
-      name: 'Female Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-12.png',
-      size: 'XL',
-    },
-  ];
-
-  maleModels: Model[] = [
-    {
-      id: 'm1',
-      name: 'Male Model 1',
-      imageUrl: 'assets/images/vto/arml_Model-0.png',
-      size: 'M',
-    },
-    {
-      id: 'm2',
-      name: 'Male Model 2',
-      imageUrl: 'assets/images/vto/arml_Model-1.png',
-      size: 'L',
-    },
-    {
-      id: 'm3',
-      name: 'Male Model 3',
-      imageUrl: 'assets/images/vto/arml_Model-2.png',
-      size: 'XL',
-    },
-  ];
-
-  tops: Garment[] = [
-    {
-      id: 't0',
-      name: 'White T-Shirt',
-      imageUrl: 'assets/images/vto/top-0.png',
-      type: 'top',
-    },
-    {
-      id: 't1',
-      name: 'White T-Shirt',
-      imageUrl: 'assets/images/vto/top-1.png',
-      type: 'top',
-    },
-    {
-      id: 't2',
-      name: 'Black Blouse',
-      imageUrl: 'assets/images/vto/top-2.png',
-      type: 'top',
-    },
-    {
-      id: 't3',
-      name: 'Striped Shirt',
-      imageUrl: 'assets/images/vto/top-3.png',
-      type: 'top',
-    },
-    {
-      id: 't4',
-      name: 'Striped Shirt',
-      imageUrl: 'assets/images/vto/top-4.png',
-      type: 'top',
-    },
-    {
-      id: 't5',
-      name: 'Striped Shirt',
-      imageUrl: 'assets/images/vto/top-5.png',
-      type: 'top',
-    },
-    {
-      id: 't6',
-      name: 'Striped Shirt',
-      imageUrl: 'assets/images/vto/top-6.png',
-      type: 'top',
-    },
-  ];
-
-  bottoms: Garment[] = [
-    {
-      id: 'b0',
-      name: 'Blue Jeans',
-      imageUrl: 'assets/images/vto/bottom-0.png',
-      type: 'bottom',
-    },
-    {
-      id: 'b1',
-      name: 'Blue Jeans',
-      imageUrl: 'assets/images/vto/bottom-1.png',
-      type: 'bottom',
-    },
-    {
-      id: 'b2',
-      name: 'Black Trousers',
-      imageUrl: 'assets/images/vto/bottom-2.png',
-      type: 'bottom',
-    },
-    {
-      id: 'b3',
-      name: 'Khaki Shorts',
-      imageUrl: 'assets/images/vto/bottom-3.png',
-      type: 'bottom',
-    },
-    {
-      id: 'b4',
-      name: 'Khaki Shorts',
-      imageUrl: 'assets/images/vto/bottom-4.png',
-      type: 'bottom',
-    },
-    {
-      id: 'b5',
-      name: 'Khaki Shorts',
-      imageUrl: 'assets/images/vto/bottom-5.png',
-      type: 'bottom',
-    },
-    {
-      id: 'b6',
-      name: 'Khaki Shorts',
-      imageUrl: 'assets/images/vto/bottom-6.png',
-      type: 'bottom',
-    },
-  ];
-
-  dresses: Garment[] = [
-    {
-      id: 'd0',
-      name: 'Summer Dress',
-      imageUrl: 'assets/images/vto/dress-0.png',
-      type: 'dress',
-    },
-    {
-      id: 'd1',
-      name: 'Summer Dress',
-      imageUrl: 'assets/images/vto/dress-1.png',
-      type: 'dress',
-    },
-    {
-      id: 'd2',
-      name: 'Evening Gown',
-      imageUrl: 'assets/images/vto/dress-2.png',
-      type: 'dress',
-    },
-    {
-      id: 'd3',
-      name: 'Casual Dress',
-      imageUrl: 'assets/images/vto/dress-3.png',
-      type: 'dress',
-    },
-    {
-      id: 'd4',
-      name: 'Casual Dress',
-      imageUrl: 'assets/images/vto/dress-4.png',
-      type: 'dress',
-    },
-    {
-      id: 'd5',
-      name: 'Casual Dress',
-      imageUrl: 'assets/images/vto/dress-5.png',
-      type: 'dress',
-    },
-    {
-      id: 'd6',
-      name: 'Casual Dress',
-      imageUrl: 'assets/images/vto/dress-6.png',
-      type: 'dress',
-    },
-  ];
-
-  shoes: Garment[] = [
-    {
-      id: 's0',
-      name: 'White Sneakers',
-      imageUrl: 'assets/images/vto/shoes-0.png',
-      type: 'shoes',
-    },
-    {
-      id: 's2',
-      name: 'Brown Boots',
-      imageUrl: 'assets/images/vto/shoes-2.png',
-      type: 'shoes',
-    },
-    {
-      id: 's3',
-      name: 'Black Heels',
-      imageUrl: 'assets/images/vto/shoes-3.png',
-      type: 'shoes',
-    },
-    {
-      id: 's4',
-      name: 'Black Heels',
-      imageUrl: 'assets/images/vto/shoes-4.png',
-      type: 'shoes',
-    },
-    {
-      id: 's5',
-      name: 'Black Heels',
-      imageUrl: 'assets/images/vto/shoes-5.png',
-      type: 'shoes',
-    },
-    {
-      id: 's6',
-      name: 'Black Heels',
-      imageUrl: 'assets/images/vto/shoes-6.png',
-      type: 'shoes',
-    },
-  ];
+  femaleModels: Model[] = [];
+  maleModels: Model[] = [];
+  tops: Garment[] = [];
+  bottoms: Garment[] = [];
+  dresses: Garment[] = [];
+  shoes: Garment[] = [];
 
   modelsToShow: Model[] = this.femaleModels;
 
@@ -384,6 +137,71 @@ export class VtoComponent {
     this.secondFormGroup.get('shoes')?.valueChanges.subscribe(shoes => {
       this.selectedShoes = shoes;
     });
+  }
+
+  ngOnInit(): void {
+    this.loadVtoAssets();
+  }
+
+  private loadVtoAssets(): void {
+    this.isLoading = true;
+    this.http
+      .get<VtoAssetsResponseDto>(`${environment.backendURL}/source_assets/vto-assets`)
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: response => {
+          this.femaleModels = response.female_models.map(asset =>
+            this.mapAssetToModel(asset),
+          );
+          this.maleModels = response.male_models.map(asset =>
+            this.mapAssetToModel(asset),
+          );
+          this.tops = response.tops.map(asset =>
+            this.mapAssetToGarment(asset, 'top'),
+          );
+          this.bottoms = response.bottoms.map(asset =>
+            this.mapAssetToGarment(asset, 'bottom'),
+          );
+          this.dresses = response.dresses.map(asset =>
+            this.mapAssetToGarment(asset, 'dress'),
+          );
+          this.shoes = response.shoes.map(asset =>
+            this.mapAssetToGarment(asset, 'shoes'),
+          );
+
+          // Set default models to show
+          this.modelsToShow =
+            this.firstFormGroup.get('modelType')?.value === 'female'
+              ? this.femaleModels
+              : this.maleModels;
+        },
+        error: err => {
+          handleErrorSnackbar(this._snackBar, err, 'Load VTO assets');
+        },
+      });
+  }
+
+  private mapAssetToModel(asset: SourceAssetResponseDto): Model {
+    return {
+      id: asset.id,
+      name: asset.originalFilename,
+      imageUrl: asset.presignedUrl,
+      gcsUri: asset.gcsUri,
+      size: 'M', // Default size or handle differently
+    };
+  }
+
+  private mapAssetToGarment(
+    asset: SourceAssetResponseDto,
+    type: 'top' | 'bottom' | 'dress' | 'shoes',
+  ): Garment {
+    return {
+      id: asset.id,
+      name: asset.originalFilename,
+      imageUrl: asset.presignedUrl,
+      gcsUri: asset.gcsUri,
+      type: type,
+    };
   }
 
   openImageSelector() {
@@ -496,13 +314,13 @@ export class VtoComponent {
 
     // For garments, we assume the imageUrl is a GCS URI or a path the backend can resolve.
     if (this.selectedTop)
-      payload.top_image = {gcs_uri: this.selectedTop.imageUrl};
+      payload.top_image = {gcs_uri: this.selectedTop.gcsUri};
     if (this.selectedBottom)
-      payload.bottom_image = {gcs_uri: this.selectedBottom.imageUrl};
+      payload.bottom_image = {gcs_uri: this.selectedBottom.gcsUri};
     if (this.selectedDress)
-      payload.dress_image = {gcs_uri: this.selectedDress.imageUrl};
+      payload.dress_image = {gcs_uri: this.selectedDress.gcsUri};
     if (this.selectedShoes)
-      payload.shoe_image = {gcs_uri: this.selectedShoes.imageUrl};
+      payload.shoe_image = {gcs_uri: this.selectedShoes.gcsUri};
 
     console.log('Triggering VTO request with:', payload);
 

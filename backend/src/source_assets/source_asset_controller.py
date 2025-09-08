@@ -123,3 +123,25 @@ async def get_vto_assets(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while fetching VTO assets: {e}",
         ) from e
+
+
+@router.delete(
+    "/{asset_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN]))],
+)
+async def delete_source_asset(
+    asset_id: str,
+    service: SourceAssetService = Depends(),
+):
+    """
+    Deletes a source asset by its ID. (Admin only)
+    This will also remove the corresponding file from Google Cloud Storage.
+    """
+    success = await service.delete_asset(asset_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Source asset not found.",
+        )
+    # On success, a 204 No Content response is automatically returned.

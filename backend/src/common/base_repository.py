@@ -1,10 +1,13 @@
 import datetime
-from typing import Any, Dict, Generic, TypeVar, Optional, List
 import uuid
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
 from google.cloud import firestore
-from src.auth import firebase_client_service
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+from src.auth import firebase_client_service
+
 
 class BaseDocument(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -82,3 +85,16 @@ class BaseRepository(Generic[T]):
 
         # 3. Return the full, updated document.
         return self.get_by_id(item_id)
+
+
+    def delete(self, item_id: str) -> bool:
+        """
+        Deletes a document by its ID.
+        Returns True if deletion was successful, False otherwise.
+        """
+        doc_ref = self.collection_ref.document(item_id)
+        if not doc_ref.get().exists:
+            return False
+
+        doc_ref.delete()
+        return True

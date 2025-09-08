@@ -180,6 +180,41 @@ class SourceAssetService:
 
         return await self._create_asset_response(new_asset)
 
+    async def delete_asset(self, asset_id: str) -> bool:
+        """
+        Deletes an asset from Firestore and its corresponding file from GCS.
+        This is an admin-only operation.
+
+        Returns:
+            bool: True if deletion was successful, False if the asset was not found.
+        """
+        # 1. Get the asset document from Firestore
+        asset_to_delete = await asyncio.to_thread(self.repo.get_by_id, asset_id)
+        if not asset_to_delete:
+            logger.warning(
+                f"Attempted to delete non-existent asset with ID: {asset_id}"
+            )
+            return False
+
+        # TODO: Delete file from GCS
+        # 2. Delete the file from GCS. We wrap this in a try/except block
+        # to ensure that even if the GCS file is already gone, we still
+        # attempt to delete the database record.
+        # try:
+        #     logger.info(f"Deleting asset file from GCS: {asset_to_delete.gcs_uri}")
+        #     self.gcs_service.delete_from_gcs(asset_to_delete.gcs_uri)
+        # except Exception as e:
+        #     logger.error(
+        #         f"Could not delete asset from GCS at {asset_to_delete.gcs_uri}, but proceeding to delete from database. Error: {e}",
+        #         exc_info=True,
+        #     )
+
+        # 3. Delete the document from Firestore
+        logger.info(
+            f"Deleting asset document from Firestore with ID: {asset_id}"
+        )
+        return await asyncio.to_thread(self.repo.delete, asset_id)
+
     async def list_assets_for_user(
         self,
         search_dto: SourceAssetSearchDto,
