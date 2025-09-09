@@ -24,6 +24,7 @@ export class MediaDetailComponent implements OnDestroy {
   public isAdmin = false;
   public initialSlideIndex = 0;
   promptJson: CreatePromptMediaDto | undefined;
+  isPromptExpanded = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -196,5 +197,9 @@ export class MediaDetailComponent implements OnDestroy {
           });
         },
       });
+  }
+
+  togglePromptExpansion(): void {
+    this.isPromptExpanded = !this.isPromptExpanded;
   }
 }

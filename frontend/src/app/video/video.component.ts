@@ -77,7 +77,7 @@ export class VideoComponent {
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
       {value: '16:9', viewValue: '1200x628 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: true},
+      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: false},
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [
@@ -186,15 +186,18 @@ export class VideoComponent {
       // Veo 3 models support audio.
       this.isAudioGenerationDisabled = false;
 
-      // Veo 3 only supports 16:9 aspect ratio.
-      this.searchRequest.aspectRatio = '16:9';
-      const landscapeOption = this.aspectRatioOptions.find(
-        opt => opt.value === '16:9',
-      )!;
-      this.selectedAspectRatio = landscapeOption.viewValue;
+      // Veo 3 only supports 16:9 and 9:16 aspect ratios.
+      const supportedRatios = ['16:9', '9:16'];
+      if (!supportedRatios.includes(this.searchRequest.aspectRatio)) {
+        this.searchRequest.aspectRatio = '16:9';
+        const landscapeOption = this.aspectRatioOptions.find(
+          opt => opt.value === '16:9',
+        )!;
+        this.selectedAspectRatio = landscapeOption.viewValue;
+      }
 
       this.aspectRatioOptions.forEach(opt => {
-        opt.disabled = opt.value !== '16:9';
+        opt.disabled = !supportedRatios.includes(opt.value);
       });
     }
   }

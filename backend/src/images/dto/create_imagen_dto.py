@@ -3,6 +3,7 @@ from typing import Annotated, Literal, Optional
 from fastapi import Query
 from google.genai import types
 from pydantic import Field, field_validator, model_validator
+
 from src.common.base_dto import (
     AspectRatioEnum,
     BaseDto,
@@ -12,6 +13,7 @@ from src.common.base_dto import (
     LightingEnum,
     StyleEnum,
 )
+from src.common.schema.media_item_model import SourceMediaItemLink
 
 
 class CreateImagenDto(BaseDto):
@@ -65,9 +67,11 @@ class CreateImagenDto(BaseDto):
         default=None,
         description="A list of source asset IDs to be used as input for image-to-image generation.",
     )
-    parent_media_item_id: Optional[str] = Field(
+    source_media_items: Optional[
+        Annotated[list[SourceMediaItemLink], Field(max_length=2)]
+    ] = Field(
         default=None,
-        description="If editing a previously generated media item, provide its ID to maintain lineage.",
+        description="A list of previously generated media items (from the gallery) to be used as inputs for the new generation.",
     )
 
     @field_validator("prompt")
@@ -96,29 +100,41 @@ class CreateImagenDto(BaseDto):
         return value
 
     @model_validator(mode="after")
-    def validate_source_assets_for_model(self) -> "CreateImagenDto":
+    def validate_inputs(self) -> "CreateImagenDto":
         """
-        Ensures the number of source assets is valid for the selected model.
-        - Gemini Flash allows up to 2 source images.
-        - For other models, only IMAGEN_3_FAST and IMAGEN_3_002 support editing with 1 source image.
+        Validates the total number of inputs and model compatibility.
+        - The total number of inputs (source_asset_ids + source_media_items) cannot exceed 2.
+        - For non-Gemini models, only one input is allowed, and the model must support editing.
         """
-        if self.source_asset_ids:
-            is_gemini_flash = (
-                self.generation_model
-                == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
-            )
-            if not is_gemini_flash:
-                if len(self.source_asset_ids) > 1:
-                    raise ValueError(
-                        "Only one source asset is allowed for image editing with Imagen models."
-                    )
-                allowed_editing_models = [
-                    GenerationModelEnum.IMAGEN_3_FAST,
-                    GenerationModelEnum.IMAGEN_3_002,
-                ]
-                if self.generation_model not in allowed_editing_models:
-                    raise ValueError(
-                        f"Model '{self.generation_model.value}' does not support image editing. "
-                        "Please use 'imagen-3.0-fast-generate-001' or 'imagen-3.0-generate-002' for this feature."
-                    )
+        source_assets_count = len(self.source_asset_ids) if self.source_asset_ids else 0
+        generated_inputs_count = len(self.source_media_items) if self.source_media_items else 0
+        total_inputs = source_assets_count + generated_inputs_count
+
+        if total_inputs == 0:
+            return self  # No inputs, nothing to validate here.
+
+        is_gemini_flash = (
+            self.generation_model == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+        )
+
+        if is_gemini_flash:
+            if total_inputs > 2:
+                raise ValueError(
+                    "A maximum of 2 total inputs (source assets and/or generated inputs) are allowed for Gemini Flash."
+                )
+        else:  # It's an Imagen model
+            if total_inputs > 1:
+                raise ValueError(
+                    "Only one total input (source asset or generated input) is allowed for image editing with Imagen models."
+                )
+            allowed_editing_models = [
+                GenerationModelEnum.IMAGEN_3_FAST,
+                GenerationModelEnum.IMAGEN_3_002,
+            ]
+            if self.generation_model not in allowed_editing_models:
+                raise ValueError(
+                    f"Model '{self.generation_model.value}' does not support image editing with Imagen. "
+                    "Please use 'imagen-3.0-fast-generate-001' or 'imagen-3.0-generate-002'."
+                )
+
         return self

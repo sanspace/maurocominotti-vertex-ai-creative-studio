@@ -21,19 +21,26 @@ import {
   AfterViewInit,
   ElementRef,
   ViewChild,
+  HostListener,
 } from '@angular/core';
 import {Router} from '@angular/router';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
-import {finalize, Observable} from 'rxjs';
+import {finalize, Observable, of} from 'rxjs';
 import {MatDialog} from '@angular/material/dialog';
 import {SearchService} from '../services/search/search.service';
-import {ImagenRequest} from '../common/models/search.model';
+import {
+  ImagenRequest,
+  SourceMediaItemLink,
+} from '../common/models/search.model';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {MediaItem} from '../common/models/media-item.model';
-import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
+import {
+  ImageSelectorComponent,
+  MediaItemSelection,
+} from '../common/components/image-selector/image-selector.component';
 import {HttpClient} from '@angular/common/http';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
@@ -55,6 +62,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   sourceAssetId2: string | null = null;
   image1Preview: string | null = null;
   image2Preview: string | null = null;
+  sourceMediaItems: SourceMediaItemLink[] = [];
+
+  @HostListener('window:keydown.control.enter', ['$event'])
+  handleCtrlEnter(event: KeyboardEvent) {
+    if (!this.isLoading) {
+      event.preventDefault();
+      this.searchTerm();
+    }
+  }
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
@@ -471,6 +487,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const payload: ImagenRequest = {
       ...this.searchRequest,
       negativePrompt: this.negativePhrases.join(', '),
+      sourceMediaItems: this.sourceMediaItems.length
+        ? this.sourceMediaItems
+        : undefined,
     };
 
     const sourceAssetIds = [];
@@ -579,7 +598,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dialogRef
       .afterClosed()
-      .subscribe((result: MediaItem | SourceAssetResponseDto) => {
+      .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
         if (result) {
           const targetAssetId =
             imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
@@ -589,11 +608,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           if ('gcsUri' in result) {
             // Uploaded image (SourceAssetResponseDto)
             this[targetAssetId] = result.id;
-            this[targetPreview] = result.presignedUrl;
+            this[targetPreview] = result.presignedUrl || null;
+            this.clearSourceMediaItem(imageNumber);
           } else {
             // Gallery image (MediaItem)
-            this[targetAssetId] = result.id;
-            this[targetPreview] = result.presignedUrls![0];
+            const selection = result as MediaItemSelection;
+            this.clearSourceMediaItem(imageNumber);
+            this.sourceMediaItems.push({
+              mediaItemId: selection.mediaItem.id,
+              mediaIndex: selection.selectedIndex,
+              role: 'input',
+            });
+            this[targetPreview] =
+              selection.mediaItem.presignedUrls?.[0] || null;
+            this[targetAssetId] = null;
           }
         }
       });
@@ -622,7 +650,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
             const targetPreview =
               imageNumber === 1 ? 'image1Preview' : 'image2Preview';
             this[targetAssetId] = asset.id;
-            this[targetPreview] = asset.presignedUrl;
+            this[targetPreview] = asset.presignedUrl || null;
           },
           error: error => {
             handleErrorSnackbar(this._snackBar, error, 'Image upload');
@@ -640,5 +668,41 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.sourceAssetId2 = null;
       this.image2Preview = null;
     }
+    this.clearSourceMediaItem(imageNumber);
+  }
+
+  editResultImage(index: number) {
+    if (!this.imagenDocuments || !this.imagenDocuments.presignedUrls) {
+      return;
+    }
+
+    // Clear existing inputs and set the new one
+    this.sourceMediaItems = [
+      {
+        mediaItemId: this.imagenDocuments.id,
+        mediaIndex: index,
+        role: 'input',
+      },
+    ];
+
+    // Set the selected image as the first source asset
+    this.sourceAssetId1 = null; // We don't have a source asset ID for a generated image yet
+    this.image1Preview = this.imagenDocuments.presignedUrls[index];
+
+    // Clear the second source asset
+    this.sourceAssetId2 = null;
+    this.image2Preview = null;
+
+    // Switch to Nano Banana model for editing
+    const nanoBananaModel = this.generationModels.find(
+      m => m.value === 'gemini-2.5-flash-image-preview',
+    );
+    if (nanoBananaModel) this.selectModel(nanoBananaModel);
+  }
+
+  private clearSourceMediaItem(imageNumber: 1 | 2) {
+    // This is a simplification. If each dropzone needs to be tied to a specific
+    // sourceMediaItem, we would need a more robust mapping. For now, we clear all.
+    this.sourceMediaItems = [];
   }
 }

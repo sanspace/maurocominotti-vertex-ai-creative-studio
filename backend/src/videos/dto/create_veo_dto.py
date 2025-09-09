@@ -13,6 +13,7 @@ from src.common.base_dto import (
     LightingEnum,
     StyleEnum,
 )
+from src.common.schema.media_item_model import SourceMediaItemLink
 
 
 class CreateVeoDto(BaseDto):
@@ -71,6 +72,10 @@ class CreateVeoDto(BaseDto):
     end_image_asset_id: Optional[str] = Field(
         default=None,
         description="The ID of the SourceAsset to use as the ending image.",
+    )
+    source_media_items: Optional[list[SourceMediaItemLink]] = Field(
+        default=None,
+        description="A list of previously generated media items (from the gallery) to be used as inputs (e.g., start/end frames).",
     )
 
     @field_validator("prompt")

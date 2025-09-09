@@ -17,6 +17,7 @@ import {MatIconRegistry} from '@angular/material/icon';
 import {MediaItem} from '../../common/models/media-item.model';
 import {MatCheckboxChange} from '@angular/material/checkbox';
 import {GalleryService} from '../gallery.service';
+import {MediaItemSelection} from '../../common/components/image-selector/image-selector.component';
 import {UserService} from '../../common/services/user.service';
 
 @Component({
@@ -25,7 +26,7 @@ import {UserService} from '../../common/services/user.service';
   styleUrl: './media-gallery.component.scss',
 })
 export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
-  @Output() mediaItemSelected = new EventEmitter<MediaItem>();
+  @Output() mediaItemSelected = new EventEmitter<MediaItemSelection>();
   @Input() filterByType: 'image/png' | 'video/mp4' | 'audio/mpeg' | null = null;
   public images: MediaItem[] = [];
   public columns: MediaItem[][] = [];
@@ -242,9 +243,12 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
           gcsUris: [selectedGcsUri],
           presignedUrls: [selectedPresignedUrl],
         };
-        this.mediaItemSelected.emit(selectedMediaItem);
+        this.mediaItemSelected.emit({
+          mediaItem: selectedMediaItem,
+          selectedIndex: selectedIndex,
+        });
       } else {
-        this.mediaItemSelected.emit(media);
+        this.mediaItemSelected.emit({mediaItem: media, selectedIndex: 0});
       }
     }
   }

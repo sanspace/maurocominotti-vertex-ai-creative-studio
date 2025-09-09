@@ -4,6 +4,7 @@ import {
   Input,
   OnChanges,
   OnDestroy,
+  Output,
   SimpleChanges,
 } from '@angular/core';
 import {MediaItem} from '../../models/media-item.model';
@@ -11,6 +12,7 @@ import PhotoSwipeLightbox from 'photoswipe/lightbox';
 import {Clipboard} from '@angular/cdk/clipboard';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {ActivatedRoute, Router} from '@angular/router';
+import {EventEmitter} from '@angular/core';
 import {Location} from '@angular/common';
 
 @Component({
@@ -26,6 +28,8 @@ export class MediaLightboxComponent
   @Input() showSeeMoreInfoButton = false;
   @Input() showShareButton = true;
   @Input() showDownloadButton = true;
+  @Input() showEditButton = false;
+  @Output() editClicked = new EventEmitter<number>();
 
   selectedIndex = 0;
   selectedUrl: string | undefined;
@@ -268,5 +272,9 @@ export class MediaLightboxComponent
         // For arbitrary values like '4:3', '3:4', etc.
         return `aspect-[${ratio.replace(':', '/')}]`;
     }
+  }
+
+  onEditClick(): void {
+    this.editClicked.emit(this.selectedIndex);
   }
 }

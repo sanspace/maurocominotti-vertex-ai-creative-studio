@@ -15,7 +15,7 @@
  */
 
 import {PaginatedResponse} from './paginated-response.model';
-
+import {SourceMediaItemLink} from './search.model';
 
 export interface EnrichedSourceAsset {
   sourceAssetId: string;
@@ -23,7 +23,10 @@ export interface EnrichedSourceAsset {
   gcsUri: string;
 }
 
-
+export interface EnrichedSourceMediaItem extends SourceMediaItemLink {
+  presignedUrl: string;
+  gcsUri: string;
+}
 
 /**
  * Defines the states for a long-running generation job.
@@ -53,6 +56,7 @@ export interface MediaItem {
   generationTime?: number;
   error_message?: string;
   enrichedSourceAssets?: EnrichedSourceAsset[];
+  enrichedSourceMediaItems?: EnrichedSourceMediaItem[];
 
   // URI and URL fields
   gcsUris: string[];

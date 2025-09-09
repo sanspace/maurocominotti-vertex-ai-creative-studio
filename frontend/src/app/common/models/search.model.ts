@@ -29,7 +29,13 @@ export type ImagenRequest = {
   addWatermark: boolean;
   upscaleFactor?: '' | 'x2' | 'x4';
   sourceAssetIds?: string[];
-  parentMediaItemId?: string;
+  sourceMediaItems?: SourceMediaItemLink[];
+};
+
+export type SourceMediaItemLink = {
+  mediaItemId: string;
+  mediaIndex: number;
+  role: string;
 };
 
 export type VeoRequest = {

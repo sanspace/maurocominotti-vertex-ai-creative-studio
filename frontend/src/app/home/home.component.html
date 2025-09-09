@@ -93,7 +93,15 @@
       <!-- Image Gallery -->
       <ng-template #imageGallery>
         <div class="grid grid-cols-1 gap-4">
-          <app-media-lightbox *ngIf="imagenDocuments" [mediaItem]="imagenDocuments" [initialIndex]="0" [showSeeMoreInfoButton]="true" style="max-height: 80vh;"></app-media-lightbox>
+          <app-media-lightbox
+            *ngIf="imagenDocuments"
+            [mediaItem]="imagenDocuments"
+            [initialIndex]="0"
+            [showSeeMoreInfoButton]="true"
+            [showEditButton]="true"
+            (editClicked)="editResultImage($event)"
+            style="max-height: 60vh;"
+          ></app-media-lightbox>
         </div>
       </ng-template>
     </ng-template>

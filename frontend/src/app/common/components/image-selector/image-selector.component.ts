@@ -9,6 +9,11 @@ import {
   SourceAssetService,
 } from '../../services/source-asset.service';
 
+export interface MediaItemSelection {
+  mediaItem: MediaItem;
+  selectedIndex: number;
+}
+
 @Component({
   selector: 'app-image-selector',
   templateUrl: './image-selector.component.html',
@@ -48,8 +53,8 @@ export class ImageSelectorComponent {
     }
   }
 
-  onMediaItemSelected(mediaItem: MediaItem): void {
-    this.dialogRef.close(mediaItem);
+  onMediaItemSelected(selection: MediaItemSelection): void {
+    this.dialogRef.close(selection);
   }
 
   onAssetSelected(asset: SourceAssetResponseDto): void {

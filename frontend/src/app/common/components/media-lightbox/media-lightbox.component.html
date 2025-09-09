@@ -52,6 +52,15 @@
     <!-- Actions Toolbar on the right -->
     <div class="media-actions-toolbar" *ngIf="mediaItem">
       <button
+        *ngIf="showEditButton"
+        class="action-button"
+        (click)="onEditClick()"
+        title="Edit this image"
+      >
+        <mat-icon>edit</mat-icon>
+        <span>Edit</span>
+      </button>
+      <button
         *ngIf="showShareButton"
         class="action-button"
         (click)="toggleShareMenu()"

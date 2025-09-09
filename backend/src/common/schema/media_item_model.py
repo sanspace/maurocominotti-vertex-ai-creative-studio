@@ -67,6 +67,28 @@ class SourceAssetLink(BaseModel):
         alias_generator=to_camel,
     )
 
+class SourceMediaItemLink(BaseModel):
+    """
+    A linking object within MediaItemModel that connects a generated result
+    to a specific previously generated media item (from the 'media_library' collection)
+    and specifies its function in the new creation.
+    """
+
+    media_item_id: str
+    """The ID of the source MediaItemModel in the 'media_library' collection."""
+
+    media_index: int
+    """The index of the specific image within the parent's `gcs_uris` list."""
+
+    role: AssetRoleEnum
+    """Describes the asset's FUNCTION for this specific creation (e.g., 'input', 'style_reference')."""
+
+    model_config = ConfigDict(
+        use_enum_values=True,
+        populate_by_name=True,
+        from_attributes=True,
+        alias_generator=to_camel,
+    )
 
 class MediaItemModel(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""
@@ -103,13 +125,12 @@ class MediaItemModel(BaseDocument):
     each one played in the generation.
     """
 
-    parent_media_item_id: Optional[str] = None
+    source_media_items: Optional[List[SourceMediaItemLink]] = None
     """
-    If this media item is an edit of a previously generated item, this field
-    will store the ID of the parent MediaItem, creating a clear lineage.
+    A list that describes the 'recipe' of generated inputs used to create this
+    media item. It links to parent items from the 'media_library' collection.
     """
 
-    # URI fields
     gcs_uris: Annotated[
         List[str],
         Field(

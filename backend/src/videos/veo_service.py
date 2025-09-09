@@ -36,6 +36,7 @@ from src.common.schema.media_item_model import (
     JobStatusEnum,
     MediaItemModel,
     SourceAssetLink,
+    SourceMediaItemLink,
 )
 from src.common.storage_service import GcsService
 from src.config.config_service import config_service
@@ -170,6 +171,29 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                     end_image_for_api = types.Image(
                         gcs_uri=end_asset.gcs_uri, mime_type=end_asset.mime_type
                     )
+
+            # --- Handle Generated Inputs (from other MediaItems) ---
+            if request_dto.source_media_items:
+                for gen_input in request_dto.source_media_items:
+                    parent_item = media_repo.get_by_id(gen_input.media_item_id)
+                    if (
+                        parent_item
+                        and parent_item.gcs_uris
+                        and 0 <= gen_input.media_index < len(parent_item.gcs_uris)
+                    ):
+                        gcs_uri = parent_item.gcs_uris[gen_input.media_index]
+                        image_for_api = types.Image(
+                            gcs_uri=gcs_uri, mime_type=parent_item.mime_type
+                        )
+
+                        if gen_input.role == AssetRoleEnum.START_FRAME:
+                            start_image_for_api = image_for_api
+                        elif gen_input.role == AssetRoleEnum.END_FRAME:
+                            end_image_for_api = image_for_api
+                    else:
+                        worker_logger.warning(
+                            f"Could not find or use generated_input: {gen_input.media_item_id} at index {gen_input.media_index}"
+                        )
 
             all_generated_videos: List[types.GeneratedVideo] = []
 
@@ -385,6 +409,7 @@ class VeoService:
             composition=request_dto.composition,
             negative_prompt=request_dto.negative_prompt,
             duration_seconds=request_dto.duration_seconds,
+            source_media_items=request_dto.source_media_items or None,
             source_assets=source_assets or None,
             gcs_uris=[],
         )

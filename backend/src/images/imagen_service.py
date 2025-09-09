@@ -35,6 +35,7 @@ from src.common.schema.media_item_model import (
     JobStatusEnum,
     MediaItemModel,
     SourceAssetLink,
+    SourceMediaItemLink,
 )
 from src.common.storage_service import GcsService
 from src.config.config_service import config_service
@@ -183,6 +184,27 @@ class ImagenService:
                 else:
                     logger.warning(
                         f"Source asset with ID {asset_id} not found."
+                    )
+
+        if request_dto.source_media_items:
+            for gen_input in request_dto.source_media_items:
+                parent_item = await asyncio.to_thread(
+                    self.media_repo.get_by_id, gen_input.media_item_id
+                )
+                if (
+                    parent_item
+                    and parent_item.gcs_uris
+                    and 0 <= gen_input.media_index < len(parent_item.gcs_uris)
+                ):
+                    gcs_uri = parent_item.gcs_uris[gen_input.media_index]
+                    reference_images_for_api.append(
+                        types.Image(
+                            gcs_uri=gcs_uri, mime_type=parent_item.mime_type
+                        )
+                    )
+                else:
+                    logger.warning(
+                        f"Could not find or use generated_input: {gen_input.media_item_id} at index {gen_input.media_index}"
                     )
 
         all_generated_images: List[types.GeneratedImage] = []
@@ -381,8 +403,8 @@ class ImagenService:
                 composition=request_dto.composition,
                 negative_prompt=request_dto.negative_prompt,
                 add_watermark=request_dto.add_watermark,
-                source_assets=source_assets,
-                parent_media_item_id=request_dto.parent_media_item_id,
+                source_assets=source_assets or None,
+                source_media_items=request_dto.source_media_items or None,
             )
             self.media_repo.save(media_post_to_save)
 

@@ -14,12 +14,25 @@
 
 from typing import List, Optional
 
-from src.common.schema.media_item_model import MediaItemModel, SourceAssetLink
+from src.common.schema.media_item_model import (
+    MediaItemModel,
+    SourceMediaItemLink,
+    SourceAssetLink,
+)
 
 
 class SourceAssetLinkResponse(SourceAssetLink):
     """
     Extends the source asset link with a presigned URL and GCS URI for frontend display.
+    """
+
+    presigned_url: str
+    gcs_uri: str
+
+
+class SourceMediaItemLinkResponse(SourceMediaItemLink):
+    """
+    Extends the source media item link with a presigned URL and GCS URI for frontend display.
     """
 
     presigned_url: str
@@ -36,3 +49,4 @@ class MediaItemResponse(MediaItemModel):
     presigned_urls: List[str] = []
     presigned_thumbnail_urls: Optional[List[str]] = []
     enriched_source_assets: Optional[List[SourceAssetLinkResponse]] = None
+    enriched_source_media_items: Optional[List[SourceMediaItemLinkResponse]] = None
