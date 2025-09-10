@@ -99,7 +99,11 @@
             [initialIndex]="0"
             [showSeeMoreInfoButton]="true"
             [showEditButton]="true"
+            [showGenerateVideoButton]="true"
+            [showVtoButton]="true"
             (editClicked)="editResultImage($event)"
+            (generateVideoClicked)="generateVideoWithImage($event)"
+            (sendToVtoClicked)="sendToVto($event)"
             style="max-height: 60vh;"
           ></app-media-lightbox>
         </div>

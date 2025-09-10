@@ -61,6 +61,32 @@
         <span>Edit</span>
       </button>
       <button
+        *ngIf="showGenerateVideoButton"
+        class="action-button"
+        [matMenuTriggerFor]="videoMenu"
+        title="Generate video with this image"
+      >
+        <mat-icon>videocam</mat-icon>
+        <span>Generate Video</span>
+      </button>
+      <mat-menu #videoMenu="matMenu">
+        <button mat-menu-item (click)="onGenerateVideoClick('start')">
+          Use as Start Image
+        </button>
+        <button mat-menu-item (click)="onGenerateVideoClick('end')">
+          Use as End Image
+        </button>
+      </mat-menu>
+      <button
+        *ngIf="showVtoButton"
+        class="action-button"
+        (click)="onSendToVtoClick()"
+        title="Use as model for Virtual Try-On"
+      >
+        <mat-icon>checkroom</mat-icon>
+        <span>Send to VTO</span>
+      </button>
+      <button
         *ngIf="showShareButton"
         class="action-button"
         (click)="toggleShareMenu()"

@@ -29,7 +29,14 @@ export class MediaLightboxComponent
   @Input() showShareButton = true;
   @Input() showDownloadButton = true;
   @Input() showEditButton = false;
+  @Input() showGenerateVideoButton = false;
+  @Input() showVtoButton = false;
   @Output() editClicked = new EventEmitter<number>();
+  @Output() generateVideoClicked = new EventEmitter<{
+    role: 'start' | 'end';
+    index: number;
+  }>();
+  @Output() sendToVtoClicked = new EventEmitter<number>();
 
   selectedIndex = 0;
   selectedUrl: string | undefined;
@@ -241,7 +248,11 @@ export class MediaLightboxComponent
   seeMoreInfo(): void {
     if (this.mediaItem?.id) {
       const url = this.router.serializeUrl(
-        this.router.createUrlTree(['/gallery', this.mediaItem.id]),
+        this.router.createUrlTree(['/gallery', this.mediaItem.id], {
+          queryParams: {
+            img_index: this.selectedIndex > 0 ? this.selectedIndex : null,
+          },
+        }),
       );
       window.open(url, '_blank');
     }
@@ -276,5 +287,13 @@ export class MediaLightboxComponent
 
   onEditClick(): void {
     this.editClicked.emit(this.selectedIndex);
+  }
+
+  onGenerateVideoClick(role: 'start' | 'end'): void {
+    this.generateVideoClicked.emit({role, index: this.selectedIndex});
+  }
+
+  onSendToVtoClick(): void {
+    this.sendToVtoClicked.emit(this.selectedIndex);
   }
 }

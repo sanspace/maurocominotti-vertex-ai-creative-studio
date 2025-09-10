@@ -23,7 +23,7 @@ import {
   ViewChild,
   HostListener,
 } from '@angular/core';
-import {Router} from '@angular/router';
+import {NavigationExtras, Router} from '@angular/router';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {finalize, Observable, of} from 'rxjs';
@@ -62,7 +62,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   sourceAssetId2: string | null = null;
   image1Preview: string | null = null;
   image2Preview: string | null = null;
-  sourceMediaItems: SourceMediaItemLink[] = [];
+  sourceMediaItems: (SourceMediaItemLink | null)[] = [];
 
   @HostListener('window:keydown.control.enter', ['$event'])
   handleCtrlEnter(event: KeyboardEvent) {
@@ -294,6 +294,12 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.templateParams =
       this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
     this.applyTemplateParameters();
+
+    const remixState =
+      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    if (remixState) {
+      this.applyRemixState(remixState);
+    }
   }
 
   private path = '../../assets/images';
@@ -484,11 +490,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
+    const validSourceMediaItems = this.sourceMediaItems.filter(
+      Boolean,
+    ) as SourceMediaItemLink[];
     const payload: ImagenRequest = {
       ...this.searchRequest,
       negativePrompt: this.negativePhrases.join(', '),
-      sourceMediaItems: this.sourceMediaItems.length
-        ? this.sourceMediaItems
+      sourceMediaItems: validSourceMediaItems.length
+        ? validSourceMediaItems
         : undefined,
     };
 
@@ -609,16 +618,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
             // Uploaded image (SourceAssetResponseDto)
             this[targetAssetId] = result.id;
             this[targetPreview] = result.presignedUrl || null;
-            this.clearSourceMediaItem(imageNumber);
+            this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
           } else {
             // Gallery image (MediaItem)
             const selection = result as MediaItemSelection;
-            this.clearSourceMediaItem(imageNumber);
-            this.sourceMediaItems.push({
+            this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
+            this.sourceMediaItems[imageNumber - 1] = {
               mediaItemId: selection.mediaItem.id,
               mediaIndex: selection.selectedIndex,
               role: 'input',
-            });
+            };
             this[targetPreview] =
               selection.mediaItem.presignedUrls?.[0] || null;
             this[targetAssetId] = null;
@@ -668,7 +677,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.sourceAssetId2 = null;
       this.image2Preview = null;
     }
-    this.clearSourceMediaItem(imageNumber);
+    this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
   }
 
   editResultImage(index: number) {
@@ -677,13 +686,13 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Clear existing inputs and set the new one
-    this.sourceMediaItems = [
-      {
-        mediaItemId: this.imagenDocuments.id,
-        mediaIndex: index,
-        role: 'input',
-      },
-    ];
+    this.sourceMediaItems = [];
+    this.sourceMediaItems[0] = {
+      mediaItemId: this.imagenDocuments.id,
+      mediaIndex: index,
+      role: 'input',
+    };
+    this.sourceMediaItems[1] = null;
 
     // Set the selected image as the first source asset
     this.sourceAssetId1 = null; // We don't have a source asset ID for a generated image yet
@@ -701,8 +710,71 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private clearSourceMediaItem(imageNumber: 1 | 2) {
-    // This is a simplification. If each dropzone needs to be tied to a specific
-    // sourceMediaItem, we would need a more robust mapping. For now, we clear all.
-    this.sourceMediaItems = [];
+    // Set the specific index to null to clear the slot for that image.
+    if (this.sourceMediaItems.length >= imageNumber) {
+      this.sourceMediaItems[imageNumber - 1] = null;
+    }
+  }
+
+  private applyRemixState(remixState: {
+    sourceMediaItems: SourceMediaItemLink[];
+    prompt?: string;
+    previewUrl?: string;
+  }): void {
+    if (remixState.sourceMediaItems?.length > 0) {
+      this.sourceMediaItems = remixState.sourceMediaItems;
+      // For now, just use the first one for preview
+      if (remixState.previewUrl) {
+        this.image1Preview = remixState.previewUrl;
+        this.sourceAssetId1 = null; // It's not a source asset
+        this.image2Preview = null;
+        this.sourceAssetId2 = null;
+      }
+    }
+    if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
+  }
+
+  generateVideoWithImage(event: {role: 'start' | 'end'; index: number}) {
+    if (!this.imagenDocuments) {
+      return;
+    }
+
+    const remixState = {
+      prompt: this.imagenDocuments.originalPrompt,
+      startImageAssetId:
+        event.role === 'start' ? this.imagenDocuments.id : undefined,
+      endImageAssetId:
+        event.role === 'end' ? this.imagenDocuments.id : undefined,
+      startImagePreviewUrl:
+        event.role === 'start'
+          ? this.imagenDocuments.presignedUrls?.[event.index]
+          : undefined,
+      endImagePreviewUrl:
+        event.role === 'end'
+          ? this.imagenDocuments.presignedUrls?.[event.index]
+          : undefined,
+    };
+
+    const navigationExtras: NavigationExtras = {
+      state: {remixState},
+    };
+    this.router.navigate(['/video'], navigationExtras);
+  }
+
+  sendToVto(index: number) {
+    if (!this.imagenDocuments) {
+      return;
+    }
+
+    const navigationExtras: NavigationExtras = {
+      state: {
+        remixState: {
+          modelImageAssetId: this.imagenDocuments.id,
+          modelImagePreviewUrl: this.imagenDocuments.presignedUrls?.[index],
+          modelImageGcsUri: this.imagenDocuments.gcsUris?.[index],
+        },
+      },
+    };
+    this.router.navigate(['/vto'], navigationExtras);
   }
 }

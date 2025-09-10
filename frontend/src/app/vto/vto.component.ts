@@ -1,15 +1,26 @@
-import {Component, OnInit} from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import {FormBuilder, Validators, FormGroup} from '@angular/forms';
 import {MediaItem} from '../common/models/media-item.model';
 import {HttpClient} from '@angular/common/http';
 import {VtoRequest} from './vto.model';
 import {environment} from '../../environments/environment';
 import {MatDialog} from '@angular/material/dialog';
-import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
+import {
+  ImageSelectorComponent,
+  MediaItemSelection,
+} from '../common/components/image-selector/image-selector.component';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {finalize, Observable} from 'rxjs';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import {Router} from '@angular/router';
+import {MatStepper} from '@angular/material/stepper';
 
 interface Garment {
   id: string;
@@ -41,9 +52,11 @@ interface Model {
   templateUrl: './vto.component.html',
   styleUrls: ['./vto.component.scss'],
 })
-export class VtoComponent implements OnInit {
+export class VtoComponent implements OnInit, AfterViewInit {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
+
+  @ViewChild('stepper') stepper!: MatStepper;
 
   isLoading = false;
   imagenDocuments: MediaItem | null = null;
@@ -87,6 +100,8 @@ export class VtoComponent implements OnInit {
     private readonly http: HttpClient,
     public dialog: MatDialog,
     private _snackBar: MatSnackBar,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
   ) {
     this.firstFormGroup = this._formBuilder.group({
       modelType: ['female', Validators.required],
@@ -103,7 +118,9 @@ export class VtoComponent implements OnInit {
     this.firstFormGroup.get('modelType')?.valueChanges.subscribe(val => {
       this.modelsToShow =
         val === 'female' ? this.femaleModels : this.maleModels;
-      this.firstFormGroup.get('model')?.reset(); // Also clear uploaded model
+      if (this.firstFormGroup.get('model')?.value?.id !== 'uploaded') {
+        this.firstFormGroup.get('model')?.reset();
+      }
       this.imagenDocuments = null;
     });
 
@@ -141,12 +158,28 @@ export class VtoComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadVtoAssets();
+    const remixState =
+      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    if (remixState) {
+      this.applyRemixState(remixState);
+    }
+  }
+
+  ngAfterViewInit(): void {
+    const remixState =
+      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    if (remixState && this.firstFormGroup.valid) {
+      this.stepper.next();
+      this.cdr.detectChanges();
+    }
   }
 
   private loadVtoAssets(): void {
     this.isLoading = true;
     this.http
-      .get<VtoAssetsResponseDto>(`${environment.backendURL}/source_assets/vto-assets`)
+      .get<VtoAssetsResponseDto>(
+        `${environment.backendURL}/source_assets/vto-assets`,
+      )
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: response => {
@@ -214,20 +247,28 @@ export class VtoComponent implements OnInit {
 
     dialogRef
       .afterClosed()
-      .subscribe((result: MediaItem | SourceAssetResponseDto) => {
+      .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
         if (result) {
-          const uploadedModel: Model = {
-            id: 'uploaded',
-            name: 'Uploaded Model',
-            imageUrl:
-              'presignedUrl' in result
-                ? result.presignedUrl
-                : result.presignedUrls![0],
-            gcsUri: 'gcsUri' in result ? result.gcsUri : result.gcsUris[0],
-            size: 'custom',
-          };
-
-          this.firstFormGroup.get('model')?.setValue(uploadedModel);
+          if ('gcsUri' in result) {
+            // SourceAssetResponseDto
+            const uploadedModel: Model = {
+              id: 'uploaded',
+              name: result.originalFilename,
+              imageUrl: result.presignedUrl,
+              gcsUri: result.gcsUri,
+              size: 'custom',
+            };
+            this.firstFormGroup.get('model')?.setValue(uploadedModel);
+          } else {
+            // MediaItemSelection
+            if (result.mediaItem) {
+              this.applyRemixState({
+                modelImageAssetId: result.mediaItem.id,
+                modelImagePreviewUrl: result.mediaItem.presignedUrls![0],
+                modelImageGcsUri: result.mediaItem.gcsUris[0],
+              });
+            }
+          }
         }
       });
   }
@@ -350,5 +391,20 @@ export class VtoComponent implements OnInit {
           handleErrorSnackbar(this._snackBar, err, 'Virtual Try-On');
         },
       });
+  }
+
+  private applyRemixState(remixState: {
+    modelImageAssetId: string;
+    modelImagePreviewUrl: string;
+    modelImageGcsUri: string;
+  }): void {
+    const remixedModel: Model = {
+      id: 'uploaded', // To match the logic for showing the preview
+      name: 'Imported Model',
+      imageUrl: remixState.modelImagePreviewUrl,
+      gcsUri: remixState.modelImageGcsUri,
+      size: 'custom',
+    };
+    this.firstFormGroup.get('model')?.setValue(remixedModel);
   }
 }

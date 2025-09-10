@@ -161,6 +161,12 @@ export class VideoComponent {
     this.templateParams =
       this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
     this.applyTemplateParameters();
+
+    const remixState =
+      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    if (remixState) {
+      this.applyRemixState(remixState);
+    }
   }
 
   private path = '../../assets/images';
@@ -514,5 +520,23 @@ export class VideoComponent {
 
   closeErrorOverlay() {
     this.showErrorOverlay = false;
+  }
+
+  private applyRemixState(remixState: {
+    prompt?: string;
+    startImageAssetId?: string;
+    endImageAssetId?: string;
+    startImagePreviewUrl?: string;
+    endImagePreviewUrl?: string;
+  }): void {
+    if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
+    if (remixState.startImageAssetId)
+      this.startImageAssetId = remixState.startImageAssetId;
+    if (remixState.endImageAssetId)
+      this.endImageAssetId = remixState.endImageAssetId;
+    if (remixState.startImagePreviewUrl)
+      this.image1Preview = remixState.startImagePreviewUrl;
+    if (remixState.endImagePreviewUrl)
+      this.image2Preview = remixState.endImagePreviewUrl;
   }
 }

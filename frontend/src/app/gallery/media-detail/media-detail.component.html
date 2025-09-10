@@ -18,19 +18,26 @@
       &larr; Go to Gallery
     </button>
 
-    <button
-      *ngIf="isAdmin"
-      (click)="createTemplateFromMediaItem()"
-      class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
-    >
-      Create Template from Media
-    </button>
+    <div class="flex items-center gap-4">
+      <button
+        *ngIf="isAdmin"
+        (click)="createTemplateFromMediaItem()"
+        matTooltip="Create Template from Media"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
+      >
+        <mat-icon>auto_stories</mat-icon>
+        <span class="ml-2">Create Template</span>
+      </button>
+    </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <!-- Left Column: The Image/Video -->
     <div class="lg:col-span-2">
-      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" style="max-height: 80vh;"></app-media-lightbox>
+      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" [showEditButton]="true" [showGenerateVideoButton]="true"
+        [showVtoButton]="true" (editClicked)="generateWithThisImage($event)"
+        (generateVideoClicked)="generateVideoWithImage($event)" (sendToVtoClicked)="sendToVto($event)"
+        style="max-height: 80vh;"></app-media-lightbox>
     </div>
 
     <!-- Right Column: The Metadata -->
