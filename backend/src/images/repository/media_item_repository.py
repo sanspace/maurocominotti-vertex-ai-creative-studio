@@ -34,6 +34,8 @@ class MediaRepository(BaseRepository[MediaItemModel]):
             )
         if search_dto.model:
             base_query = base_query.where("model", "==", search_dto.model)
+        if search_dto.status:
+            base_query = base_query.where("status", "==", search_dto.status)
 
         count_query = base_query.count(alias="total")
         aggregation_result = count_query.get()

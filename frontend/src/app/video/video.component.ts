@@ -4,11 +4,14 @@ import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {finalize, Observable} from 'rxjs';
 import {SearchService} from '../services/search/search.service';
 import {Router} from '@angular/router';
-import {VeoRequest} from '../common/models/search.model';
+import {SourceMediaItemLink, VeoRequest} from '../common/models/search.model';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatDialog} from '@angular/material/dialog';
-import {ImageSelectorComponent} from '../common/components/image-selector/image-selector.component';
+import {
+  ImageSelectorComponent,
+  MediaItemSelection,
+} from '../common/components/image-selector/image-selector.component';
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
@@ -35,6 +38,7 @@ export class VideoComponent {
   isAudioGenerationDisabled = false;
   startImageAssetId: string | null = null;
   endImageAssetId: string | null = null;
+  sourceMediaItems: (SourceMediaItemLink | null)[] = [null, null];
   image1Preview: string | null = null;
   image2Preview: string | null = null;
   showDefaultDocuments = false;
@@ -266,12 +270,13 @@ export class VideoComponent {
     this.showErrorOverlay = true;
 
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
+    const hasSourceMediaItems = this.sourceMediaItems.some(i => !!i);
     const isVeo3 = [
       'veo-3.0-generate-preview',
       'veo-3.0-fast-generate-preview',
     ].includes(this.searchRequest.generationModel);
 
-    if (hasSourceAssets && isVeo3) {
+    if ((hasSourceAssets || hasSourceMediaItems) && isVeo3) {
       const veo2Model = this.generationModels.find(
         m => m.value === 'veo-2.0-generate-001',
       );
@@ -292,10 +297,17 @@ export class VideoComponent {
     this.isLoading = true;
     this.videoDocuments = null;
 
+    const validSourceMediaItems = this.sourceMediaItems.filter(
+      (i): i is SourceMediaItemLink => !!i,
+    );
+
     const payload: VeoRequest = {
       ...this.searchRequest,
       startImageAssetId: this.startImageAssetId ?? undefined,
       endImageAssetId: this.endImageAssetId ?? undefined,
+      sourceMediaItems: validSourceMediaItems.length
+        ? validSourceMediaItems
+        : undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -455,20 +467,35 @@ export class VideoComponent {
 
     dialogRef
       .afterClosed()
-      .subscribe((result: MediaItem | SourceAssetResponseDto) => {
+      .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
         if (result) {
           const targetAssetId =
             imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
           const targetPreview =
             imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+          const sourceMediaItemIndex = imageNumber - 1;
 
           if ('gcsUri' in result) {
+            // Uploaded image (SourceAssetResponseDto)
             this[targetAssetId] = result.id;
             this[targetPreview] = result.presignedUrl;
+            this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
           } else {
-            // Assuming a MediaItem used as a source should have an ID that can be treated as a source asset ID.
-            this[targetAssetId] = result.id;
-            this[targetPreview] = result.presignedUrls?.[0] || null;
+            // Gallery image (MediaItemSelection)
+            const selection = result as MediaItemSelection;
+            this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
+            this.sourceMediaItems[sourceMediaItemIndex] = {
+              mediaItemId: selection.mediaItem.id,
+              mediaIndex: selection.selectedIndex,
+              role: imageNumber === 1 ? 'start_frame' : 'end_frame',
+            };
+
+            if (selection.mediaItem) {
+              this[targetPreview] =
+                selection.mediaItem.presignedUrls?.[selection.selectedIndex] ||
+                null;
+            }
+            this[targetAssetId] = null; // Clear the asset ID when a media item is selected
           }
         }
       });
@@ -516,6 +543,14 @@ export class VideoComponent {
       this.endImageAssetId = null;
       this.image2Preview = null;
     }
+    this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
+  }
+
+  private clearSourceMediaItem(imageNumber: 1 | 2) {
+    // Set the specific index to null to clear the slot for that image.
+    if (this.sourceMediaItems.length >= imageNumber) {
+      this.sourceMediaItems[imageNumber - 1] = null;
+    }
   }
 
   closeErrorOverlay() {
@@ -530,10 +565,14 @@ export class VideoComponent {
     endImagePreviewUrl?: string;
   }): void {
     if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
-    if (remixState.startImageAssetId)
+    if (remixState.startImageAssetId) {
       this.startImageAssetId = remixState.startImageAssetId;
-    if (remixState.endImageAssetId)
+      this.sourceMediaItems[0] = null;
+    }
+    if (remixState.endImageAssetId) {
       this.endImageAssetId = remixState.endImageAssetId;
+      this.sourceMediaItems[1] = null;
+    }
     if (remixState.startImagePreviewUrl)
       this.image1Preview = remixState.startImagePreviewUrl;
     if (remixState.endImagePreviewUrl)

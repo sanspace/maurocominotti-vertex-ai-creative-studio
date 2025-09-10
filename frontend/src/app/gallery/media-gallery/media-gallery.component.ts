@@ -14,7 +14,7 @@ import {Subscription, fromEvent} from 'rxjs';
 import {debounceTime} from 'rxjs/operators';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
-import {MediaItem} from '../../common/models/media-item.model';
+import {JobStatus, MediaItem} from '../../common/models/media-item.model';
 import {MatCheckboxChange} from '@angular/material/checkbox';
 import {GalleryService} from '../gallery.service';
 import {MediaItemSelection} from '../../common/components/image-selector/image-selector.component';
@@ -28,6 +28,8 @@ import {UserService} from '../../common/services/user.service';
 export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
   @Output() mediaItemSelected = new EventEmitter<MediaItemSelection>();
   @Input() filterByType: 'image/png' | 'video/mp4' | 'audio/mpeg' | null = null;
+  @Input() statusFilter: JobStatus | null = JobStatus.COMPLETED;
+
   public images: MediaItem[] = [];
   public columns: MediaItem[][] = [];
   allImagesLoaded = false;
@@ -229,27 +231,11 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.mediaItemSelected.observed;
   }
 
-  selectMedia(media: MediaItem, event: MouseEvent) {
+  selectMedia(mediaItem: MediaItem, event: MouseEvent) {
     if (this.isSelectionMode) {
-      const selectedIndex = this.currentImageIndices[media.id] || 0;
-      const selectedGcsUri = media.gcsUris?.[selectedIndex];
-      const selectedPresignedUrl = media.presignedUrls?.[selectedIndex];
-
-      if (selectedGcsUri && selectedPresignedUrl) {
-        // Create a new MediaItem that represents the single selected image
-        // from the carousel, so the consumer of the event gets the correct one.
-        const selectedMediaItem: MediaItem = {
-          ...media,
-          gcsUris: [selectedGcsUri],
-          presignedUrls: [selectedPresignedUrl],
-        };
-        this.mediaItemSelected.emit({
-          mediaItem: selectedMediaItem,
-          selectedIndex: selectedIndex,
-        });
-      } else {
-        this.mediaItemSelected.emit({mediaItem: media, selectedIndex: 0});
-      }
+      const selectedIndex = this.currentImageIndices[mediaItem.id] || 0;
+      // Emit the full media item and the selected index
+      this.mediaItemSelected.emit({mediaItem, selectedIndex});
     }
   }
 
@@ -362,6 +348,9 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
     }
     if (this.generationModelFilter) {
       filters['model'] = this.generationModelFilter;
+    }
+    if (this.statusFilter) {
+      filters['status'] = this.statusFilter;
     }
     this.galleryService.setFilters(filters);
   }

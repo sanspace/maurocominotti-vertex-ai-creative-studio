@@ -144,6 +144,14 @@ gcloud firestore indexes composite create \
   --field-config=field-path=model,order=ASCENDING \
   --field-config=field-path=created_at,order=DESCENDING \
 
+# Command for Index 4: status and created_at
+# This index allows you to filter all media by its status (e.g., completed, failed) and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=status,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+
 
 # For Users
 gcloud firestore indexes composite create \

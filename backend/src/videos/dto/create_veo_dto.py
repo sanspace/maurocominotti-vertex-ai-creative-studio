@@ -13,7 +13,10 @@ from src.common.base_dto import (
     LightingEnum,
     StyleEnum,
 )
-from src.common.schema.media_item_model import SourceMediaItemLink
+from src.common.schema.media_item_model import (
+    AssetRoleEnum,
+    SourceMediaItemLink,
+)
 
 
 class CreateVeoDto(BaseDto):
@@ -82,6 +85,21 @@ class CreateVeoDto(BaseDto):
     def prompt_must_not_be_empty(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("Prompt cannot be empty or whitespace only")
+        return value
+
+    @field_validator("source_media_items")
+    def validate_source_media_item_roles(
+        cls, value: Optional[list[SourceMediaItemLink]]
+    ) -> Optional[list[SourceMediaItemLink]]:
+        """Ensures that source_media_items for video have a valid role."""
+        if value:
+            valid_roles = {AssetRoleEnum.START_FRAME, AssetRoleEnum.END_FRAME}
+            for item in value:
+                if item.role not in valid_roles:
+                    raise ValueError(
+                        f"Invalid role '{item.role}' for source_media_item in video generation. "
+                        f"Allowed roles are: {', '.join(r.value for r in valid_roles)}"
+                    )
         return value
 
     @field_validator("aspect_ratio")

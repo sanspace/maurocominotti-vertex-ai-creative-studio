@@ -5,6 +5,7 @@ import {tap, catchError, shareReplay} from 'rxjs/operators';
 import {
   MediaItem,
   PaginatedGalleryResponse,
+  JobStatus,
 } from '../common/models/media-item.model';
 import {environment} from '../../environments/environment';
 import {GallerySearchDto} from '../common/models/search.model';
@@ -13,6 +14,7 @@ export interface GalleryFilters {
   userEmail?: string;
   mimeType?: string;
   model?: string;
+  status?: JobStatus;
 }
 
 @Injectable({

@@ -15,11 +15,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.common.dto.pagination_response_dto import PaginationResponseDto
-from src.users.user_model import UserRoleEnum
-from src.auth.auth_guard import RoleChecker
+from src.auth.auth_guard import RoleChecker, get_current_user
 from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.galleries.gallery_service import GalleryService
+from src.users.user_model import UserModel, UserRoleEnum
 
 
 router = APIRouter(
@@ -42,6 +42,7 @@ router = APIRouter(
 @router.post("", response_model=PaginationResponseDto[MediaItemResponse])
 async def search_gallery_items(
     search_dto: GallerySearchDto,
+    current_user: UserModel = Depends(get_current_user),
     service: GalleryService = Depends(),
 ):
     """
@@ -50,7 +51,9 @@ async def search_gallery_items(
     Provide filters and a `start_after` cursor in the request body
     to paginate through results.
     """
-    return await service.get_paginated_gallery(search_dto=search_dto)
+    return await service.get_paginated_gallery(
+        search_dto=search_dto, current_user=current_user
+    )
 
 
 @router.get("/item/{item_id}", response_model=MediaItemResponse)

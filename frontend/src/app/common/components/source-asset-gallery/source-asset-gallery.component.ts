@@ -63,7 +63,6 @@ export class SourceAssetGalleryComponent
     if (userDetails?.email) {
       this.sourceAssetService.setFilters({
         userEmail: userDetails.email,
-        mimeType: 'image/png',
       });
     }
   }

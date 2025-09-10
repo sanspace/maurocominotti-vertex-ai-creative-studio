@@ -15,19 +15,27 @@
 import asyncio
 from typing import Optional
 
-from src.common.dto.pagination_response_dto import PaginationResponseDto
-from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
+from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.common.schema.media_item_model import (
+    AssetRoleEnum,
+    JobStatusEnum,
+    MediaItemModel,
+    SourceAssetLink,
+    SourceMediaItemLink,
+)
 from src.galleries.dto.gallery_response_dto import (
     MediaItemResponse,
-    SourceMediaItemLinkResponse,
     SourceAssetLinkResponse,
+    SourceMediaItemLinkResponse,
 )
+from src.galleries.dto.gallery_search_dto import GallerySearchDto
 from src.images.repository.media_item_repository import MediaRepository
-from src.common.schema.media_item_model import AssetRoleEnum, MediaItemModel, SourceAssetLink, SourceMediaItemLink
 from src.source_assets.repository.source_asset_repository import (
     SourceAssetRepository,
 )
+from src.users.user_model import UserModel, UserRoleEnum
+
 
 class GalleryService:
     """
@@ -152,11 +160,17 @@ class GalleryService:
         )
 
     async def get_paginated_gallery(
-        self, search_dto: GallerySearchDto
+        self, search_dto: GallerySearchDto, current_user: UserModel
     ) -> PaginationResponseDto[MediaItemResponse]:
         """
         Performs a paginated and filtered search for media items.
         """
+        is_admin = UserRoleEnum.ADMIN in current_user.roles
+
+        # If the user is not an admin, force the search to only show completed items
+        if not is_admin:
+            search_dto.status = JobStatusEnum.COMPLETED
+
         # Run the synchronous database query in a separate thread
         media_items_query = await asyncio.to_thread(
             self.media_repo.query, search_dto

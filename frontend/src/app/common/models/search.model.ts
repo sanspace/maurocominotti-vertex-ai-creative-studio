@@ -52,6 +52,7 @@ export type VeoRequest = {
   durationSeconds: number;
   startImageAssetId?: string;
   endImageAssetId?: string;
+  sourceMediaItems?: SourceMediaItemLink[];
 };
 
 export type SearchResponse = {
@@ -93,4 +94,5 @@ export interface GallerySearchDto {
   userEmail?: string;
   mimeType?: string;
   model?: string;
+  status?: string;
 }

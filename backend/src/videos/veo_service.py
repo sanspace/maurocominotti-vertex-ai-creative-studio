@@ -211,7 +211,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                         negative_prompt=request_dto.negative_prompt,
                         generate_audio=request_dto.generate_audio,
                         duration_seconds=request_dto.duration_seconds,
-                        last_frame=end_image_for_api,  # end_image is passed as last_frame
+                        last_frame=end_image_for_api,
                     ),
                 )
             )
