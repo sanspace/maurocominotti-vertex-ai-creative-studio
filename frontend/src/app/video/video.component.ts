@@ -1,4 +1,4 @@
-import {Component, OnDestroy} from '@angular/core';
+import {Component, HostListener, OnDestroy} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {finalize, Observable} from 'rxjs';
@@ -29,6 +29,14 @@ export class VideoComponent {
   // This observable will always reflect the current job's state
   activeVideoJob$: Observable<MediaItem | null>;
   public readonly JobStatus = JobStatus; // Expose enum to the template
+
+  @HostListener('window:keydown.control.enter', ['$event'])
+  handleCtrlEnter(event: KeyboardEvent) {
+    if (!this.isLoading) {
+      event.preventDefault();
+      this.searchTerm();
+    }
+  }
 
   templateParams: GenerationParameters | undefined;
 

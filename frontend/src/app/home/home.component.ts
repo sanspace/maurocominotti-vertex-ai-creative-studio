@@ -739,12 +739,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const sourceMediaItem: SourceMediaItemLink = {
+      mediaItemId: this.imagenDocuments.id,
+      mediaIndex: event.index,
+      role: event.role === 'start' ? 'start_frame' : 'end_frame',
+    };
+
     const remixState = {
       prompt: this.imagenDocuments.originalPrompt,
-      startImageAssetId:
-        event.role === 'start' ? this.imagenDocuments.id : undefined,
-      endImageAssetId:
-        event.role === 'end' ? this.imagenDocuments.id : undefined,
+      sourceMediaItems: [sourceMediaItem],
       startImagePreviewUrl:
         event.role === 'start'
           ? this.imagenDocuments.presignedUrls?.[event.index]
