@@ -232,10 +232,15 @@ export class MediaDetailComponent implements OnDestroy {
       return;
     }
 
+    const sourceMediaItem: SourceMediaItemLink = {
+      mediaItemId: this.mediaItem.id,
+      mediaIndex: event.index,
+      role: event.role === 'start' ? 'start_frame' : 'end_frame',
+    };
+
     const remixState = {
       prompt: this.mediaItem.originalPrompt,
-      startImageAssetId: event.role === 'start' ? this.mediaItem.id : undefined,
-      endImageAssetId: event.role === 'end' ? this.mediaItem.id : undefined,
+      sourceMediaItems: [sourceMediaItem],
       startImagePreviewUrl:
         event.role === 'start'
           ? this.mediaItem.presignedUrls?.[event.index]

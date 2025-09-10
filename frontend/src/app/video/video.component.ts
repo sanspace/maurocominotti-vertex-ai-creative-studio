@@ -563,6 +563,7 @@ export class VideoComponent {
     endImageAssetId?: string;
     startImagePreviewUrl?: string;
     endImagePreviewUrl?: string;
+    sourceMediaItems?: SourceMediaItemLink[];
   }): void {
     if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
     if (remixState.startImageAssetId) {
@@ -577,5 +578,19 @@ export class VideoComponent {
       this.image1Preview = remixState.startImagePreviewUrl;
     if (remixState.endImagePreviewUrl)
       this.image2Preview = remixState.endImagePreviewUrl;
+
+    if (remixState.sourceMediaItems?.length) {
+      remixState.sourceMediaItems.forEach(item => {
+        if (item.role === 'start_frame') {
+          this.sourceMediaItems[0] = item;
+          this.startImageAssetId = null;
+          this.image1Preview = remixState.startImagePreviewUrl || null;
+        } else if (item.role === 'end_frame') {
+          this.sourceMediaItems[1] = item;
+          this.endImageAssetId = null;
+          this.image2Preview = remixState.endImagePreviewUrl || null;
+        }
+      });
+    }
   }
 }
