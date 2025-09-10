@@ -163,7 +163,7 @@
       </button>
     </div>
 
-    <div class="flex flex-row gap-4" *ngIf="(columns?.length || 0) > 0">
+    <div class="flex flex-row gap-4" *ngIf="images.length > 0 && (columns?.length || 0) > 0">
       <div *ngFor="let column of columns" class="flex flex-1 flex-col gap-4">
         <div
           *ngFor="let media of column; trackBy: trackByImage"
@@ -328,7 +328,7 @@
     </div>
 
     <div
-      *ngIf="!isLoading && images.length === 0"
+      *ngIf="!isLoading && allImagesLoaded && images.length === 0"
       class="text-center text-white"
     >
       <p>No media items found</p>
