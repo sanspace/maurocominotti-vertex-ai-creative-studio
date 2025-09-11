@@ -267,6 +267,7 @@ export class MediaDetailComponent implements OnDestroy {
         remixState: {
           modelImageAssetId: this.mediaItem.id,
           modelImagePreviewUrl: this.mediaItem.presignedUrls?.[index],
+          modelImageMediaIndex: index,
           modelImageGcsUri: this.mediaItem.gcsUris?.[index],
         },
       },

@@ -116,13 +116,6 @@ export class VtoComponent implements OnInit, AfterViewInit {
       this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
     );
 
-    const remixState =
-      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
-    if (remixState) {
-      this.applyRemixState(remixState);
-      this.shouldAdvanceStepperOnLoad = true;
-    }
-
     this.firstFormGroup = this._formBuilder.group({
       modelType: ['female', Validators.required],
       model: [null, Validators.required],
@@ -134,6 +127,13 @@ export class VtoComponent implements OnInit, AfterViewInit {
       dress: [null],
       shoes: [null],
     });
+
+    const remixState =
+      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    if (remixState) {
+      this.applyRemixState(remixState);
+      this.shouldAdvanceStepperOnLoad = true;
+    }
 
     this.firstFormGroup.get('modelType')?.valueChanges.subscribe(val => {
       this.modelsToShow =

@@ -776,6 +776,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           modelImageAssetId: this.imagenDocuments.id,
           modelImagePreviewUrl: this.imagenDocuments.presignedUrls?.[index],
           modelImageGcsUri: this.imagenDocuments.gcsUris?.[index],
+          modelImageMediaIndex: index,
         },
       },
     };
