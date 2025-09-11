@@ -228,6 +228,12 @@
                         [class.selected]="secondFormGroup.get('top')?.value?.id === top.id">
                         <img mat-card-image [src]="top.imageUrl" [alt]="top.name" />
                       </mat-card>
+                      <div class="drop-zone item-clothes" (click)="openGarmentSelector('top')">
+                        <div class="drop-zone-placeholder">
+                          <mat-icon>add</mat-icon>
+                          <span>Upload Top</span>
+                        </div>
+                      </div>
                     </div>
                     <h3>Bottoms</h3>
                     <div class="item-row item-clothes">
@@ -235,6 +241,12 @@
                         [class.selected]="secondFormGroup.get('bottom')?.value?.id === bottom.id">
                         <img mat-card-image [src]="bottom.imageUrl" [alt]="bottom.name" />
                       </mat-card>
+                      <div class="drop-zone item-clothes" (click)="openGarmentSelector('bottom')">
+                        <div class="drop-zone-placeholder">
+                          <mat-icon>add</mat-icon>
+                          <span>Upload Bottom</span>
+                        </div>
+                      </div>
                     </div>
                     <h3>Dresses</h3>
                     <div class="item-row item-clothes">
@@ -242,6 +254,12 @@
                         [class.selected]="secondFormGroup.get('dress')?.value?.id === dress.id">
                         <img mat-card-image [src]="dress.imageUrl" [alt]="dress.name" />
                       </mat-card>
+                      <div class="drop-zone item-clothes" (click)="openGarmentSelector('dress')">
+                        <div class="drop-zone-placeholder">
+                          <mat-icon>add</mat-icon>
+                          <span>Upload Dress</span>
+                        </div>
+                      </div>
                     </div>
                     <h3>Shoes</h3>
                     <div class="item-row item-clothes">
@@ -249,6 +267,12 @@
                         [class.selected]="secondFormGroup.get('shoes')?.value?.id === shoe.id">
                         <img mat-card-image [src]="shoe.imageUrl" [alt]="shoe.name" />
                       </mat-card>
+                      <div class="drop-zone item-clothes" (click)="openGarmentSelector('shoes')">
+                        <div class="drop-zone-placeholder">
+                          <mat-icon>add</mat-icon>
+                          <span>Upload Shoes</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

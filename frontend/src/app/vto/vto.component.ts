@@ -277,9 +277,15 @@ export class VtoComponent implements OnInit, AfterViewInit {
       });
   }
 
-  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
+  private uploadAsset(
+    file: File,
+    assetType?: string,
+  ): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('scope', 'private');
+    if (assetType) formData.append('assetType', assetType);
+
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,
       formData,
@@ -363,37 +369,6 @@ export class VtoComponent implements OnInit, AfterViewInit {
       payload.bottomImage = this.selectedBottom.inputLink;
     if (this.selectedDress) payload.dressImage = this.selectedDress.inputLink;
     if (this.selectedShoes) payload.shoeImage = this.selectedShoes.inputLink;
-
-    console.log('Triggering VTO request with:', payload);
-
-    // const mockResponse: MediaItem = {
-    //   id: 'c417fb42-ce89-4fbd-899d-a2e8ea37aab8',
-    //   createdAt: '2025-09-10T23:56:43.263123Z',
-    //   updatedAt: '2025-09-10T23:56:43.263160Z',
-    //   userEmail: 'maurocominotti@google.com',
-    //   mimeType: 'image/png',
-    //   model: 'virtual-try-on-preview-08-04',
-    //   prompt: '',
-    //   originalPrompt: '',
-    //   numMedia: 1,
-    //   generationTime: 17.17271100101061,
-    //   aspectRatio: '9:16',
-    //   gcsUris: [
-    //     'gs://creative-studio-dev-cs-be-development-bucket/images/recontext_images/1757548601455/sample_0.png',
-    //   ],
-    //   rawData: {},
-    //   presignedUrls: [
-    //     'https://storage.googleapis.com/creative-studio-dev-cs-be-development-bucket/images/recontext_images/1757548601455/sample_0.png?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=cs-be-development-read%40creative-studio-dev.iam.gserviceaccount.com%2F20250910%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20250910T235643Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&X-Goog-Signature=65271a339cb9989a3c4ae4c898a1777d1280555bd264054abbe141c2a49ebbafdf82786799749da4f55a6b45ccc14e427886dbc125104f22640a7272b916e5b30407dc2c42f99bcab363a02a0e77fb4a45b24d71bbd281864ab530bf58a12b903baa4ea7735c605e92abcb4807402b0de8f6ea7905f29392027960d79a3c786876dce249470a306038831bf98407be241624b83ba6bf975dd3b58a580c6ec9a52405bc1070b269656371c63abe48d8d66b0add4f8526aae9cc112fe35060c7a21f1f294dcd3175c87b8460b8ae91e3baa65ed9d585cabc0e8245d29c4531aa99bc2002e588094b82b754e522e99798bbe87f9a2adaadcf0294d1413ed62cc043',
-    //   ],
-    //   presignedThumbnailUrls: [],
-    // };
-
-    // new Observable<MediaItem>(subscriber => {
-    //   setTimeout(() => {
-    //     subscriber.next(mockResponse);
-    //     subscriber.complete();
-    //   }, 1000); // Simulate network delay
-    // })
 
     this.http
       .post<MediaItem>(
@@ -504,5 +479,56 @@ export class VtoComponent implements OnInit, AfterViewInit {
       state: {remixState},
     };
     this.router.navigate(['/video'], navigationExtras);
+  }
+
+  openGarmentSelector(type: 'top' | 'bottom' | 'dress' | 'shoes') {
+    const dialogRef = this.dialog.open(ImageSelectorComponent, {
+      width: '90vw',
+      height: '80vh',
+      maxWidth: '90vw',
+      panelClass: 'image-selector-dialog',
+      data: {assetType: `vto_${type}`},
+    });
+
+    dialogRef
+      .afterClosed()
+      .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
+        if (result) {
+          let newGarment: Garment;
+          if ('gcsUri' in result) {
+            // Uploaded image
+            newGarment = this.mapAssetToGarment(result, type);
+          } else {
+            // Gallery image
+            newGarment = {
+              id: result.mediaItem.id + '-' + result.selectedIndex,
+              name: 'Gallery Garment',
+              imageUrl: result.mediaItem.presignedUrls![result.selectedIndex],
+              type: type,
+              inputLink: {
+                sourceMediaItem: {
+                  mediaItemId: result.mediaItem.id,
+                  mediaIndex: result.selectedIndex,
+                },
+              },
+            };
+          }
+          switch (type) {
+            case 'top':
+              this.tops.unshift(newGarment);
+              break;
+            case 'bottom':
+              this.bottoms.unshift(newGarment);
+              break;
+            case 'dress':
+              this.dresses.unshift(newGarment);
+              break;
+            case 'shoes':
+              this.shoes.unshift(newGarment);
+              break;
+          }
+          this.selectGarment(newGarment, type);
+        }
+      });
   }
 }

@@ -16,7 +16,7 @@ import asyncio
 import hashlib
 import logging
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile, status
 
@@ -153,12 +153,11 @@ class SourceAssetService:
 
         is_admin = UserRoleEnum.ADMIN in user.roles
         final_scope = AssetScopeEnum.PRIVATE
-        final_asset_type = AssetTypeEnum.GENERIC_IMAGE
+        final_asset_type = asset_type or AssetTypeEnum.GENERIC_IMAGE
 
         if is_admin:
             # Admins can set scope and type freely.
             final_scope = scope or AssetScopeEnum.PRIVATE
-            final_asset_type = asset_type or AssetTypeEnum.GENERIC_IMAGE
         else:
             # Non-admins cannot set system-level scope.
             if scope and scope != AssetScopeEnum.PRIVATE:
@@ -239,13 +238,13 @@ class SourceAssetService:
             data=enriched_assets,
         )
 
-    async def get_all_vto_assets(self) -> VtoAssetsResponseDto:
+    async def get_all_vto_assets(self, user: UserModel) -> VtoAssetsResponseDto:
         """
         Fetches all system-level VTO assets and categorizes them.
 
         This is used to populate the VTO selection UI for users or admins.
         """
-        vto_asset_types = [
+        vto_asset_types: List[AssetTypeEnum] = [
             AssetTypeEnum.VTO_PERSON_MALE,
             AssetTypeEnum.VTO_PERSON_FEMALE,
             AssetTypeEnum.VTO_TOP,
@@ -254,16 +253,29 @@ class SourceAssetService:
             AssetTypeEnum.VTO_SHOE,
         ]
 
-        # Query the repository for all assets matching the scope and types
-        system_assets = await asyncio.to_thread(
+        # In parallel, query for system assets and the user's private assets.
+        system_assets_task = asyncio.to_thread(
             self.repo.find_by_scope_and_types,
             AssetScopeEnum.SYSTEM,
             vto_asset_types,
         )
+        private_assets_task = asyncio.to_thread(
+            self.repo.find_private_by_user_and_types, user.id, vto_asset_types
+        )
+
+        system_assets, private_assets = await asyncio.gather(
+            system_assets_task, private_assets_task
+        )
+
+        # Combine the results. A dictionary is used to prevent duplicates
+        # if an asset somehow exists in both queries (keyed by asset ID).
+        all_assets_map = {asset.id: asset for asset in system_assets}
+        all_assets_map.update({asset.id: asset for asset in private_assets})
+        all_assets = list(all_assets_map.values())
 
         # Create presigned URLs for all assets in parallel
         response_tasks = [
-            self._create_asset_response(asset) for asset in system_assets
+            self._create_asset_response(asset) for asset in all_assets
         ]
         enriched_assets = await asyncio.gather(*response_tasks)
 

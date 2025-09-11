@@ -1,5 +1,5 @@
-import {Component} from '@angular/core';
-import {MatDialogRef} from '@angular/material/dialog';
+import {Component, Inject} from '@angular/core';
+import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {MediaItem} from '../../models/media-item.model';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../../../environments/environment';
@@ -26,11 +26,17 @@ export class ImageSelectorComponent {
     public dialogRef: MatDialogRef<ImageSelectorComponent>,
     private http: HttpClient,
     private sourceAssetService: SourceAssetService,
+    @Inject(MAT_DIALOG_DATA) public data: {assetType?: string},
   ) {}
 
   private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('scope', 'private');
+    if (this.data?.assetType) {
+      formData.append('assetType', this.data.assetType);
+    }
+
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,
       formData,

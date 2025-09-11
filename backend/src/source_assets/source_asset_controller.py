@@ -54,7 +54,7 @@ router = APIRouter(
 async def upload_source_asset(
     file: UploadFile = File(),
     scope: Optional[AssetScopeEnum] = Form(None),
-    asset_type: Optional[AssetTypeEnum] = Form(None),
+    assetType: Optional[AssetTypeEnum] = Form(None),
     current_user: UserModel = Depends(get_current_user),
     service: SourceAssetService = Depends(),
 ):
@@ -63,13 +63,13 @@ async def upload_source_asset(
     Accepts multipart/form-data.
 
     - **scope**: (Admin only) Set the asset's scope. Defaults to 'private'.
-    - **asset_type**: (Admin only) Set the asset's type. Defaults to 'generic_image'.
+    - **assetType**: Set the asset's type. Defaults to 'generic_image'.
     """
     return await service.upload_asset(
         user=current_user,
         file=file,
         scope=scope,
-        asset_type=asset_type,
+        asset_type=assetType,
     )
 
 
@@ -116,6 +116,7 @@ async def list_source_assets(
 
 @router.get("/vto-assets", response_model=VtoAssetsResponseDto)
 async def get_vto_assets(
+    current_user: UserModel = Depends(get_current_user),
     service: SourceAssetService = Depends(),
 ):
     """
@@ -123,7 +124,7 @@ async def get_vto_assets(
     This is a public endpoint for any authenticated user to populate selection UIs.
     """
     try:
-        return await service.get_all_vto_assets()
+        return await service.get_all_vto_assets(user=current_user)
     except Exception as e:
         # Re-raise as HTTPException to be caught by FastAPI's error handling
         raise HTTPException(

@@ -114,3 +114,23 @@ class SourceAssetRepository(BaseRepository[SourceAssetModel]):
 
         documents = list(query.stream())
         return [self.model.model_validate(doc.to_dict()) for doc in documents]
+
+    def find_private_by_user_and_types(
+        self, user_id: str, asset_types: List[AssetTypeEnum]
+    ) -> List[SourceAssetModel]:
+        """
+        Finds all private assets for a specific user that match a list of asset types.
+
+        This query requires a composite index on `user_id`, `scope`, and `asset_type`.
+        """
+        if not asset_types:
+            return []
+
+        query = (
+            self.collection_ref.where("user_id", "==", user_id)
+            .where("scope", "==", AssetScopeEnum.PRIVATE)
+            .where("asset_type", "in", asset_types)
+        )
+
+        documents = list(query.stream())
+        return [self.model.model_validate(doc.to_dict()) for doc in documents]

@@ -27,7 +27,7 @@ export class SourceAssetsService {
     const backendFilters: {[key: string]: any} = {
       original_filename: filters.originalFilename,
       scope: filters.scope,
-      asset_type: filters.assetType,
+      assetType: filters.assetType,
     };
     // Remove undefined properties so they are not sent to the backend
     Object.keys(backendFilters).forEach(
@@ -52,10 +52,10 @@ export class SourceAssetsService {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('scope', scope);
-    formData.append('asset_type', assetType); // Backend expects snake_case
+    formData.append('assetType', assetType); // Backend expects snake_case
     return this.http.post<SourceAssetResponseDto>(
       `${this.apiUrl}/upload`,
-      formData
+      formData,
     );
   }
 
