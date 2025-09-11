@@ -572,6 +572,7 @@ export class VideoComponent {
     startImagePreviewUrl?: string;
     endImagePreviewUrl?: string;
     sourceMediaItems?: SourceMediaItemLink[];
+    aspectRatio?: string;
   }): void {
     if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
     if (remixState.startImageAssetId) {
@@ -599,6 +600,16 @@ export class VideoComponent {
           this.image2Preview = remixState.endImagePreviewUrl || null;
         }
       });
+    }
+
+    if (remixState.aspectRatio) {
+      const aspectRatioOption = this.aspectRatioOptions.find(
+        r => r.value === remixState.aspectRatio,
+      );
+      if (aspectRatioOption) {
+        this.searchRequest.aspectRatio = aspectRatioOption.value;
+        this.selectedAspectRatio = aspectRatioOption.viewValue;
+      }
     }
   }
 }

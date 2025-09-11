@@ -57,7 +57,12 @@
         (click)="onEditClick()"
         title="Edit this image"
       >
-        <mat-icon>edit</mat-icon>
+        <!-- <mat-icon>edit</mat-icon> -->
+         <img
+            src="assets/images/banana-peel.png"
+            class="menu-image-icon"
+            alt="model icon"
+          />
         <span>Edit</span>
       </button>
       <button
@@ -84,7 +89,7 @@
         title="Use as model for Virtual Try-On"
       >
         <mat-icon>checkroom</mat-icon>
-        <span>Send to VTO</span>
+        <span>VTO Edit</span>
       </button>
       <button
         *ngIf="showShareButton"

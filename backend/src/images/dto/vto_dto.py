@@ -1,36 +1,84 @@
-from typing import Annotated, Optional
+from typing import Optional
 
-from fastapi import Query
-from pydantic import BaseModel, Field
-from src.images.dto.image_data_dto import ImageDataDto
+from pydantic import Field, model_validator
+
 from src.common.base_dto import BaseDto
 
 
-class VtoDto(BaseDto):
+class VtoSourceMediaItemLink(BaseDto):
+    """A link to a previously generated media item to be used as a VTO input."""
+
+    media_item_id: str = Field(
+        description="The ID of the source MediaItemModel."
+    )
+    media_index: int = Field(
+        description="The index of the image within the parent's `gcs_uris` list."
+    )
+
+
+class VtoInputLink(BaseDto):
     """
-    VTO Dto is the request schema for Virtual Try-On image generation.
-    Prompt is provided as a query parameter; all other fields go in the body.
+    A flexible link that can point to either an uploaded source asset
+    or a previously generated media item.
     """
 
-    # Body fields
+    source_asset_id: Optional[str] = Field(
+        default=None, description="The ID of the source asset to use."
+    )
+    source_media_item: Optional[VtoSourceMediaItemLink] = Field(
+        default=None,
+        description="The previously generated media item to use.",
+    )
+
+    @model_validator(mode="after")
+    def check_one_of(self) -> "VtoInputLink":
+        """Ensures that exactly one of the input types is provided."""
+        if (self.source_asset_id and self.source_media_item) or (
+            not self.source_asset_id and not self.source_media_item
+        ):
+            raise ValueError(
+                "Exactly one of 'source_asset_id' or 'source_media_item' must be provided for each input."
+            )
+        return self
+
+
+class VtoDto(BaseDto):
+    """Request schema for Virtual Try-On image generation."""
+
     number_of_media: int = Field(
         default=1,
         ge=1,
         le=4,
         description="Number of images to generate (between 1 and 4).",
     )
-    person_image: ImageDataDto = Field(
-        description="Input image of the person for try-on"
+    person_image: VtoInputLink = Field(
+        description="The input image of the person for try-on."
     )
-    top_image: Optional[ImageDataDto] = Field(
-        default=None, description="Top clothing image"
+    top_image: Optional[VtoInputLink] = Field(
+        default=None, description="The input for the top clothing item."
     )
-    bottom_image: Optional[ImageDataDto] = Field(
-        default=None, description="Bottom clothing image"
+    bottom_image: Optional[VtoInputLink] = Field(
+        default=None, description="The input for the bottom clothing item."
     )
-    dress_image: Optional[ImageDataDto] = Field(
-        default=None, description="Dress image"
+    dress_image: Optional[VtoInputLink] = Field(
+        default=None, description="The input for the dress."
     )
-    shoe_image: Optional[ImageDataDto] = Field(
-        default=None, description="Shoes image"
+    shoe_image: Optional[VtoInputLink] = Field(
+        default=None, description="The input for the shoes."
     )
+
+    @model_validator(mode="after")
+    def check_at_least_one_garment(self) -> "VtoDto":
+        """Ensures that at least one garment is provided for the try-on."""
+        if not any(
+            [
+                self.top_image,
+                self.bottom_image,
+                self.dress_image,
+                self.shoe_image,
+            ]
+        ):
+            raise ValueError(
+                "At least one garment (top, bottom, dress, or shoe) must be provided for Virtual Try-On."
+            )
+        return self

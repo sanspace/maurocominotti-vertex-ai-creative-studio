@@ -14,16 +14,22 @@
  * limitations under the License.
  */
 
-export interface ImageDataRequest {
-  gcs_uri: string;
+export interface VtoSourceMediaItemLink {
+  mediaItemId: string;
+  mediaIndex: number;
+  role?: string;
+}
+
+export interface VtoInputLink {
+  sourceAssetId?: string;
+  sourceMediaItem?: VtoSourceMediaItemLink;
 }
 
 export interface VtoRequest {
-  number_of_media: number;
-  person_image: ImageDataRequest;
-  top_image?: ImageDataRequest;
-  bottom_image?: ImageDataRequest;
-  dress_image?: ImageDataRequest;
-  shoe_image?: ImageDataRequest;
+  numberOfMedia: number;
+  personImage: VtoInputLink;
+  topImage?: VtoInputLink;
+  bottomImage?: VtoInputLink;
+  dressImage?: VtoInputLink;
+  shoeImage?: VtoInputLink;
 }
-
