@@ -53,6 +53,7 @@
     <div class="media-actions-toolbar" *ngIf="mediaItem">
       <button
         *ngIf="showEditButton"
+        type="button"
         class="action-button"
         (click)="onEditClick()"
         title="Edit this image"
@@ -84,6 +85,7 @@
       </mat-menu>
       <button
         *ngIf="showVtoButton"
+        type="button"
         class="action-button"
         (click)="onSendToVtoClick()"
         title="Use as model for Virtual Try-On"
@@ -93,6 +95,7 @@
       </button>
       <button
         *ngIf="showShareButton"
+        type="button"
         class="action-button"
         (click)="toggleShareMenu()"
         title="Share"
@@ -102,6 +105,7 @@
       </button>
       <button
         *ngIf="showDownloadButton"
+        type="button"
         class="action-button"
         (click)="openInNewTab()"
         title="Open in new tab"
@@ -114,6 +118,7 @@
       </button>
       <button
         *ngIf="showSeeMoreInfoButton"
+        type="button"
         class="action-button"
         (click)="seeMoreInfo()"
         title="See more info"

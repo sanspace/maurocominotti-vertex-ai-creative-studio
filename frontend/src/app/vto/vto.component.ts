@@ -4,6 +4,7 @@ import {
   Component,
   OnInit,
   ViewChild,
+  inject,
 } from '@angular/core';
 import {FormBuilder, Validators, FormGroup} from '@angular/forms';
 import {MediaItem} from '../common/models/media-item.model';
@@ -22,6 +23,8 @@ import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {NavigationExtras, Router} from '@angular/router';
 import {MatStepper} from '@angular/material/stepper';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
+import {MatIconRegistry} from '@angular/material/icon';
 
 interface Garment {
   id: string;
@@ -62,6 +65,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
   isLoading = false;
   imagenDocuments: MediaItem | null = null;
   previousResult: MediaItem | null = null;
+  private shouldAdvanceStepperOnLoad = false;
 
   selectedTop: Garment | null = null;
   selectedBottom: Garment | null = null;
@@ -104,7 +108,21 @@ export class VtoComponent implements OnInit, AfterViewInit {
     private _snackBar: MatSnackBar,
     private router: Router,
     private cdr: ChangeDetectorRef,
+    private sanitizer: DomSanitizer,
+    public matIconRegistry: MatIconRegistry,
   ) {
+    this.matIconRegistry.addSvgIcon(
+      'mobile-white-gemini-spark-icon',
+      this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
+    );
+
+    const remixState =
+      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    if (remixState) {
+      this.applyRemixState(remixState);
+      this.shouldAdvanceStepperOnLoad = true;
+    }
+
     this.firstFormGroup = this._formBuilder.group({
       modelType: ['female', Validators.required],
       model: [null, Validators.required],
@@ -161,20 +179,19 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadVtoAssets();
-    const remixState =
-      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
-    if (remixState) {
-      this.applyRemixState(remixState);
-    }
   }
 
   ngAfterViewInit(): void {
-    const remixState =
-      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
-    if (remixState && this.firstFormGroup.valid) {
+    if (this.shouldAdvanceStepperOnLoad && this.firstFormGroup.valid) {
       this.stepper.next();
-      this.cdr.detectChanges();
+      this.cdr.detectChanges(); // To avoid ExpressionChangedAfterItHasBeenCheckedError
     }
+  }
+
+  private path = '../../assets/images';
+
+  private setPath(url: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
   private loadVtoAssets(): void {
@@ -436,6 +453,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
     const sourceMediaItem: VtoSourceMediaItemLink = {
       mediaItemId: this.imagenDocuments.id,
       mediaIndex: index,
+      role: 'input',
     };
 
     const navigationExtras: NavigationExtras = {

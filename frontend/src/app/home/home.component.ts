@@ -291,14 +291,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
       );
 
-    this.templateParams =
-      this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
-    this.applyTemplateParameters();
-
     const remixState =
       this.router.getCurrentNavigation()?.extras.state?.['remixState'];
     if (remixState) {
       this.applyRemixState(remixState);
+    } else {
+      // Only apply template params if there's no remix state.
+      this.templateParams =
+        this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
+      this.applyTemplateParameters();
     }
   }
 
