@@ -110,12 +110,10 @@
 // X-Large devices (large desktops, 1200px and up)
 @media (min-width: 1200px) {
   .home-margin {
-    margin: 2rem auto;
+    margin: 2rem auto 0 auto;
   }
-}
 
-::ng-deep .image-selector-dialog {
-  @media (min-width: 1200px) {
+  ::ng-deep .image-selector-dialog {
     width: 70vw !important;
     max-width: 70vw !important;
   }
@@ -127,4 +125,9 @@
 
 // 4K Displays (Ultra HD) (Projectors or Higher Resolution Screens, 2160px and up)
 @media screen and (min-width: 2160px) {
+  .video-container {
+    video {
+      margin-top: -10%;
+    }
+  }
 }

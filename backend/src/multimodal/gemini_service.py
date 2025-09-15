@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
 import json
 import logging
+from enum import Enum
 from typing import Any, Optional, Type, Union
-from google.genai import types, Client
+
+from google.genai import Client, types
 from pydantic import BaseModel
 from tenacity import (
     retry,
@@ -26,24 +27,21 @@ from tenacity import (
     wait_exponential,
 )
 
-from src.multimodal.dto.create_prompt_imagen_dto import (
-    CreatePromptImageDto,
-)
-from src.videos.dto.create_veo_dto import CreateVeoDto
-from src.multimodal.dto.create_prompt_video_dto import (
-    CreatePromptVideoDto,
-)
+from src.common.base_dto import GenerationModelEnum
+from src.config.config_service import config_service
+from src.images.dto.create_imagen_dto import CreateImagenDto
+from src.multimodal.dto.create_prompt_imagen_dto import CreatePromptImageDto
+from src.multimodal.dto.create_prompt_video_dto import CreatePromptVideoDto
 from src.multimodal.rewriters import (
     RANDOM_IMAGE_PROMPT_TEMPLATE,
     RANDOM_VIDEO_PROMPT_TEMPLATE,
-    REWRITE_IMAGE_TEXT_PROMPT_TEMPLATE,
     REWRITE_IMAGE_JSON_PROMPT_TEMPLATE,
-    REWRITE_VIDEO_TEXT_PROMPT_TEMPLATE,
+    REWRITE_IMAGE_TEXT_PROMPT_TEMPLATE,
     REWRITE_VIDEO_JSON_PROMPT_TEMPLATE,
+    REWRITE_VIDEO_TEXT_PROMPT_TEMPLATE,
 )
-from src.images.dto.create_imagen_dto import CreateImagenDto
 from src.multimodal.schema.gemini_model_setup import GeminiModelSetup
-from src.config.config_service import config_service
+from src.videos.dto.create_veo_dto import CreateVeoDto
 
 logger = logging.getLogger(__name__)
 
@@ -172,8 +170,12 @@ class GeminiService:
         Private helper to convert a DTO into a formatted string for prompting.
         This consolidates the repetitive logic from the original file.
         """
-        # Use Pydantic's model_dump to get only user-provided fields
-        fields = dto.model_dump(exclude_unset=True)
+        # Use model_dump_json and then reload it to ensure all values, especially
+        # enums, are converted to their primitive string/number/etc. values
+        # instead of their Python object representation.
+        json_string = dto.model_dump_json(exclude_unset=True)
+        fields = json.loads(json_string)
+
         # The main 'prompt' field is the base, others are attributes
         prompt_base = fields.pop("prompt", "")
 
@@ -205,6 +207,42 @@ class GeminiService:
         """
         if target_type not in [PromptTargetEnum.IMAGE, PromptTargetEnum.VIDEO]:
             raise ValueError("Invalid target_type. Must be IMAGE or VIDEO.")
+
+        # --- Prompt Enhancement for Gemini Image-to-Image ---
+        # This logic is placed here to ensure that any call to enhance a prompt
+        # for Gemini Flash i2i will automatically include these critical
+        # instructions, making the behavior consistent across the application.
+        is_gemini_i2i = (
+            isinstance(dto, CreateImagenDto)
+            and dto.generation_model
+            == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+            and (dto.source_asset_ids or dto.source_media_items)
+        )
+
+        if is_gemini_i2i:
+            dto.prompt = (
+                "**Objective:** Perform a targeted edit on the source image based on the user's request.\n"
+                "**Guiding Principle:** Your primary goal is to follow the user's instructions precisely. Preserve all aspects of the original image (subject identity, background, lighting, composition) unless the user's request explicitly requires a change.\n\n"
+                "**Execution Flow:** Analyze the user's request and match it to one of the following scenarios. If no scenario fits perfectly, use the 'General Instruction' as a fallback.\n\n"
+                "--- Scenarios ---\n\n"
+                "**1. Garment/Accessory Edit** (e.g., 'change the shirt to blue', 'add sunglasses')\n"
+                "   - **Action:** Isolate and modify only the specified clothing or accessory item.\n"
+                "   - **Constraint:** You **MUST NOT** change the subject's identity, face, pose, or the background.\n\n"
+                "**2. Background Replacement** (e.g., 'change the background to a beach', 'put them in Paris')\n"
+                "   - **Action:** Replace the entire background with the new scene described.\n"
+                "   - **Constraint:** You **MUST** preserve the foreground subject's identity, pose, and clothing. Adjust lighting on the subject only as needed to blend them realistically into the new background.\n\n"
+                "**3. Pose Adjustment** (e.g., 'make them wave', 'change the pose to sitting')\n"
+                "   - **Action:** Adjust the subject's body to the new pose.\n"
+                "   - **Constraint:** You **MUST** preserve the subject's identity, clothing, and the background environment.\n\n"
+                "**4. Outpainting / Zoom Out** (e.g., 'zoom out', 'show more of the scene', 'make it a wide-angle shot')\n"
+                "   - **Action:** Extend the image outwards by generating new content that seamlessly matches the existing style (outpainting).\n"
+                "   - **Default:** If the user just says 'zoom out', interpret it as 'zoom out by at least 2x'. If they specify a different amount, follow their instruction.\n\n"
+                "**5. General Instruction (Fallback):**\n"
+                "   - **Action:** If the request does not fit the scenarios above, follow the user's instructions as literally as possible.\n"
+                "   - **Constraint:** Make the minimum necessary changes to fulfill the request, preserving as much of the original image as you can.\n\n"
+                "--- End of Scenarios ---\n\n"
+                f"**User's Request:** {dto.prompt}"
+            )
 
         prompt_template = (
             REWRITE_IMAGE_JSON_PROMPT_TEMPLATE

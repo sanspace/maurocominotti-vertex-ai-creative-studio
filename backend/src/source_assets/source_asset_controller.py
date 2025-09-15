@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from typing import Optional
 
 from fastapi import (
@@ -36,6 +37,7 @@ from src.source_assets.schema.source_asset_model import (
     AssetTypeEnum,
 )
 from src.source_assets.source_asset_service import SourceAssetService
+from src.users.repository.user_repository import UserRepository
 from src.users.user_model import UserModel, UserRoleEnum
 
 router = APIRouter(
@@ -80,7 +82,7 @@ async def list_source_assets(
     search_dto: SourceAssetSearchDto,
     current_user: UserModel = Depends(get_current_user),
     service: SourceAssetService = Depends(),
-    # user_repo: UserRepository = Depends(), # Add this dependency for user lookups
+    user_repo: UserRepository = Depends(),
 ):
     """
     Performs a paginated search for user assets with role-based access control.
@@ -101,13 +103,17 @@ async def list_source_assets(
         search_dto.original_filename = None
     elif search_dto.user_email:
         # Admin is searching for a specific user. You'll need to find the user's ID.
-        # TODO: Implement this user lookup in your UserRepository
-        # user_repo = UserRepository()
-        # target_user = await asyncio.to_thread(user_repo.find_by_email, search_dto.user_email)
-        # if not target_user:
-        #     raise HTTPException(status.HTTP_404_NOT_FOUND, "User with that email not found.")
-        # target_user_id = target_user.id
-        pass  # Placeholder for user lookup logic
+        if search_dto.user_email == current_user.email:
+            target_user_id = current_user.id
+        else:
+            target_user = await asyncio.to_thread(
+                user_repo.get_by_email, search_dto.user_email
+            )
+            if not target_user:
+                raise HTTPException(
+                    status.HTTP_404_NOT_FOUND, "User email not found."
+                )
+            target_user_id = target_user.id
 
     return await service.list_assets_for_user(
         search_dto=search_dto, target_user_id=target_user_id

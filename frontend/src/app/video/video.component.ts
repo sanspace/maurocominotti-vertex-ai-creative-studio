@@ -279,12 +279,11 @@ export class VideoComponent {
 
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
     const hasSourceMediaItems = this.sourceMediaItems.some(i => !!i);
-    const isVeo3 = [
-      'veo-3.0-generate-preview',
+    const isVeo3Fast = [
       'veo-3.0-fast-generate-preview',
     ].includes(this.searchRequest.generationModel);
 
-    if ((hasSourceAssets || hasSourceMediaItems) && isVeo3) {
+    if ((hasSourceAssets || hasSourceMediaItems) && isVeo3Fast) {
       const veo2Model = this.generationModels.find(
         m => m.value === 'veo-2.0-generate-001',
       );
@@ -294,7 +293,7 @@ export class VideoComponent {
           panelClass: ['green-toast'],
           duration: 8000,
           data: {
-            text: "Veo 3 doesn't support images as input, so we've switched to Veo 2 for you.",
+            text: "Veo 3 Fast doesn't support images as input, so we've switched to Veo 2 for you.",
             matIcon: 'info_outline',
           },
         });
@@ -506,6 +505,8 @@ export class VideoComponent {
             this[targetAssetId] = null; // Clear the asset ID when a media item is selected
           }
         }
+        // If a new image is selected, clear the other one.
+        this.clearOtherImage(imageNumber);
       });
   }
 
@@ -525,6 +526,8 @@ export class VideoComponent {
               imageNumber === 1 ? 'image1Preview' : 'image2Preview';
             this[targetAssetId] = asset.id;
             this[targetPreview] = asset.presignedUrl || null;
+            // If a new image is dropped, clear the other one.
+            this.clearOtherImage(imageNumber);
           },
           error: error => {
             handleErrorSnackbar(this._snackBar, error, 'Image upload');
@@ -558,6 +561,33 @@ export class VideoComponent {
     // Set the specific index to null to clear the slot for that image.
     if (this.sourceMediaItems.length >= imageNumber) {
       this.sourceMediaItems[imageNumber - 1] = null;
+    }
+  }
+
+  private clearOtherImage(imageNumberJustSet: 1 | 2) {
+    const imageNumberToClear = imageNumberJustSet === 1 ? 2 : 1;
+    const hasSomeSourceMediaItems = this.sourceMediaItems.some(item => !!item);
+
+    if (hasSomeSourceMediaItems) {
+      if (imageNumberToClear === 1) {
+        this.startImageAssetId = null;
+        this.image1Preview = null;
+        this.sourceMediaItems[0] = null;
+      } else {
+        // Clearing image 2
+        this.endImageAssetId = null;
+        this.image2Preview = null;
+        this.sourceMediaItems[1] = null;
+      }
+
+      this._snackBar.openFromComponent(ToastMessageComponent, {
+        panelClass: ['green-toast'],
+        duration: 8000,
+        data: {
+          text: "Veo 3 doesn't support 2 images as input, so we've cleared the other one for you.",
+          matIcon: 'info_outline',
+        },
+      });
     }
   }
 
