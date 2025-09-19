@@ -12,9 +12,21 @@ variable "backend_service_name" { type = string }
 variable "backend_custom_audiences" { type = list(string) }
 variable "be_env_vars" { type = map(map(string)) }
 
+variable "be_build_substitutions" {
+  type        = map(string)
+  description = "A map of substitution variables for the backend Cloud Build trigger."
+  default     = {}
+}
+
 # Frontend specific variables
 variable "frontend_service_name" { type = string }
 variable "frontend_custom_audiences" { type = list(string) }
+
+variable "fe_build_substitutions" {
+  type        = map(string)
+  description = "A map of substitution variables for the frontend Cloud Build trigger."
+  default     = {}
+}
 
 # Common GitHub variables
 variable "github_conn_name" { type = string }
