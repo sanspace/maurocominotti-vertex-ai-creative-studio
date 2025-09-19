@@ -21,7 +21,7 @@ resource "google_storage_bucket_iam_member" "bucket_viewer_binding" {
 locals {
   region_code  = join("", [for s in split("-", var.gcp_region) : substr(s, 0, 1)])
   backend_url  = "https://${var.backend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
-  frontend_url = "https://${var.frontend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
+  frontend_url = "https://${var.gcp_project_id}.web.app" # Predictable Firebase URL
 
   backend_env_vars = merge(
     lookup(var.be_env_vars, "common", {}),
@@ -290,26 +290,25 @@ module "backend_service" {
   )
 }
 
+resource "google_firebase_project" "default" {
+  provider = google-beta
+  project = var.gcp_project_id
+}
+
 module "frontend_service" {
-  source = "../cloud-run-service"
+  source = "../firebase-hosting-service"
 
-  gcp_project_id        = var.gcp_project_id
-  gcp_region            = var.gcp_region
-  environment           = var.environment
-  service_name          = var.frontend_service_name
-  resource_prefix       = "cs-fe"
-  github_conn_name      = var.github_conn_name
-  github_repo_owner     = var.github_repo_owner
-  github_repo_name      = var.github_repo_name
-  github_branch_name    = var.github_branch_name
-  cloudbuild_yaml_path  = "frontend/cloudbuild.yaml"
-  included_files_glob   = ["frontend/**"]
-  custom_audiences      = var.frontend_custom_audiences
-  scaling_min_instances = 1
   source_repository_id = google_cloudbuildv2_repository.source_repo.id
-  cpu = var.fe_cpu
-  memory = var.fe_memory
-
+  gcp_project_id       = var.gcp_project_id
+  gcp_region            = var.gcp_region
+  firebase_project_id  = google_firebase_project.default.project
+  service_name         = var.frontend_service_name
+  environment          = var.environment
+  resource_prefix      = "cs-fe"
+  github_branch_name   = var.github_branch_name
+  cloudbuild_yaml_path = "frontend/cloudbuild-deploy.yaml"
+  included_files_glob  = ["frontend/**"]
+  
   build_substitutions = merge(
     var.fe_build_substitutions,
     {

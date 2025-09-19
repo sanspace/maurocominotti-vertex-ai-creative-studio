@@ -11,7 +11,7 @@ frontend_service_name = "creative-studio-frontend-dev"
 github_conn_name   = "gh-cstudio"
 github_repo_owner  = "sanspace"
 github_repo_name   = "maurocominotti-vertex-ai-creative-studio"
-github_branch_name = "feat/tfenvs"
+github_branch_name = "feature/add-angular-and-fastapi"
 
 # --- Custom Audiences ---
 backend_custom_audiences  = ["703756029283-assivi1rbjtn0qab4m01gtg4ednev0p3.apps.googleusercontent.com", "creative-studio-dev"]

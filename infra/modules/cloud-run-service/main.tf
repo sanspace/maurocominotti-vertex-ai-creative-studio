@@ -9,8 +9,6 @@ resource "google_service_account" "trigger_sa" {
   display_name = "SA for ${var.service_name} (${var.environment}) Trigger"
 }
 
-
-
 # --- Core Resources ---
 resource "google_artifact_registry_repository" "repo" {
   location      = var.gcp_region
@@ -23,6 +21,7 @@ resource "google_cloud_run_v2_service" "this" {
   name             = var.service_name
   location         = var.gcp_region
   custom_audiences = var.custom_audiences
+  deletion_protection = false
 
   template {
     service_account = google_service_account.run_sa.email
