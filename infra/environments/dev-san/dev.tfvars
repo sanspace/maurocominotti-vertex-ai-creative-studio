@@ -29,6 +29,10 @@ be_env_vars = {
   production = {} # Not used in dev, but defined to match the variable type
 }
 
+fe_build_substitutions = {
+  _ANGULAR_BUILD_COMMAND = "build-dev"
+}
+
 apis_to_enable = [
   "serviceusage.googleapis.com",     # Required to enable other APIs
   "iam.googleapis.com",              # Required for IAM management

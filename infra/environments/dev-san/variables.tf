@@ -70,6 +70,12 @@ variable "be_build_substitutions" {
   default     = {}
 }
 
+variable "fe_build_substitutions" {
+  type        = map(string)
+  description = "A map of substitution variables for the backend Cloud Build trigger."
+  default     = {}
+}
+
 # --- List of APIs to enable ---
 variable "apis_to_enable" {
   type        = list(string)

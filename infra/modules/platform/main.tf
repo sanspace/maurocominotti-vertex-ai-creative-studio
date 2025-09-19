@@ -284,6 +284,8 @@ module "backend_service" {
     var.be_build_substitutions,
     {
       _REGION = var.gcp_region
+      _SERVICE_NAME = var.backend_service_name
+      _REPO_NAME = var.github_repo_name
     }
   )
 }
@@ -313,6 +315,8 @@ module "frontend_service" {
     {
       _BACKEND_URL = local.backend_url
       _REGION = var.gcp_region
+      _TARGET_PROJECT_ID: var.gcp_project_id
+      _FIREBASE_PROJECT_ID: var.gcp_project_id
     }
   )
 }
