@@ -20,6 +20,7 @@ import {
   OnDestroy,
   AfterViewInit,
   ElementRef,
+  Inject,
   ViewChild,
   HostListener,
 } from '@angular/core';
@@ -46,6 +47,7 @@ import {MatChipInputEvent} from '@angular/material/chips';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 
 @Component({
   selector: 'app-home',
@@ -63,6 +65,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   image1Preview: string | null = null;
   image2Preview: string | null = null;
   sourceMediaItems: (SourceMediaItemLink | null)[] = [];
+  activeWorkspaceId$: Observable<string | null>;
 
   @HostListener('window:keydown.control.enter', ['$event'])
   handleCtrlEnter(event: KeyboardEvent) {
@@ -264,6 +267,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private _snackBar: MatSnackBar,
     public dialog: MatDialog,
     private http: HttpClient,
+    @Inject(WorkspaceStateService)
+    private workspaceStateService: WorkspaceStateService,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -301,6 +306,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
       this.applyTemplateParameters();
     }
+
+    this.activeWorkspaceId$ = this.workspaceStateService.activeWorkspaceId$;
   }
 
   private path = '../../assets/images';

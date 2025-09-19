@@ -99,7 +99,80 @@ gcloud services enable \
     iamcredentials.googleapis.com \
     aiplatform.googleapis.com \
     firestore.googleapis.com \
+    gmail.googleapis.com \
 ```
+### Step 1.1: Configure Service Account for Sending Emails (Gmail API)
+To allow the application to send workspace invitation emails via the Gmail API, you must authorize a service account to act on behalf of a user within your Google Workspace organization. This is done using **Domain-Wide Delegation**.
+
+> **Note:** This requires administrator access to your organization's Google Workspace Admin Console (`admin.google.com`).
+
+1.  **Choose or Create a Service Account:**
+    You can use an existing service account or create a new one for this purpose. Let's assume you use the same one for signing URLs for simplicity:
+    ```bash
+    export SA_NAME=sa-genmedia-creative-studio
+    export SA_EMAIL=$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com
+    ```
+
+2.  **Find the Service Account's Unique Client ID:**
+    Every service account has a unique numeric ID. Find it by running this command:
+    ```bash
+    gcloud iam service-accounts describe $SA_EMAIL --format='value(oauth2ClientId)'
+    ```
+    Copy the long number that is output. This is your **Client ID**.
+
+3.  **Delegate Domain-Wide Authority in Google Workspace:**
+    - Go to your Google Workspace Admin Console: admin.google.com.
+    - Navigate to **Security > Access and data control > API controls**.
+    - In the "Domain-wide Delegation" pane, click **Manage Domain-Wide Delegation**.
+    - Click **Add new**.
+    - In the **Client ID** field, paste the numeric Client ID you copied earlier.
+    - In the **OAuth scopes (comma-delimited)** field, add the following scope:
+      `https://www.googleapis.com/auth/gmail.send`
+    - Click **Authorize**.
+
+4.  **Set the Sender Email Environment Variable:**
+    In your `.env` file or Cloud Run environment variables, set `SENDER_EMAIL` to the email address you want the service account to send emails as (e.g., `export SENDER_EMAIL="no-reply@your-domain.com"`). This user must be part of your Google Workspace organization.
+
+    > **IMPORTANT:** The `SENDER_EMAIL` **cannot** be the service account's own email address (e.g., `...gserviceaccount.com`). It must be a real user account within your Google Workspace.
+
+#### A Note for GCP Project Owners without Workspace Admin Access
+
+It is common in larger organizations for the GCP Project Owner and the Google Workspace Administrator to be different people.
+
+- **Your Role (as GCP Project Owner):** Your responsibility is to create the service account and get its **Client ID** (Step 2 in the guide above).
+- **The Workspace Admin's Role:** You must provide the **Client ID** and the required **OAuth scope** (`https://www.googleapis.com/auth/gmail.send`) to your organization's Google Workspace administrator. They are the only ones who can perform the authorization steps in the Google Workspace Admin Console.
+
+You will need to coordinate with them to complete this setup.
+
+#### Can I Use My Own Email Address?
+
+Yes. If you cannot create a `no-reply@your-domain.com` user, you can use your own Google Workspace email address as the `SENDER_EMAIL`. The process is the same:
+
+1.  Set the `SENDER_EMAIL` environment variable to your own email address.
+2.  Provide the **Client ID** of your service account to your Workspace Admin and ask them to delegate domain-wide authority to it for your specific email address (e.g., `your-name@your-domain.com`).
+
+This is a common and perfectly valid approach for development or when you don't have permissions to create new users.
+
+
+### Step 1.2: Create a "Sender" User Account in Google Workspace (if needed)
+If you don't have a generic email address like `no-reply@your-domain.com` to use as the `SENDER_EMAIL`, you can create one. This requires administrator access to your Google Workspace.
+
+1.  **Log in to the Google Workspace Admin Console:**
+    Go to admin.google.com.
+
+2.  **Navigate to Users:**
+    From the Admin console Home page, go to **Directory > Users**.
+
+3.  **Add a New User:**
+    - At the top of the page, click **Add new user**.
+    - Fill in the user information:
+        - **First name:** `No-Reply`
+        - **Last name:** `System` (or your application's name)
+        - **Primary email:** `no-reply` (the domain will be automatically added)
+    - It's recommended to auto-generate a password, as you won't need to log in as this user directly.
+    - Click **Add New User**.
+
+Once this user is created, you can use `no-reply@your-domain.com` as the value for the `SENDER_EMAIL` environment variable. The service account you configured in the previous step will then be able to send emails on behalf of this new user.
 
 ### Step 1: Create the Firestore Database
 A Firestore database must be created for your project. This is a one-time operation.
@@ -152,6 +225,41 @@ gcloud firestore indexes composite create \
   --field-config=field-path=status,order=ASCENDING \
   --field-config=field-path=created_at,order=DESCENDING \
 
+# Command for Index 5: workspace_id, user_email and created_at
+# This index allows you to query for a specific user's media within a workspace and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=workspace_id,order=ASCENDING \
+  --field-config=field-path=user_email,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+
+# Command for Index 6: workspace_id, mime_type and created_at
+# This index allows you to filter all media within a workspace by its type and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=workspace_id,order=ASCENDING \
+  --field-config=field-path=mime_type,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+
+# Command for Index 7: workspace_id, model and created_at
+# This index allows you to filter all media within a workspace by the generation model used and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=workspace_id,order=ASCENDING \
+  --field-config=field-path=model,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+
+# Command for Index 8: workspace_id, status and created_at
+# This index allows you to filter all media within a workspace by its status and sort it by the most recent.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=workspace_id,order=ASCENDING \
+  --field-config=field-path=status,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
 
 # For Users
 gcloud firestore indexes composite create \

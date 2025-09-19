@@ -395,6 +395,7 @@ class VeoService:
         # 2. Create a placeholder document
         placeholder_item = MediaItemModel(
             id=media_item_id,
+            workspace_id=request_dto.workspace_id,
             user_email=user.email,
             user_id=user.id,
             mime_type=MimeTypeEnum.VIDEO_MP4,

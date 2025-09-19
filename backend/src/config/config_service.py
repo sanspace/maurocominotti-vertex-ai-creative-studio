@@ -1,7 +1,8 @@
-from typing import Set, Any
+from typing import Any, Set
+
 import google.auth
 from google.auth.exceptions import DefaultCredentialsError
-from pydantic import Field, model_validator, computed_field
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -63,6 +64,11 @@ class ConfigService(BaseSettings):
     IMAGEN_GENERATED_SUBFOLDER: str = "generated_images"
     IMAGEN_EDITED_SUBFOLDER: str = "edited_images"
     IMAGEN_RECONTEXT_SUBFOLDER: str = "recontext_images"
+
+    # --- Email Service ---
+    SENDER_EMAIL: str = (
+        ""  # The email address to send from (e.g., no-reply@your-domain.com)
+    )
 
     @model_validator(mode="before")
     @classmethod

@@ -20,6 +20,7 @@ from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.users.user_model import UserModel, UserRoleEnum
 from src.videos.dto.create_veo_dto import CreateVeoDto
 from src.videos.veo_service import VeoService
+from src.workspaces.workspace_auth_guard import workspace_auth_service
 
 # Define role checkers for convenience
 user_only = Depends(
@@ -42,6 +43,12 @@ async def generate_videos(
     service: VeoService = Depends(),
 ) -> MediaItemResponse | None:
     try:
+        # Use our centralized dependency to authorize the user for the workspace
+        # before proceeding with the expensive generation job.
+        workspace_auth_service.authorize(
+            workspace_id=video_request.workspace_id, user=current_user
+        )
+
         # Get the process pool from the application state
         executor = request.app.state.process_pool
 

@@ -388,6 +388,7 @@ class ImagenService:
                 user_id=user.id,
                 mime_type=mime_type,
                 model=request_dto.generation_model,
+                workspace_id=request_dto.workspace_id,
                 # Common Props
                 prompt=rewritten_prompt,
                 original_prompt=original_prompt,
@@ -681,6 +682,7 @@ class ImagenService:
             # Create and save a SINGLE MediaItem for the entire batch
             media_post_to_save = MediaItemModel(
                 # Core Props
+                workspace_id=request_dto.workspace_id,
                 user_email=user.email,
                 user_id=user.id,
                 mime_type=mime_type,

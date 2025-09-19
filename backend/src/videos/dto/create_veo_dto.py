@@ -28,6 +28,9 @@ class CreateVeoDto(BaseDto):
     prompt: Annotated[str, Query(max_length=10000)] = Field(
         description="Prompt term to be passed to the model"
     )
+    workspace_id: str = Field(
+        min_length=1, description="The ID of the workspace for this generation."
+    )
     generation_model: GenerationModelEnum = Field(
         default=GenerationModelEnum.VEO_3_FAST,
         description="Model used for image generation.",

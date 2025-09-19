@@ -60,3 +60,6 @@ source = ["livecov"]
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-report=lcov:lcov.info --cov-report=term"
+
+[tool.isort]
+profile = "black"

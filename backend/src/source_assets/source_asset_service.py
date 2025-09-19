@@ -68,6 +68,7 @@ class SourceAssetService:
         self,
         user: UserModel,
         file: UploadFile,
+        workspace_id: str,
         scope: Optional[AssetScopeEnum] = None,
         asset_type: Optional[AssetTypeEnum] = None,
     ) -> SourceAssetResponseDto:
@@ -167,6 +168,7 @@ class SourceAssetService:
                 )
 
         new_asset = SourceAssetModel(
+            workspace_id=workspace_id,
             user_id=user.id,
             gcs_uri=final_gcs_uri,
             original_filename=file.filename or "untitled",

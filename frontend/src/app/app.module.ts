@@ -78,6 +78,8 @@ import {VtoComponent} from './vto/vto.component';
 import {ImageSelectorComponent} from './common/components/image-selector/image-selector.component';
 import {MatDialogModule} from '@angular/material/dialog';
 import {SourceAssetGalleryComponent} from './common/components/source-asset-gallery/source-asset-gallery.component';
+import {CreateWorkspaceModalComponent} from './common/components/create-workspace-modal/create-workspace-modal.component';
+import {WorkspaceSwitcherComponent} from './common/components/workspace-switcher/workspace-switcher.component';
 
 @NgModule({
   declarations: [
@@ -97,6 +99,8 @@ import {SourceAssetGalleryComponent} from './common/components/source-asset-gall
     VtoComponent,
     ImageSelectorComponent,
     SourceAssetGalleryComponent,
+    CreateWorkspaceModalComponent,
+    WorkspaceSwitcherComponent,
   ],
   imports: [
     BrowserModule,

@@ -28,6 +28,9 @@ from fastapi.responses import JSONResponse
 
 from src.audios.audio_controller import router as audio_router
 from src.auth import firebase_client_service
+from src.brand_guidelines.brand_guideline_controller import (
+    router as brand_guideline_router,
+)
 from src.galleries.gallery_controller import router as gallery_router
 from src.generation_options.generation_options_controller import (
     router as generation_options_router,
@@ -42,6 +45,7 @@ from src.source_assets.source_asset_controller import (
 )
 from src.users.user_controller import router as user_router
 from src.videos.veo_controller import router as video_router
+from src.workspaces.workspace_controller import router as workspace_router
 
 # Get a logger instance for use in this file. It will inherit the root setup.
 logger = logging.getLogger(__name__)
@@ -92,6 +96,9 @@ async def lifespan(app: FastAPI):
     logger.info("Creating ProcessPoolExecutor...")
     # Create the pool and attach it to the app's state
     app.state.process_pool = ProcessPoolExecutor(max_workers=4)
+
+    # Ensure the default public workspace exists on startup.
+    firebase_client_service.firebase_client._ensure_default_workspace_exists()
 
     yield
 
@@ -151,3 +158,5 @@ app.include_router(user_router)
 app.include_router(generation_options_router)
 app.include_router(media_template_router)
 app.include_router(source_asset_router)
+app.include_router(workspace_router)
+app.include_router(brand_guideline_router)

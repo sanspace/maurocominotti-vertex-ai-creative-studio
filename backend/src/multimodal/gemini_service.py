@@ -16,7 +16,7 @@
 import json
 import logging
 from enum import Enum
-from typing import Any, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from google.genai import Client, types
 from pydantic import BaseModel
@@ -27,6 +27,9 @@ from tenacity import (
     wait_exponential,
 )
 
+from src.brand_guidelines.schema.brand_guideline_model import (
+    BrandGuidelineModel,
+)
 from src.common.base_dto import GenerationModelEnum
 from src.config.config_service import config_service
 from src.images.dto.create_imagen_dto import CreateImagenDto
@@ -302,3 +305,51 @@ class GeminiService:
                 f"Gemini text generation failed for prompt '{prompt[:100]}...': {e}"
             )
             raise
+
+    def extract_brand_info_from_pdf(self, pdf_gcs_uri: str) -> Dict[str, Any]:
+        """
+        Uses a multimodal model to analyze a PDF from GCS and extract structured
+        brand guideline information.
+
+        Args:
+            pdf_gcs_uri: The full GCS URI (gs://bucket/path/to/file.pdf) of the PDF.
+
+        Returns:
+            A dictionary containing the extracted brand information.
+        """
+        logger.info(f"Starting brand info extraction for PDF: {pdf_gcs_uri}")
+
+        pdf_file = types.Part.from_uri(
+            file_uri=pdf_gcs_uri, mime_type="application/pdf"
+        )
+
+        # This structured prompt instructs the model to return a JSON object,
+        # making the output easy to parse and use.
+        prompt = """
+        Analyze the provided brand guidelines PDF and extract the following information as a JSON object:
+        1.  "color_palette": A list of primary brand colors as hex codes (e.g., ["#RRGGBB", ...]).
+        2.  "tone_of_voice_summary": A concise, one-paragraph summary of the brand's tone of voice. This summary should be suitable for use as a prefix in a text generation prompt.
+        3.  "visual_style_summary": A concise, one-paragraph summary of the brand's visual style, aesthetics, and imagery. This summary should be suitable for use as a prefix in an image generation prompt.
+
+        Your response MUST be a single, valid JSON object and nothing else.
+        """
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.cfg.GEMINI_MODEL_ID,
+                contents=[pdf_file, prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BrandGuidelineModel,
+                ),
+            )
+
+            # The model is configured to return JSON, so we can parse it directly.
+            extracted_data = json.loads(response.text or "{}")
+            logger.info(f"Successfully extracted data: {extracted_data}")
+            return extracted_data
+        except Exception as e:
+            logger.error(
+                f"Failed to extract brand info from PDF {pdf_gcs_uri}: {e}"
+            )
+            return {}
