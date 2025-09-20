@@ -203,6 +203,8 @@ export class VideoComponent {
       // Re-enable all aspect ratios for Veo 2.
       this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
     } else {
+      this.clearOtherImage(1);
+
       // Veo 3 models support audio.
       this.isAudioGenerationDisabled = false;
 
@@ -281,11 +283,12 @@ export class VideoComponent {
 
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
     const hasSourceMediaItems = this.sourceMediaItems.some(i => !!i);
-    const isVeo3Fast = ['veo-3.0-fast-generate-preview'].includes(
-      this.searchRequest.generationModel,
-    );
+    const isVeo3 = [
+      'veo-3.0-fast-generate-preview',
+      'veo-3.0-generate-preview',
+    ].includes(this.searchRequest.generationModel);
 
-    if ((hasSourceAssets || hasSourceMediaItems) && isVeo3Fast) {
+    if ((hasSourceAssets || hasSourceMediaItems) && isVeo3) {
       const veo2Model = this.generationModels.find(
         m => m.value === 'veo-2.0-generate-001',
       );
@@ -573,11 +576,18 @@ export class VideoComponent {
   }
 
   private clearOtherImage(imageNumberJustSet: 1 | 2) {
-    const imageNumberToClear = imageNumberJustSet === 1 ? 2 : 1;
-    const hasSomeSourceMediaItems = this.sourceMediaItems.some(item => !!item);
+    const isVeo3 = [
+      'veo-3.0-fast-generate-preview',
+      'veo-3.0-generate-preview',
+    ].includes(this.searchRequest.generationModel);
 
-    if (hasSomeSourceMediaItems) {
-      if (imageNumberToClear === 1) {
+    const image1Set = !!this.startImageAssetId || !!this.sourceMediaItems[0];
+    const image2Set = !!this.endImageAssetId || !!this.sourceMediaItems[1];
+    const totalImages = (image1Set ? 1 : 0) + (image2Set ? 1 : 0);
+
+    if (isVeo3 && totalImages === 2) {
+      const imageToClear = imageNumberJustSet === 1 ? 2 : 1;
+      if (imageToClear === 1) {
         this.startImageAssetId = null;
         this.image1Preview = null;
         this.sourceMediaItems[0] = null;
