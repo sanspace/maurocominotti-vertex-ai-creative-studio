@@ -105,7 +105,7 @@ class WorkspaceService:
         """
         # 1. Fetch all workspaces where the user is explicitly a member.
         private_workspaces = self.workspace_repo.find_by_filter(
-            FieldFilter("member_ids", "array-contains", user.id)
+            FieldFilter("member_ids", "array_contains", user.id)
         )
 
         # 2. Fetch all public workspaces.

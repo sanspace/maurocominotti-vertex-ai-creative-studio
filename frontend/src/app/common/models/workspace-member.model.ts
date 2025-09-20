@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-import {WorkspaceMember} from './workspace-member.model';
-
-export enum WorkspaceScope {
-  PUBLIC = 'public',
-  PRIVATE = 'private',
+export enum WorkspaceRole {
+  VIEWER = 'viewer',
+  EDITOR = 'editor',
+  ADMIN = 'admin',
+  OWNER = 'owner',
 }
 
-export interface Workspace {
-  id: string;
-  name: string;
-  ownerId: string;
-  scope: WorkspaceScope;
-  members: WorkspaceMember[];
-  memberIds: string[];
+export interface WorkspaceMember {
+  userId: string;
+  email: string;
+  role: WorkspaceRole;
 }

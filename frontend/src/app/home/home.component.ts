@@ -647,6 +647,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspace_id', activeWorkspaceId);
+    }
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,
       formData,

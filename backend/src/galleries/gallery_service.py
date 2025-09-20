@@ -184,7 +184,7 @@ class GalleryService:
         )
 
     async def get_paginated_gallery(
-        self, search_dto: GallerySearchDto
+        self, search_dto: GallerySearchDto, current_user: UserModel
     ) -> PaginationResponseDto[MediaItemResponse]:
         """
         Performs a paginated and filtered search for media items.
@@ -193,6 +193,12 @@ class GalleryService:
         logger.info(
             f"Fetching gallery for workspace_id: {search_dto.workspace_id} with params: {search_dto}"
         )
+
+        is_admin = UserRoleEnum.ADMIN in current_user.roles
+        # If the user is not an admin, force the search to only show completed items
+        if not is_admin:
+            search_dto.status = JobStatusEnum.COMPLETED
+
         # Add the mandatory workspace filter to the search criteria
         workspace_filter = FieldFilter(
             "workspace_id", "==", search_dto.workspace_id

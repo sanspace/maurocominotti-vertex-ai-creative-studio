@@ -300,6 +300,56 @@ table {
   color: white !important;
 }
 
+app-workspace-switcher .top-left-container {
+  bottom: 2.5vh;
+  left: 10vw;
+  display: block;
+}
+
+/* Workspace Switcher Styles */
+app-workspace-switcher .workspace-container {
+  cursor: pointer;
+  position: relative; // Needed for the pseudo-element positioning
+  z-index: 1; // Ensure content is above the pseudo-element
+  padding: 8px 16px;
+  border-radius: 24px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e5e5e5; // text-neutral-200
+  overflow: hidden; // Keep the pseudo-element within the border-radius
+}
+
+app-workspace-switcher .workspace-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1; // Place it behind the content
+  background: linear-gradient(to right, #3b82f6, #8b5cf6, #f87171);
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+app-workspace-switcher .workspace-container:hover::before {
+  opacity: 1;
+}
+
+app-workspace-switcher .workspace-name {
+  font-weight: 500;
+}
+
+.mat-mdc-menu-item .mat-icon {
+  margin-right: 8px;
+}
+
+.mat-mdc-menu-item .mat-icon:first-child {
+  margin-right: 16px;
+}
+
 
 
 // --- Media Queries for Mobile-First Responsive Design ---
@@ -317,6 +367,12 @@ table {
 
   textarea {
     border: none;
+  }
+
+  app-workspace-switcher .top-left-container {
+    bottom: auto;
+    top: 3vh;
+    left: 5vw;
   }
 }
 
@@ -339,6 +395,10 @@ table {
     .interactive {
       left: -70%;
     }
+  }
+
+  app-workspace-switcher .top-left-container {
+    left: 3vw;
   }
 }
 

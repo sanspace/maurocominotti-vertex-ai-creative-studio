@@ -261,6 +261,15 @@ gcloud firestore indexes composite create \
   --field-config=field-path=status,order=ASCENDING \
   --field-config=field-path=created_at,order=DESCENDING \
 
+# Command for Index 9: workspace_id, created_at and __name__
+# This index allows you to query for a specific user's media within a workspace and sort it by the most recent, with document ID as a tie-breaker.
+gcloud firestore indexes composite create \
+  --collection-group=media_library \
+  --query-scope=COLLECTION \
+  --field-config=field-path=workspace_id,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+  --field-config=field-path=__name__,order=DESCENDING \
+
 # For Users
 gcloud firestore indexes composite create \
   --collection-group=users \

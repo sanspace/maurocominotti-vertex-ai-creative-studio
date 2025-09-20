@@ -44,7 +44,7 @@ class MediaTemplateRepository(BaseRepository[MediaTemplateModel]):
             )
         if search_dto.tag:
             base_query = base_query.where(
-                filter=FieldFilter("tags", "array-contains", search_dto.tag)
+                filter=FieldFilter("tags", "array_contains", search_dto.tag)
             )
 
         count_query = base_query.count(alias="total")

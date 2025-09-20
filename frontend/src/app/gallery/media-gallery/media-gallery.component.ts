@@ -19,6 +19,7 @@ import {MatCheckboxChange} from '@angular/material/checkbox';
 import {GalleryService} from '../gallery.service';
 import {MediaItemSelection} from '../../common/components/image-selector/image-selector.component';
 import {UserService} from '../../common/services/user.service';
+import {GallerySearchDto} from '../../common/models/search.model';
 
 @Component({
   selector: 'app-media-gallery',
@@ -94,6 +95,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
       this.mediaTypeFilter = this.filterByType;
     }
 
+    this.searchTerm(); // Set initial filters
     this.loadingSubscription = this.galleryService.isLoading$.subscribe(
       loading => {
         this.isLoading = loading;
@@ -112,10 +114,6 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
           }
         });
         this.updateColumns();
-      }
-
-      if (!images || images.length === 0) {
-        this.searchTerm();
       }
     });
 
@@ -342,7 +340,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
     // Reset local component state for a new search to show the main loader
     this.images = [];
 
-    const filters: {[key: string]: string} = {};
+    const filters: GallerySearchDto = {limit: 20};
     if (this.userEmailFilter) {
       filters['userEmail'] = this.userEmailFilter;
     }

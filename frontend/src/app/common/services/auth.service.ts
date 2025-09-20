@@ -16,7 +16,7 @@
 
 import {Injectable, PLATFORM_ID, inject} from '@angular/core';
 import {Router} from '@angular/router';
-import {UserModel} from '../models/user.model';
+import {UserModel, UserRolesEnum} from '../models/user.model';
 import {HttpClient, HttpHeaders, HttpErrorResponse} from '@angular/common/http';
 import {environment} from '../../../environments/environment';
 import {Auth, IdTokenResult} from '@angular/fire/auth';
@@ -343,12 +343,7 @@ export class AuthService {
     if (!isPlatformBrowser(this.platformId)) return false;
 
     const user_role = this.userService.getUserDetails()?.roles;
-    return user_role?.includes(environment.ADMIN) || false;
-
-    // TODO: Now the role will come in the Firebase JWT
-    // const userDetails = this.userService.getUserDetails(); // Get user details from localStorage
-    // const userEmail = userDetails?.email?.toLowerCase();
-    // return this.allowedAdminEmails.includes(userEmail.toLowerCase());
+    return user_role?.includes(UserRolesEnum.ADMIN) || false;
   }
 
   getToken() {

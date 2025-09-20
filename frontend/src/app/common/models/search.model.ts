@@ -28,6 +28,7 @@ export type ImagenRequest = {
   upscaleFactor?: '' | 'x2' | 'x4';
   sourceAssetIds?: string[];
   sourceMediaItems?: SourceMediaItemLink[];
+  workspace_id?: string;
 };
 
 export type SourceMediaItemLink = {
@@ -51,6 +52,7 @@ export type VeoRequest = {
   startImageAssetId?: string;
   endImageAssetId?: string;
   sourceMediaItems?: SourceMediaItemLink[];
+  workspace_id?: string;
 };
 
 export type SearchResponse = {
@@ -93,4 +95,5 @@ export interface GallerySearchDto {
   mimeType?: string;
   model?: string;
   status?: string;
+  workspace_id?: string;
 }

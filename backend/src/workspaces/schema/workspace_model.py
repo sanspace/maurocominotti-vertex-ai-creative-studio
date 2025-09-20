@@ -54,5 +54,5 @@ class WorkspaceModel(BaseDocument):
 
     member_ids: List[str] = Field(
         default_factory=list,
-        description="A denormalized list of user IDs for efficient 'array-contains' queries."
+        description="A denormalized list of user IDs for efficient 'array_contains' queries.",
     )

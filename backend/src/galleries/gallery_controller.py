@@ -60,7 +60,9 @@ async def search_gallery_items(
         workspace_id=search_dto.workspace_id, user=current_user
     )
 
-    return await service.get_paginated_gallery(search_dto=search_dto)
+    return await service.get_paginated_gallery(
+        search_dto=search_dto, current_user=current_user
+    )
 
 
 @router.get("/item/{item_id}", response_model=MediaItemResponse)

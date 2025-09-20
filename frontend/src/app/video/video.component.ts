@@ -18,6 +18,7 @@ import {JobStatus, MediaItem} from '../common/models/media-item.model';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../environments/environment';
+import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 
 @Component({
@@ -149,6 +150,7 @@ export class VideoComponent {
     private _snackBar: MatSnackBar,
     public dialog: MatDialog,
     private http: HttpClient,
+    private workspaceStateService: WorkspaceStateService,
   ) {
     this.activeVideoJob$ = this.service.activeVideoJob$;
 
@@ -279,9 +281,9 @@ export class VideoComponent {
 
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
     const hasSourceMediaItems = this.sourceMediaItems.some(i => !!i);
-    const isVeo3Fast = [
-      'veo-3.0-fast-generate-preview',
-    ].includes(this.searchRequest.generationModel);
+    const isVeo3Fast = ['veo-3.0-fast-generate-preview'].includes(
+      this.searchRequest.generationModel,
+    );
 
     if ((hasSourceAssets || hasSourceMediaItems) && isVeo3Fast) {
       const veo2Model = this.generationModels.find(
@@ -307,6 +309,7 @@ export class VideoComponent {
     const validSourceMediaItems = this.sourceMediaItems.filter(
       (i): i is SourceMediaItemLink => !!i,
     );
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
 
     const payload: VeoRequest = {
       ...this.searchRequest,
@@ -315,6 +318,7 @@ export class VideoComponent {
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
         : undefined,
+      workspace_id: activeWorkspaceId ?? undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -539,6 +543,10 @@ export class VideoComponent {
   private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspace_id', activeWorkspaceId);
+    }
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,
       formData,

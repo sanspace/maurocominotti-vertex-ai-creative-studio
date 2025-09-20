@@ -18,11 +18,17 @@ import {Component, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {MatDialog} from '@angular/material/dialog';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {Workspace} from '../../models/workspace.model';
+import {Workspace, WorkspaceScope} from '../../models/workspace.model';
 import {WorkspaceService} from '../../../services/workspace/workspace.service';
 import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
 import {CreateWorkspaceModalComponent} from '../create-workspace-modal/create-workspace-modal.component';
 import {handleErrorSnackbar} from '../../../utils/handleErrorSnackbar';
+import {
+  InviteUserData,
+  InviteUserModalComponent,
+} from '../invite-user-modal/invite-user-modal.component';
+import {UserService} from '../../services/user.service';
+import {UserModel, UserRolesEnum} from '../../models/user.model';
 
 @Component({
   selector: 'app-workspace-switcher',
@@ -32,19 +38,26 @@ import {handleErrorSnackbar} from '../../../utils/handleErrorSnackbar';
 export class WorkspaceSwitcherComponent implements OnInit {
   workspaces: Workspace[] = [];
   activeWorkspaceId: string | null = null;
+  activeWorkspace: Workspace | null = null;
+  currentUser: UserModel | null;
+  public WorkspaceScope = WorkspaceScope;
 
   constructor(
     private workspaceService: WorkspaceService,
     private workspaceStateService: WorkspaceStateService,
+    private userService: UserService,
     private route: ActivatedRoute,
     public dialog: MatDialog,
     private snackBar: MatSnackBar,
-  ) {}
+  ) {
+    this.currentUser = this.userService.getUserDetails();
+  }
 
   ngOnInit(): void {
     this.loadWorkspaces();
     this.workspaceStateService.activeWorkspaceId$.subscribe(id => {
       this.activeWorkspaceId = id;
+      this.activeWorkspace = this.workspaces.find(w => w.id === id) || null;
     });
   }
 
@@ -52,6 +65,8 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.workspaceService.getWorkspaces().subscribe({
       next: workspaces => {
         this.workspaces = workspaces;
+        this.activeWorkspace =
+          this.workspaces.find(w => w.id === this.activeWorkspaceId) || null;
         this.initializeActiveWorkspace();
       },
       error: error => {
@@ -68,7 +83,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
     }
 
     const googleWorkspace = this.workspaces.find(
-      w => w.name === 'Google Workspace',
+      w => w.scope === WorkspaceScope.PUBLIC,
     );
     if (googleWorkspace) {
       this.setActiveWorkspace(googleWorkspace.id);
@@ -82,6 +97,8 @@ export class WorkspaceSwitcherComponent implements OnInit {
 
   setActiveWorkspace(workspaceId: string | null): void {
     this.workspaceStateService.setActiveWorkspaceId(workspaceId);
+    this.activeWorkspace =
+      this.workspaces.find(w => w.id === workspaceId) || null;
   }
 
   openCreateWorkspaceDialog(): void {
@@ -110,5 +127,49 @@ export class WorkspaceSwitcherComponent implements OnInit {
       },
     });
   }
-}
 
+  get canInvite(): boolean {
+    if (
+      !this.currentUser ||
+      !this.activeWorkspace ||
+      this.activeWorkspace?.scope === WorkspaceScope.PUBLIC
+    ) {
+      return false;
+    }
+    const isOwner = this.currentUser.id === this.activeWorkspace.ownerId;
+    const isAdmin = !!this.currentUser.roles?.includes(UserRolesEnum.ADMIN);
+    return isOwner || isAdmin;
+  }
+
+  openInviteDialog(event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.activeWorkspace) return;
+
+    const dialogRef = this.dialog.open<
+      InviteUserModalComponent,
+      InviteUserData
+    >(InviteUserModalComponent, {
+      width: '350px',
+      data: {workspaceName: this.activeWorkspace.name},
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && this.activeWorkspaceId) {
+        this.workspaceService
+          .inviteUser(this.activeWorkspaceId, result.email, result.role)
+          .subscribe({
+            next: () => {
+              this.snackBar.open('Invitation sent!', 'OK', {duration: 3000});
+            },
+            error: error => {
+              handleErrorSnackbar(
+                this.snackBar,
+                error,
+                'Failed to send invitation',
+              );
+            },
+          });
+      }
+    });
+  }
+}

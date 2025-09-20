@@ -18,6 +18,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {Observable} from 'rxjs';
 import {environment} from '../../../environments/environment';
+import {WorkspaceRole} from '../../common/models/workspace-member.model';
 import {Workspace} from '../../common/models/workspace.model';
 
 @Injectable({
@@ -35,5 +36,15 @@ export class WorkspaceService {
   createWorkspace(name: string): Observable<Workspace> {
     return this.http.post<Workspace>(this.apiUrl, {name});
   }
-}
 
+  inviteUser(
+    workspaceId: string,
+    email: string,
+    role: WorkspaceRole,
+  ): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${workspaceId}/invites`, {
+      email,
+      role,
+    });
+  }
+}

@@ -35,6 +35,7 @@ import {MediaTemplateFormComponent} from './media-templates-management/media-tem
 import {SourceAssetsManagementComponent} from './source-assets-management/source-assets-management.component';
 import {SourceAssetFormComponent} from './source-assets-management/source-asset-form/source-asset-form.component';
 import {SourceAssetUploadFormComponent} from './source-assets-management/source-asset-upload-form/source-asset-upload-form.component';
+import {SharedModule} from '../common/shared.module';
 
 @NgModule({
   declarations: [
@@ -49,6 +50,7 @@ import {SourceAssetUploadFormComponent} from './source-assets-management/source-
   ],
   imports: [
     CommonModule,
+    SharedModule,
     AdminRoutingModule,
     MatSidenavModule,
     MatListModule,

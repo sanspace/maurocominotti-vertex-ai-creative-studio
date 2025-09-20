@@ -76,7 +76,7 @@ class UserRepository(BaseRepository[UserModel]):
         if search_dto.role:
             base_query = base_query.where(
                 filter=FieldFilter(
-                    "roles", "array-contains", search_dto.role.value
+                    "roles", "array_contains", search_dto.role.value
                 )
             )
 
