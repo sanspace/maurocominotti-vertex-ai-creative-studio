@@ -349,6 +349,13 @@ gcloud firestore indexes composite create \
   --field-config=field-path=scope,order=ASCENDING \
   --field-config=field-path=asset_type,order=ASCENDING \
 
+# For Brand Guidelines
+gcloud firestore indexes composite create \
+  --collection-group=brand_guidelines \
+  --query-scope=COLLECTION \
+  --field-config=field-path=workspace_id,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+  --field-config=field-path=__name__,order=DESCENDING \
 
 # After a while you can check with
 gcloud beta firestore indexes composite list

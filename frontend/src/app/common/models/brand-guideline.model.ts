@@ -23,4 +23,5 @@ export interface BrandGuidelineModel {
   logoAssetId?: string;
   toneOfVoiceSummary?: string;
   visualStyleSummary?: string;
+  presignedSourcePdfUrls?: string[];
 }

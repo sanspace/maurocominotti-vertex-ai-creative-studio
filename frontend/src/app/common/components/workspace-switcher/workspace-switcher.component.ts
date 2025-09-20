@@ -22,7 +22,8 @@ import {Workspace, WorkspaceScope} from '../../models/workspace.model';
 import {WorkspaceService} from '../../../services/workspace/workspace.service';
 import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
 import {CreateWorkspaceModalComponent} from '../create-workspace-modal/create-workspace-modal.component';
-import {handleErrorSnackbar} from '../../../utils/handleErrorSnackbar';
+import {ConfirmationDialogComponent} from '../confirmation-dialog/confirmation-dialog.component';
+import {handleErrorSnackbar, handleSuccessSnackbar} from '../../../utils/handleErrorSnackbar';
 import {
   InviteUserData,
   InviteUserModalComponent,
@@ -34,7 +35,7 @@ import {
   BrandGuidelineDialogData,
 } from '../brand-guideline-dialog/brand-guideline-dialog.component';
 import {BrandGuidelineService} from '../../services/brand-guideline/brand-guideline.service';
-import {switchMap} from 'rxjs';
+import {finalize, map, switchMap} from 'rxjs';
 
 @Component({
   selector: 'app-workspace-switcher',
@@ -46,6 +47,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
   activeWorkspaceId: string | null = null;
   activeWorkspace: Workspace | null = null;
   currentUser: UserModel | null;
+  isFetchingGuidelines = false;
   public WorkspaceScope = WorkspaceScope;
 
   constructor(
@@ -195,48 +197,95 @@ export class WorkspaceSwitcherComponent implements OnInit {
 
   openBrandGuidelinesDialog(event: MouseEvent): void {
     event.stopPropagation();
-    if (!this.activeWorkspaceId) return;
+    if (!this.activeWorkspaceId || this.isFetchingGuidelines) return;
     const workspaceId = this.activeWorkspaceId;
 
+    this.isFetchingGuidelines = true;
     this.brandGuidelineService
       .getBrandGuidelineForWorkspace(workspaceId)
       .pipe(
+        finalize(() => (this.isFetchingGuidelines = false)),
         switchMap(guideline => {
           const dialogRef = this.dialog.open<
             BrandGuidelineDialogComponent,
             BrandGuidelineDialogData
           >(BrandGuidelineDialogComponent, {
-            width: '500px',
+            width: '800px',
+            maxWidth: '90vw',
+            panelClass: 'brand-guideline-dialog',
             data: {workspaceId: workspaceId, guideline},
           });
-          return dialogRef.afterClosed();
+          return dialogRef
+            .afterClosed()
+            .pipe(map(result => ({result, guideline})));
         }),
       )
-      .subscribe(result => {
-        if (result && workspaceId) {
+      .subscribe(({result, guideline}) => {
+        if (!result) {
+          return; // Dialog was closed without action
+        }
+
+        // Handle Deletion
+        if (result.delete && guideline?.id) {
+          const confirmationDialogRef = this.dialog.open(
+            ConfirmationDialogComponent,
+            {
+              data: {
+                title: 'Delete Brand Guideline?',
+                message:
+                  'Are you sure you want to delete the brand guideline for this workspace? This action cannot be undone.',
+              },
+            },
+          );
+
+          confirmationDialogRef.afterClosed().subscribe(confirmed => {
+            if (confirmed) {
+              this.brandGuidelineService
+                .deleteBrandGuideline(guideline.id)
+                .subscribe({
+                  next: () => {
+                    this.snackBar.open('Brand Guideline deleted.', 'OK', {
+                      duration: 3000,
+                    });
+                  },
+                  error: error =>
+                    handleErrorSnackbar(
+                      this.snackBar,
+                      error,
+                      'Could not delete brand guideline.',
+                    ),
+                });
+            }
+          });
+        } else if (result.name && result.file && workspaceId) {
           const formData = new FormData();
           formData.append('name', result.name);
           formData.append('file', result.file);
           formData.append('workspaceId', workspaceId);
 
-          this.brandGuidelineService.createBrandGuideline(formData).subscribe({
-            next: () => {
-              this.snackBar.open(
-                'Brand Guideline uploaded successfully!',
-                'OK',
-                {
-                  duration: 3000,
-                },
-              );
-            },
-            error: error => {
-              handleErrorSnackbar(
-                this.snackBar,
-                error,
-                'Failed to upload brand guideline.',
-              );
-            },
-          });
+          this.isFetchingGuidelines = true;
+          this.brandGuidelineService
+            .createBrandGuideline(formData)
+            .pipe(finalize(() => (this.isFetchingGuidelines = false)))
+            .subscribe({
+              next: () => {
+                handleSuccessSnackbar(this.snackBar, 'Brand Guideline uploaded!');
+                // this.snackBar.open(
+                //   'Brand Guideline uploaded successfully!',
+                //   'OK',
+                //   {
+                //     duration: 3000,
+                //   },
+                // );
+              },
+              error: error => {
+                handleErrorSnackbar(
+                  this.snackBar,
+                  error,
+                  'Failed to upload brand guideline.',
+                );
+              },
+            });
         }
       });
   }

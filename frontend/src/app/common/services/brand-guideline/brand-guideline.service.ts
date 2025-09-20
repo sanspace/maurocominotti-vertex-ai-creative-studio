@@ -44,4 +44,12 @@ export class BrandGuidelineService {
       .get<BrandGuidelineModel>(`${this.apiUrl}/workspace/${workspaceId}`)
       .pipe(catchError(() => of(null))); // Return null if not found (404) or on other errors
   }
+
+  /**
+   * Deletes a brand guideline by its ID.
+   * @param id The ID of the brand guideline to delete.
+   */
+  deleteBrandGuideline(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
 }

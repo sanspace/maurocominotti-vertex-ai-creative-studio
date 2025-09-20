@@ -32,6 +32,7 @@ import {InviteUserModalComponent} from './components/invite-user-modal/invite-us
 import {WorkspaceSwitcherComponent} from './components/workspace-switcher/workspace-switcher.component';
 import {BrandGuidelineDialogComponent} from './components/brand-guideline-dialog/brand-guideline-dialog.component';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import {MarkdownModule} from 'ngx-markdown';
 
 const DECLARATIONS = [
   CreateWorkspaceModalComponent,
@@ -54,11 +55,29 @@ const MODULES = [
   MatSelectModule,
   MatTooltipModule,
   MatProgressSpinnerModule,
+  MarkdownModule.forRoot(),
+];
+
+const EXPORTED_MODULES = [
+  CommonModule,
+  FormsModule,
+  ReactiveFormsModule,
+  MatButtonModule,
+  MatDialogModule,
+  MatDividerModule,
+  MatFormFieldModule,
+  MatIconModule,
+  MatInputModule,
+  MatMenuModule,
+  MatSelectModule,
+  MatTooltipModule,
+  MatProgressSpinnerModule,
+  MarkdownModule,
 ];
 
 @NgModule({
   declarations: [...DECLARATIONS],
   imports: [...MODULES],
-  exports: [...DECLARATIONS, ...MODULES],
+  exports: [...DECLARATIONS, ...EXPORTED_MODULES],
 })
 export class SharedModule {}

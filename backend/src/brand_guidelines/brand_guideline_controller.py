@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 
 from src.auth.auth_guard import get_current_user
 from src.brand_guidelines.brand_guideline_service import BrandGuidelineService
-from src.brand_guidelines.schema.brand_guideline_model import BrandGuidelineModel
+from src.brand_guidelines.dto.brand_guideline_response_dto import (
+    BrandGuidelineResponseDto,
+)
 from src.users.user_model import UserModel
 
 MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024  # 500 MB
@@ -18,8 +20,8 @@ router = APIRouter(
 
 @router.post(
     "",
-    response_model=BrandGuidelineModel,
-    status_code=status.HTTP_201_CREATED,
+    response_model=BrandGuidelineResponseDto,
+    status_code=status.HTTP_200_OK,  # OK since it can be an update
     summary="Create a Brand Guideline from a PDF",
 )
 async def create_brand_guideline(
@@ -30,12 +32,10 @@ async def create_brand_guideline(
     current_user: UserModel = Depends(get_current_user),
 ):
     """
-    Uploads a brand guideline PDF.
+    Uploads a brand guideline PDF for a specific workspace.
 
-    This endpoint performs the entire process synchronously:
-    1. Uploads the PDF to storage.
-    2. Calls a multimodal AI model to analyze the PDF and extract key information.
-    3. Creates the complete brand guideline document in the database.
+    If a brand guideline already exists for the workspace, it will be
+    deleted and replaced with the new one.
 
     The API will wait for the AI processing to finish before returning a response.
     """
@@ -60,3 +60,76 @@ async def create_brand_guideline(
     return await service.create_and_process_guideline(
         name, file, workspaceId, current_user
     )
+
+
+@router.get(
+    "/{guideline_id}",
+    response_model=BrandGuidelineResponseDto,
+    summary="Get a Single Brand Guideline",
+)
+async def get_single_brand_guideline(
+    guideline_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    service: BrandGuidelineService = Depends(),
+):
+    """
+    Retrieves a single brand guideline by its unique ID.
+
+    - Any authenticated user can view global guidelines.
+    - Only members of a workspace can view its specific guidelines.
+    """
+    guideline = await service.get_guideline_by_id(guideline_id, current_user)
+    if not guideline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Brand guideline not found.",
+        )
+    return guideline
+
+
+@router.get(
+    "/workspace/{workspace_id}",
+    response_model=BrandGuidelineResponseDto,
+    summary="Get the Brand Guideline for a Workspace",
+)
+async def get_workspace_brand_guideline(
+    workspace_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    service: BrandGuidelineService = Depends(),
+):
+    """
+    Retrieves the unique brand guideline associated with a specific workspace.
+
+    Returns a 404 error if no guideline has been created for the workspace yet.
+    """
+    guideline = await service.get_guideline_by_workspace_id(
+        workspace_id, current_user
+    )
+    if not guideline:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No brand guideline found for this workspace.",
+        )
+    return guideline
+
+
+@router.delete(
+    "/{guideline_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a Brand Guideline",
+)
+async def delete_single_brand_guideline(
+    guideline_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    service: BrandGuidelineService = Depends(),
+):
+    """
+    Deletes a brand guideline and all of its associated assets (e.g., PDF chunks in GCS).
+
+    - Only the workspace owner or a system admin can delete a workspace-specific guideline.
+    - Only a system admin can delete a global guideline.
+    """
+    await service.delete_guideline(
+        guideline_id=guideline_id, current_user=current_user
+    )
+    return None

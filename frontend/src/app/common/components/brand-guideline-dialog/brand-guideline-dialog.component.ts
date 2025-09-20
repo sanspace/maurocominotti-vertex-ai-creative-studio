@@ -50,6 +50,8 @@ export class BrandGuidelineDialogComponent {
   isUploading = false;
   isEditing = false;
   fileName: string | null = null;
+  isToneOfVoiceExpanded = false;
+  isVisualStyleExpanded = false;
 
   constructor(
     public dialogRef: MatDialogRef<BrandGuidelineDialogComponent>,
@@ -83,7 +85,19 @@ export class BrandGuidelineDialogComponent {
     }
   }
 
+  onDelete(): void {
+    this.dialogRef.close({delete: true});
+  }
+
   replaceGuideline(): void {
     this.isEditing = false;
+  }
+
+  toggleToneOfVoiceExpansion(): void {
+    this.isToneOfVoiceExpanded = !this.isToneOfVoiceExpanded;
+  }
+
+  toggleVisualStyleExpansion(): void {
+    this.isVisualStyleExpanded = !this.isVisualStyleExpanded;
   }
 }

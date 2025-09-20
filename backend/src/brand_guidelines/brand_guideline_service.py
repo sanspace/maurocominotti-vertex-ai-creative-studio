@@ -4,11 +4,19 @@ import io
 import logging
 import math
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile, status
+from google.cloud.firestore_v1.base_query import FieldFilter
 from pypdf import PdfReader, PdfWriter
 
+from src.auth.iam_signer_credentials_service import IamSignerCredentials
+from src.brand_guidelines.dto.brand_guideline_response_dto import (
+    BrandGuidelineResponseDto,
+)
+from src.brand_guidelines.dto.brand_guideline_search_dto import (
+    BrandGuidelineSearchDto,
+)
 from src.brand_guidelines.repository.brand_guideline_repository import (
     BrandGuidelineRepository,
 )
@@ -37,6 +45,7 @@ class BrandGuidelineService:
         self.gcs_service = GcsService()
         self.gemini_service = GeminiService()
         self.workspace_repo = WorkspaceRepository()
+        self.iam_signer_credentials = IamSignerCredentials()
 
     async def _split_and_upload_pdf(
         self,
@@ -104,19 +113,52 @@ class BrandGuidelineService:
 
         return await asyncio.gather(*upload_tasks)
 
+    async def _delete_guideline_and_assets(
+        self, guideline: BrandGuidelineModel
+    ):
+        """Deletes a guideline document and all its associated GCS assets."""
+        logger.info(f"Deleting old guideline '{guideline.id}' and its assets.")
+
+        # Delete all associated PDF chunks from GCS concurrently
+        delete_tasks = [
+            asyncio.to_thread(self.gcs_service.delete_blob_from_uri, uri)
+            for uri in guideline.source_pdf_gcs_uris
+        ]
+        await asyncio.gather(*delete_tasks)
+
+        # Delete the Firestore document
+        if guideline.id:
+            await asyncio.to_thread(self.repo.delete, guideline.id)
+
+    async def _create_brand_guideline_response(
+        self, guideline: BrandGuidelineModel
+    ) -> BrandGuidelineResponseDto:
+        """
+        Enriches a BrandGuidelineModel with presigned URLs for its assets.
+        """
+        presigned_url_tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in guideline.source_pdf_gcs_uris
+        ]
+        presigned_urls = await asyncio.gather(*presigned_url_tasks)
+
+        return BrandGuidelineResponseDto(
+            **guideline.model_dump(), presigned_source_pdf_urls=presigned_urls
+        )
+
     async def create_and_process_guideline(
         self,
         name: str,
         file: UploadFile,
         workspace_id: Optional[str],
         current_user: UserModel,
-    ) -> BrandGuidelineModel:
+    ) -> BrandGuidelineResponseDto:
         """
         Handles the end-to-end process of creating a brand guideline synchronously.
-        1. Uploads a PDF to GCS.
-        2. Calls the Gemini service to extract structured data from the PDF.
-        3. Creates a complete BrandGuideline document in Firestore with all data.
-        4. Returns the fully populated model.
+        If a guideline already exists for the workspace, it will be deleted and
+        replaced.
         """
         # 1. Authorization Check
         is_system_admin = UserRoleEnum.ADMIN in current_user.roles
@@ -141,6 +183,20 @@ class BrandGuidelineService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only a system admin can create global brand guidelines.",
             )
+
+        # 2. Check for and delete an existing guideline for the workspace
+        if workspace_id:
+            search_dto = BrandGuidelineSearchDto(
+                workspace_id=workspace_id, limit=1
+            )
+            workspace_filter = FieldFilter("workspace_id", "==", workspace_id)
+            existing_guidelines_response = await asyncio.to_thread(
+                self.repo.query, search_dto, extra_filters=[workspace_filter]
+            )
+            if existing_guidelines_response.data:
+                await self._delete_guideline_and_assets(
+                    existing_guidelines_response.data[0]
+                )
 
         file_contents = await file.read()
 
@@ -192,4 +248,123 @@ class BrandGuidelineService:
         self.repo.save(new_guideline)
         logger.info(f"Successfully created and processed brand guideline: {new_guideline.id}")
 
-        return new_guideline
+        return await self._create_brand_guideline_response(new_guideline)
+
+    async def get_guideline_by_id(
+        self, guideline_id: str, current_user: UserModel
+    ) -> Optional[BrandGuidelineResponseDto]:
+        """
+        Retrieves a single brand guideline and performs an authorization check.
+        """
+        guideline = await asyncio.to_thread(self.repo.get_by_id, guideline_id)
+
+        if not guideline:
+            return None
+
+        is_system_admin = UserRoleEnum.ADMIN in current_user.roles
+
+        # Global guidelines can be seen by any authenticated user
+        if not guideline.workspace_id:
+            return await self._create_brand_guideline_response(guideline)
+
+        # For workspace-specific guidelines, check membership.
+        workspace = await asyncio.to_thread(
+            self.workspace_repo.get_by_id, guideline.workspace_id
+        )
+
+        if not workspace:
+            # This indicates an data inconsistency, but we handle it gracefully.
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent workspace for this guideline not found.",
+            )
+
+        if not is_system_admin and current_user.id not in workspace.member_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to view this brand guideline.",
+            )
+
+        return await self._create_brand_guideline_response(guideline)
+
+    async def get_guideline_by_workspace_id(
+        self, workspace_id: str, current_user: UserModel
+    ) -> Optional[BrandGuidelineResponseDto]:
+        """
+        Retrieves the unique brand guideline for a workspace.
+        """
+        workspace = await asyncio.to_thread(
+            self.workspace_repo.get_by_id, workspace_id
+        )
+        if not workspace:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Workspace with ID '{workspace_id}' not found.",
+            )
+
+        is_system_admin = UserRoleEnum.ADMIN in current_user.roles
+        if not is_system_admin and current_user.id not in workspace.member_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not a member of this workspace.",
+            )
+
+        search_dto = BrandGuidelineSearchDto(workspace_id=workspace_id, limit=1)
+        workspace_filter = FieldFilter("workspace_id", "==", workspace_id)
+        response = await asyncio.to_thread(
+            self.repo.query, search_dto, extra_filters=[workspace_filter]
+        )
+
+        if not response.data:
+            return None
+
+        return await self._create_brand_guideline_response(response.data[0])
+
+    async def delete_guideline(
+        self, guideline_id: str, current_user: UserModel
+    ):
+        """
+        Deletes a brand guideline and all its associated assets after an
+        authorization check.
+        """
+        # 1. Fetch the guideline
+        guideline = await asyncio.to_thread(self.repo.get_by_id, guideline_id)
+        if not guideline:
+            # If it doesn't exist, we can consider the deletion successful.
+            logger.warning(
+                f"Attempted to delete non-existent guideline with ID: {guideline_id}"
+            )
+            return
+
+        # 2. Authorization Check
+        is_system_admin = UserRoleEnum.ADMIN in current_user.roles
+
+        # Global guidelines can only be deleted by admins
+        if not guideline.workspace_id:
+            if not is_system_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only a system admin can delete global brand guidelines.",
+                )
+        else:  # Workspace-specific guideline
+            workspace = await asyncio.to_thread(
+                self.workspace_repo.get_by_id, guideline.workspace_id
+            )
+            # If workspace doesn't exist, only admin can clean up the orphan guideline.
+            if not workspace and not is_system_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Parent workspace for this guideline not found.",
+                )
+
+            is_workspace_owner = (
+                workspace and current_user.id == workspace.owner_id
+            )
+            if not (is_system_admin or is_workspace_owner):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the workspace owner or a system admin can delete this brand guideline.",
+                )
+
+        # 3. Perform deletion
+        await self._delete_guideline_and_assets(guideline)

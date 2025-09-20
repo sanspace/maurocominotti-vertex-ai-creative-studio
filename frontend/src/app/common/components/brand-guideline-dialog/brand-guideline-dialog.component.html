@@ -9,7 +9,11 @@
         <strong>Color Palette:</strong>
         <div class="flex flex-wrap gap-2 mt-1">
           @for (color of data.guideline.colorPalette; track color) {
-            <div class="color-swatch" [style.backgroundColor]="color"></div>
+            <div
+              class="color-swatch"
+              [style.backgroundColor]="color"
+              [matTooltip]="color"
+            ></div>
           }
         </div>
       </div>
@@ -18,20 +22,64 @@
     @if (data.guideline.toneOfVoiceSummary) {
       <div class="detail-section">
         <strong>Tone of Voice:</strong>
-        <p>{{ data.guideline.toneOfVoiceSummary }}</p>
+        @if (isToneOfVoiceExpanded) {
+          <markdown [data]="data.guideline.toneOfVoiceSummary" class="markdown-content"></markdown>
+          <button (click)="toggleToneOfVoiceExpansion()" class="text-blue-400 hover:text-blue-300 text-sm mt-1">
+            Show less
+          </button>
+        } @else {
+          <p class="line-clamp-3">
+            {{ data.guideline.toneOfVoiceSummary }}
+          </p>
+          <button (click)="toggleToneOfVoiceExpansion()" class="text-blue-400 hover:text-blue-300 text-sm mt-1">
+            Show more
+          </button>
+        }
       </div>
     }
 
     @if (data.guideline.visualStyleSummary) {
       <div class="detail-section">
         <strong>Visual Style:</strong>
-        <p>{{ data.guideline.visualStyleSummary }}</p>
+        @if (isVisualStyleExpanded) {
+          <markdown [data]="data.guideline.visualStyleSummary" class="markdown-content"></markdown>
+          <button (click)="toggleVisualStyleExpansion()" class="text-blue-400 hover:text-blue-300 text-sm mt-1">
+            Show less
+          </button>
+        } @else {
+          <p class="line-clamp-3">
+            {{ data.guideline.visualStyleSummary }}
+          </p>
+          <button (click)="toggleVisualStyleExpansion()" class="text-blue-400 hover:text-blue-300 text-sm mt-1">
+            Show more
+          </button>
+        }
+      </div>
+    }
+
+    @if (data.guideline.presignedSourcePdfUrls?.length) {
+      <div class="detail-section">
+        <strong>Source Documents:</strong>
+        <ul class="mt-1 space-y-2">
+          @for (url of data.guideline.presignedSourcePdfUrls; track url; let i = $index) {
+            <li>
+              <a [href]="url" target="_blank" rel="noopener noreferrer" class="pdf-link">
+                <mat-icon>picture_as_pdf</mat-icon>
+                <span>Brand_Guideline_{{ i + 1 }}.pdf</span>
+                <mat-icon class="ml-auto">open_in_new</mat-icon>
+              </a>
+            </li>
+          }
+        </ul>
       </div>
     }
   </div>
   <div mat-dialog-actions align="end">
     <button mat-button (click)="onCancel()">Close</button>
-    <button mat-raised-button color="primary" (click)="replaceGuideline()">
+    <button mat-button color="warn" (click)="onDelete()">
+      Delete
+    </button>
+    <button mat-raised-button color="primary" (click)="replaceGuideline()" class="ml-2">
       Replace
     </button>
   </div>

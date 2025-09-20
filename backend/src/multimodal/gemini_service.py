@@ -327,9 +327,9 @@ class GeminiService:
         # making the output easy to parse and use.
         prompt = """
         Analyze the provided brand guidelines PDF and extract the following information into a structured JSON object:
-        1.  "color_palette": A list of the primary brand colors as hex codes (e.g., ["#RRGGBB", ...]).
-        2.  "tone_of_voice_summary": A detailed and comprehensive summary of the brand's tone of voice, approximately 200-250 words. This summary should be suitable for use as a prefix in a text generation prompt, capturing nuances like personality, vocabulary, and attitude.
-        3.  "visual_style_summary": A detailed and comprehensive summary of the brand's visual style, aesthetics, and imagery, approximately 5000-6000 words. This summary should be suitable for use as a prefix in an image generation prompt, covering aspects like photography style, graphic elements, and overall mood.
+        1.  "colorPalette": A list of the primary brand colors as hex codes (e.g., ["#RRGGBB", ...]).
+        2.  "toneOfVoiceSummary": A detailed and comprehensive summary of the brand's tone of voice, approximately 200-250 words, formatted in Markdown. This summary should be suitable for use as a prefix in a text generation prompt, capturing nuances like personality, vocabulary, and attitude.
+        3.  "visualStyleSummary": A detailed and comprehensive summary of the brand's visual style, aesthetics, and imagery, approximately 5000-6000 words, formatted in Markdown. This summary should be suitable for use as a prefix in an image generation prompt, covering aspects like photography style, graphic elements, and overall mood.
 
         Your response MUST be a single, valid JSON object and nothing else.
         """
@@ -346,7 +346,6 @@ class GeminiService:
 
             # The model is configured to return JSON, so we can parse it directly.
             extracted_data = json.loads(response.text or "{}")
-            logger.info(f"Successfully extracted data: {extracted_data}")
             return extracted_data
         except Exception as e:
             logger.error(
@@ -418,8 +417,8 @@ class GeminiService:
 
         Please generate a final, consolidated JSON object with three keys:
         -   "color_palette": A list of hex strings representing the final, curated brand colors, chosen from the list provided.
-        -   "tone_of_voice_summary": A single, comprehensive, and well-written summary of approximately 200-250 words that synthesizes all aspects of the brand's voice from the partial summaries.
-        -   "visual_style_summary": A single, comprehensive, and well-written summary of approximately 5000-6000 words that synthesizes all aspects of the brand's visual identity from the partial summaries.
+        -   "tone_of_voice_summary": A single, comprehensive, and well-written summary of approximately 200-250 words that synthesizes all aspects of the brand's voice from the partial summaries, formatted in Markdown.
+        -   "visual_style_summary": A single, comprehensive, and well-written summary of approximately 5000-6000 words that synthesizes all aspects of the brand's visual identity from the partial summaries, formatted in Markdown.
 
         Your response MUST be a single, valid JSON object and nothing else.
         """
