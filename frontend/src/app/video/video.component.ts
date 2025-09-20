@@ -321,7 +321,7 @@ export class VideoComponent {
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
         : undefined,
-      workspace_id: activeWorkspaceId ?? undefined,
+      workspaceId: activeWorkspaceId ?? undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -548,7 +548,7 @@ export class VideoComponent {
     formData.append('file', file);
     const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
     if (activeWorkspaceId) {
-      formData.append('workspace_id', activeWorkspaceId);
+      formData.append('workspaceId', activeWorkspaceId);
     }
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,

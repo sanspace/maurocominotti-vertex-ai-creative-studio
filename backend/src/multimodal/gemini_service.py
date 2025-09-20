@@ -16,10 +16,10 @@
 import json
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from google.genai import Client, types
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -326,10 +326,10 @@ class GeminiService:
         # This structured prompt instructs the model to return a JSON object,
         # making the output easy to parse and use.
         prompt = """
-        Analyze the provided brand guidelines PDF and extract the following information as a JSON object:
-        1.  "color_palette": A list of primary brand colors as hex codes (e.g., ["#RRGGBB", ...]).
-        2.  "tone_of_voice_summary": A concise, one-paragraph summary of the brand's tone of voice. This summary should be suitable for use as a prefix in a text generation prompt.
-        3.  "visual_style_summary": A concise, one-paragraph summary of the brand's visual style, aesthetics, and imagery. This summary should be suitable for use as a prefix in an image generation prompt.
+        Analyze the provided brand guidelines PDF and extract the following information into a structured JSON object:
+        1.  "color_palette": A list of the primary brand colors as hex codes (e.g., ["#RRGGBB", ...]).
+        2.  "tone_of_voice_summary": A detailed and comprehensive summary of the brand's tone of voice, approximately 200-250 words. This summary should be suitable for use as a prefix in a text generation prompt, capturing nuances like personality, vocabulary, and attitude.
+        3.  "visual_style_summary": A detailed and comprehensive summary of the brand's visual style, aesthetics, and imagery, approximately 5000-6000 words. This summary should be suitable for use as a prefix in an image generation prompt, covering aspects like photography style, graphic elements, and overall mood.
 
         Your response MUST be a single, valid JSON object and nothing else.
         """
@@ -353,3 +353,93 @@ class GeminiService:
                 f"Failed to extract brand info from PDF {pdf_gcs_uri}: {e}"
             )
             return {}
+
+    def aggregate_brand_info(
+        self, partial_results: List[Dict[str, Any]]
+    ) -> Optional[BrandGuidelineModel]:
+        """
+        Aggregates multiple partial brand info extractions into a single,
+        consolidated result using Gemini.
+
+        Args:
+            partial_results: A list of dictionaries, where each is a partial extraction
+                             from a PDF chunk, filtered to remove None values.
+
+        Returns:
+            A BrandGuidelineModel object with the combined information, or None on failure.
+        """
+        if not partial_results:
+            return None
+        if len(partial_results) == 1:
+            return BrandGuidelineModel(**partial_results[0])
+
+        logger.info(
+            f"Aggregating {len(partial_results)} partial brand info results."
+        )
+
+        # --- Step 1: Deterministic Aggregation in Python ---
+        # Combine color palettes and get unique hex codes, case-insensitively.
+        all_colors = set()
+        for result in partial_results:
+            if "colorPalette" in result and result["colorPalette"]:
+                # Filter out potential non-string or empty values
+                valid_colors = [
+                    c
+                    for c in result["colorPalette"]
+                    if isinstance(c, str) and c
+                ]
+                all_colors.update(c.upper() for c in valid_colors)
+
+        # Collect all non-empty text summaries.
+        tone_summaries = [
+            r.get("toneOfVoiceSummary")
+            for r in partial_results
+            if r.get("toneOfVoiceSummary")
+        ]
+        visual_summaries = [
+            r.get("visualStyleSummary")
+            for r in partial_results
+            if r.get("visualStyleSummary")
+        ]
+
+        # --- Step 2: AI-powered Aggregation for Summaries ---
+        # Ask Gemini to synthesize the text fields into final summaries.
+        prompt = f"""
+        You are an expert in brand identity. You have been given partial data extracted from a large brand guidelines document. Your task is to synthesize this data into a single, final, and coherent JSON object.
+
+        1.  **Color Palette**: Here is a list of all hex color codes found across the document chunks. Your task is to select the most representative and primary brand colors to create the final palette. **Crucially, you MUST NOT invent new colors.** Choose only from this list:
+            {json.dumps(sorted(list(all_colors)), indent=2)}
+
+        2.  **Tone of Voice Summaries**: Here are the partial summaries describing the brand's voice:
+            {json.dumps(tone_summaries, indent=2)}
+
+        3.  **Visual Style Summaries**: Here are the partial summaries describing the brand's visual style:
+            {json.dumps(visual_summaries, indent=2)}
+
+        Please generate a final, consolidated JSON object with three keys:
+        -   "color_palette": A list of hex strings representing the final, curated brand colors, chosen from the list provided.
+        -   "tone_of_voice_summary": A single, comprehensive, and well-written summary of approximately 200-250 words that synthesizes all aspects of the brand's voice from the partial summaries.
+        -   "visual_style_summary": A single, comprehensive, and well-written summary of approximately 5000-6000 words that synthesizes all aspects of the brand's visual identity from the partial summaries.
+
+        Your response MUST be a single, valid JSON object and nothing else.
+        """
+
+        try:
+            # We expect a subset of the BrandGuidelineModel, so we can use it as the schema.
+            response = self.client.models.generate_content(
+                model=self.rewriter_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=BrandGuidelineModel,
+                ),
+            )
+
+            # --- Step 3: Combine Python and AI results ---
+            aggregated_data = json.loads(response.text or "{}")
+            return BrandGuidelineModel(**aggregated_data)
+        except Exception as e:
+            logger.error(
+                f"Failed to aggregate brand info summaries with Gemini: {e}"
+            )
+            return None

@@ -43,7 +43,7 @@ export class GalleryService implements OnDestroy {
 
           const body: GallerySearchDto = {
             ...this.filters$.value,
-            workspace_id: workspaceId ?? undefined,
+            workspaceId: workspaceId ?? undefined,
           };
 
           return this.fetchImages(body).pipe(
@@ -95,7 +95,7 @@ export class GalleryService implements OnDestroy {
 
     const body: GallerySearchDto = {
       ...this.filters$.value,
-      workspace_id:
+      workspaceId:
         this.workspaceStateService.getActiveWorkspaceId() ?? undefined,
       startAfter: this.nextPageCursor ?? undefined,
     };

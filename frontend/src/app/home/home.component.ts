@@ -501,12 +501,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const validSourceMediaItems = this.sourceMediaItems.filter(
       Boolean,
     ) as SourceMediaItemLink[];
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
     const payload: ImagenRequest = {
       ...this.searchRequest,
       negativePrompt: this.negativePhrases.join(', '),
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
         : undefined,
+      workspaceId: activeWorkspaceId ?? undefined,
     };
 
     const sourceAssetIds = [];
@@ -649,7 +651,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     formData.append('file', file);
     const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
     if (activeWorkspaceId) {
-      formData.append('workspace_id', activeWorkspaceId);
+      formData.append('workspaceId', activeWorkspaceId);
     }
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,

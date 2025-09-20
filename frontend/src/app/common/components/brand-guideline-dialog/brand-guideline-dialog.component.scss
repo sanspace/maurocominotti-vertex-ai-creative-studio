@@ -1,0 +1,21 @@
+.view-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detail-section {
+  strong {
+    color: #b0b0b0;
+  }
+  p {
+    margin-top: 0.25rem;
+  }
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

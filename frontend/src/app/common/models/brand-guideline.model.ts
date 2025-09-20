@@ -18,7 +18,9 @@ export interface BrandGuidelineModel {
   id: string;
   name: string;
   workspaceId?: string;
-  sourcePdfGcsUri?: string;
+  sourcePdfGcsUris: string[];
   colorPalette: string[];
   logoAssetId?: string;
+  toneOfVoiceSummary?: string;
+  visualStyleSummary?: string;
 }

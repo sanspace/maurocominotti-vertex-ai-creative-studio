@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from src.common.base_repository import BaseDocument
 
@@ -19,9 +19,9 @@ class BrandGuidelineModel(BaseDocument):
     )
 
     # --- Source File (The user's input) ---
-    source_pdf_gcs_uri: Optional[str] = Field(
-        default=None,
-        description="The GCS path to the original uploaded brand guidelines PDF."
+    source_pdf_gcs_uris: List[str] = Field(
+        default_factory=list,
+        description="The GCS paths to the original PDF or its generated chunks.",
     )
 
     # --- AI-Extracted & Manually-Entered Fields ---
@@ -30,6 +30,8 @@ class BrandGuidelineModel(BaseDocument):
         description="List of hex color codes (e.g., '#FFFFFF') extracted from the PDF or entered manually."
     )
 
+    # TODO: We should be able to add the logo and then how it looks
+    # logo_description: Optional[str]
     logo_asset_id: Optional[str] = Field(
         default=None,
         description="The ID of a document in the 'user_assets' collection to be used as the logo."

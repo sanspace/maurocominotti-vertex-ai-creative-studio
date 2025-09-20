@@ -32,9 +32,12 @@ import {MatInputModule} from '@angular/material/input';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {CommonModule} from '@angular/common';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import {BrandGuidelineModel} from '../../models/brand-guideline.model';
 
 export interface BrandGuidelineDialogData {
   workspaceId: string;
+  guideline: BrandGuidelineModel | null;
 }
 
 @Component({
@@ -44,6 +47,8 @@ export interface BrandGuidelineDialogData {
 })
 export class BrandGuidelineDialogComponent {
   form: FormGroup;
+  isUploading = false;
+  isEditing = false;
   fileName: string | null = null;
 
   constructor(
@@ -51,6 +56,7 @@ export class BrandGuidelineDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: BrandGuidelineDialogData,
     private fb: FormBuilder,
   ) {
+    this.isEditing = !!this.data.guideline;
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       file: [null, Validators.required],
@@ -71,9 +77,13 @@ export class BrandGuidelineDialogComponent {
   }
 
   onUpload(): void {
-    if (this.form.valid) {
+    if (this.form.valid && !this.isUploading) {
+      this.isUploading = true;
       this.dialogRef.close(this.form.value);
     }
   }
-}
 
+  replaceGuideline(): void {
+    this.isEditing = false;
+  }
+}

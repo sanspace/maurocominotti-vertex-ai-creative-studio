@@ -34,6 +34,7 @@ import {
   BrandGuidelineDialogData,
 } from '../brand-guideline-dialog/brand-guideline-dialog.component';
 import {BrandGuidelineService} from '../../services/brand-guideline/brand-guideline.service';
+import {switchMap} from 'rxjs';
 
 @Component({
   selector: 'app-workspace-switcher',
@@ -195,37 +196,48 @@ export class WorkspaceSwitcherComponent implements OnInit {
   openBrandGuidelinesDialog(event: MouseEvent): void {
     event.stopPropagation();
     if (!this.activeWorkspaceId) return;
+    const workspaceId = this.activeWorkspaceId;
 
-    const dialogRef = this.dialog.open<
-      BrandGuidelineDialogComponent,
-      BrandGuidelineDialogData
-    >(BrandGuidelineDialogComponent, {
-      width: '500px',
-      data: {workspaceId: this.activeWorkspaceId},
-    });
+    this.brandGuidelineService
+      .getBrandGuidelineForWorkspace(workspaceId)
+      .pipe(
+        switchMap(guideline => {
+          const dialogRef = this.dialog.open<
+            BrandGuidelineDialogComponent,
+            BrandGuidelineDialogData
+          >(BrandGuidelineDialogComponent, {
+            width: '500px',
+            data: {workspaceId: workspaceId, guideline},
+          });
+          return dialogRef.afterClosed();
+        }),
+      )
+      .subscribe(result => {
+        if (result && workspaceId) {
+          const formData = new FormData();
+          formData.append('name', result.name);
+          formData.append('file', result.file);
+          formData.append('workspaceId', workspaceId);
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result && this.activeWorkspaceId) {
-        const formData = new FormData();
-        formData.append('name', result.name);
-        formData.append('file', result.file);
-        formData.append('workspace_id', this.activeWorkspaceId);
-
-        this.brandGuidelineService.createBrandGuideline(formData).subscribe({
-          next: () => {
-            this.snackBar.open('Brand Guideline uploaded successfully!', 'OK', {
-              duration: 3000,
-            });
-          },
-          error: error => {
-            handleErrorSnackbar(
-              this.snackBar,
-              error,
-              'Failed to upload brand guideline.',
-            );
-          },
-        });
-      }
-    });
+          this.brandGuidelineService.createBrandGuideline(formData).subscribe({
+            next: () => {
+              this.snackBar.open(
+                'Brand Guideline uploaded successfully!',
+                'OK',
+                {
+                  duration: 3000,
+                },
+              );
+            },
+            error: error => {
+              handleErrorSnackbar(
+                this.snackBar,
+                error,
+                'Failed to upload brand guideline.',
+              );
+            },
+          });
+        }
+      });
   }
 }

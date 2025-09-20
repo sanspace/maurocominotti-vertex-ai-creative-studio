@@ -16,7 +16,7 @@
 
 import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {Observable} from 'rxjs';
+import {catchError, Observable, of} from 'rxjs';
 import {environment} from '../../../../environments/environment';
 import {BrandGuidelineModel} from '../../models/brand-guideline.model';
 
@@ -31,5 +31,17 @@ export class BrandGuidelineService {
   createBrandGuideline(formData: FormData): Observable<BrandGuidelineModel> {
     return this.http.post<BrandGuidelineModel>(this.apiUrl, formData);
   }
-}
 
+  /**
+   * Fetches the brand guideline for a specific workspace.
+   * @param workspaceId The ID of the workspace.
+   * @returns An observable of the brand guideline or null if not found.
+   */
+  getBrandGuidelineForWorkspace(
+    workspaceId: string,
+  ): Observable<BrandGuidelineModel | null> {
+    return this.http
+      .get<BrandGuidelineModel>(`${this.apiUrl}/workspace/${workspaceId}`)
+      .pipe(catchError(() => of(null))); // Return null if not found (404) or on other errors
+  }
+}

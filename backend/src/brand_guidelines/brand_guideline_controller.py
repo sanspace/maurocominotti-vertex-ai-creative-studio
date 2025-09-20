@@ -2,15 +2,17 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
-from src.auth.auth_guard import RoleChecker
+from src.auth.auth_guard import get_current_user
 from src.brand_guidelines.brand_guideline_service import BrandGuidelineService
 from src.brand_guidelines.schema.brand_guideline_model import BrandGuidelineModel
-from src.users.user_model import UserRoleEnum
+from src.users.user_model import UserModel
+
+MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024  # 500 MB
 
 router = APIRouter(
     prefix="/api/brand-guidelines",
     tags=["Brand Guidelines"],
-    dependencies=[Depends(RoleChecker(allowed_roles=[UserRoleEnum.ADMIN]))],
+    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -22,9 +24,10 @@ router = APIRouter(
 )
 async def create_brand_guideline(
     name: str = Form(min_length=3, max_length=100),
-    workspace_id: Optional[str] = Form(None),
+    workspaceId: Optional[str] = Form(None),
     file: UploadFile = File(),
     service: BrandGuidelineService = Depends(),
+    current_user: UserModel = Depends(get_current_user),
 ):
     """
     Uploads a brand guideline PDF.
@@ -42,5 +45,18 @@ async def create_brand_guideline(
             detail="File must be a PDF.",
         )
 
+    # Check file size before processing
+    # We seek to the end to get the size, then back to the beginning.
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File is too large. Maximum size is {MAX_UPLOAD_SIZE_BYTES // (1024*1024)}MB.",
+        )
+
     # The service method now handles the entire synchronous workflow.
-    return await service.create_and_process_guideline(name, file, workspace_id)
+    return await service.create_and_process_guideline(
+        name, file, workspaceId, current_user
+    )
