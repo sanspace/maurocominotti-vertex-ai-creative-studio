@@ -29,6 +29,11 @@ import {
 } from '../invite-user-modal/invite-user-modal.component';
 import {UserService} from '../../services/user.service';
 import {UserModel, UserRolesEnum} from '../../models/user.model';
+import {
+  BrandGuidelineDialogComponent,
+  BrandGuidelineDialogData,
+} from '../brand-guideline-dialog/brand-guideline-dialog.component';
+import {BrandGuidelineService} from '../../services/brand-guideline/brand-guideline.service';
 
 @Component({
   selector: 'app-workspace-switcher',
@@ -45,6 +50,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
   constructor(
     private workspaceService: WorkspaceService,
     private workspaceStateService: WorkspaceStateService,
+    private brandGuidelineService: BrandGuidelineService,
     private userService: UserService,
     private route: ActivatedRoute,
     public dialog: MatDialog,
@@ -141,6 +147,19 @@ export class WorkspaceSwitcherComponent implements OnInit {
     return isOwner || isAdmin;
   }
 
+  get canEditBrandGuidelines(): boolean {
+    if (!this.currentUser || !this.activeWorkspace) {
+      return false;
+    }
+    const isAdmin = !!this.currentUser.roles?.includes(UserRolesEnum.ADMIN);
+    // An admin can edit any workspace's guidelines.
+    // A non-admin can only edit guidelines for private workspaces they own.
+    const isOwnerOfPrivateWorkspace =
+      this.activeWorkspace.scope === WorkspaceScope.PRIVATE &&
+      this.currentUser.id === this.activeWorkspace.ownerId;
+    return isAdmin || isOwnerOfPrivateWorkspace;
+  }
+
   openInviteDialog(event: MouseEvent): void {
     event.stopPropagation();
     if (!this.activeWorkspace) return;
@@ -169,6 +188,43 @@ export class WorkspaceSwitcherComponent implements OnInit {
               );
             },
           });
+      }
+    });
+  }
+
+  openBrandGuidelinesDialog(event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.activeWorkspaceId) return;
+
+    const dialogRef = this.dialog.open<
+      BrandGuidelineDialogComponent,
+      BrandGuidelineDialogData
+    >(BrandGuidelineDialogComponent, {
+      width: '500px',
+      data: {workspaceId: this.activeWorkspaceId},
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && this.activeWorkspaceId) {
+        const formData = new FormData();
+        formData.append('name', result.name);
+        formData.append('file', result.file);
+        formData.append('workspace_id', this.activeWorkspaceId);
+
+        this.brandGuidelineService.createBrandGuideline(formData).subscribe({
+          next: () => {
+            this.snackBar.open('Brand Guideline uploaded successfully!', 'OK', {
+              duration: 3000,
+            });
+          },
+          error: error => {
+            handleErrorSnackbar(
+              this.snackBar,
+              error,
+              'Failed to upload brand guideline.',
+            );
+          },
+        });
       }
     });
   }

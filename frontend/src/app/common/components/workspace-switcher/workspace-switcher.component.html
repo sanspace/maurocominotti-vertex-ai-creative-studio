@@ -48,6 +48,10 @@
         <mat-icon>person_add</mat-icon>
         <span>Invite Users</span>
       </button>
+    <button mat-menu-item (click)="openBrandGuidelinesDialog($event)" [disabled]="!canEditBrandGuidelines">
+      <mat-icon>style</mat-icon>
+      <span>Brand Guidelines</span>
+    </button>
     </mat-menu>
   </ng-container>
 </div>
