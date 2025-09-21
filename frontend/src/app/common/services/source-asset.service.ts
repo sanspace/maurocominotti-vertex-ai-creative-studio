@@ -14,12 +14,14 @@ export interface SourceAssetResponseDto {
   createdAt: string;
   updatedAt: string;
   presignedUrl: string;
+  presignedThumbnailUrl?: string;
 }
 
 export interface SourceAssetSearchDto {
   limit?: number;
   startAfter?: string;
   mimeType?: string;
+  assetType?: string;
   userEmail?: string;
 }
 

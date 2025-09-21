@@ -34,9 +34,11 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <!-- Left Column: The Image/Video -->
     <div class="lg:col-span-2">
-      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" [showEditButton]="true" [showGenerateVideoButton]="true"
+      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" [showEditButton]="!mediaItem.mimeType?.startsWith('video/')" [showGenerateVideoButton]="true"
         [showVtoButton]="true" (editClicked)="generateWithThisImage($event)"
         (generateVideoClicked)="generateVideoWithImage($event)" (sendToVtoClicked)="sendToVto($event)"
+        (extendWithAiClicked)="handleExtendWithAi($event)"
+        (concatenateClicked)="handleConcatenate($event)"
         style="max-height: 80vh;"></app-media-lightbox>
     </div>
 
@@ -160,7 +162,7 @@
                   class="block w-20 h-20 rounded-md overflow-hidden hover:opacity-80 transition-opacity"
                 >
                   <img
-                    [src]="asset.presignedUrl"
+                    [src]="asset?.presignedThumbnailUrl || asset.presignedUrl"
                     alt="Source Asset"
                     class="w-full h-full object-cover"
                   />

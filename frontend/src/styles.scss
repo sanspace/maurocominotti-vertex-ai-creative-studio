@@ -271,7 +271,7 @@ textarea {
     width: 100%;
     height: 100%;
     top: -50%;
-    left: -50%;
+    left: -50vw;
 
     opacity: 0.7;
   }
@@ -415,11 +415,6 @@ app-workspace-switcher .workspace-name {
 
 // Large devices (desktops, 992px and up)
 @media (min-width: 992px) {
-  .gradient-bg {
-    .interactive {
-      left: -60%;
-    }
-  }
 }
 
 // X-Large devices (large desktops, 1200px and up)
@@ -428,12 +423,6 @@ app-workspace-switcher .workspace-name {
 
 // XX-Large devices (larger desktops, 1400px and up)
 @media (min-width: 1400px) {
-  .gradient-bg {
-    .interactive {
-      left: -70%;
-    }
-  }
-
   app-workspace-switcher .top-left-container {
     left: 3vw;
   }
@@ -441,9 +430,4 @@ app-workspace-switcher .workspace-name {
 
 // 4K Displays (Ultra HD) (Projectors or Higher Resolution Screens, 2160px and up)
 @media screen and (min-width: 2160px) {
-  .gradient-bg {
-    .interactive {
-      left: -85%;
-    }
-  }
 }

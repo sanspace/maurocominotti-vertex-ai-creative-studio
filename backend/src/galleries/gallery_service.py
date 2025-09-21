@@ -70,14 +70,31 @@ class GalleryService:
         if not asset_doc:
             return None
 
-        presigned_url = await asyncio.to_thread(
-            self.iam_signer_credentials.generate_presigned_url,
-            asset_doc.gcs_uri,
-        )
+        tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url,
+                asset_doc.gcs_uri,
+            )
+        ]
+
+        # Check if the asset has a thumbnail and create a task for it.
+        # This requires the SourceAsset model to have a `thumbnail_gcs_uri` field.
+        if asset_doc.thumbnail_gcs_uri:
+            tasks.append(
+                asyncio.to_thread(
+                    self.iam_signer_credentials.generate_presigned_url,
+                    asset_doc.thumbnail_gcs_uri,
+                )
+            )
+
+        results = await asyncio.gather(*tasks)
+        presigned_url = results[0]
+        presigned_thumbnail_url = results[1] if len(results) > 1 else None
 
         return SourceAssetLinkResponse(
             **link.model_dump(),
             presigned_url=presigned_url,
+            presigned_thumbnail_url=presigned_thumbnail_url,
             gcs_uri=asset_doc.gcs_uri,
         )
 
@@ -101,13 +118,36 @@ class GalleryService:
         # Get the specific GCS URI of the parent image that was edited.
         parent_gcs_uri = parent_item.gcs_uris[link.media_index]
 
-        presigned_url = await asyncio.to_thread(
-            self.iam_signer_credentials.generate_presigned_url, parent_gcs_uri
-        )
+        # Prepare tasks for both the main media and its thumbnail
+        tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url,
+                parent_gcs_uri,
+            )
+        ]
+
+        parent_thumbnail_gcs_uri = None
+        if parent_item.thumbnail_uris and 0 <= link.media_index < len(
+            parent_item.thumbnail_uris
+        ):
+            parent_thumbnail_gcs_uri = parent_item.thumbnail_uris[
+                link.media_index
+            ]
+            tasks.append(
+                asyncio.to_thread(
+                    self.iam_signer_credentials.generate_presigned_url,
+                    parent_thumbnail_gcs_uri,
+                )
+            )
+
+        results = await asyncio.gather(*tasks)
+        presigned_url = results[0]
+        presigned_thumbnail_url = results[1] if len(results) > 1 else None
 
         return SourceMediaItemLinkResponse(
             **link.model_dump(),
             presigned_url=presigned_url,
+            presigned_thumbnail_url=presigned_thumbnail_url,
             gcs_uri=parent_gcs_uri,
         )
 

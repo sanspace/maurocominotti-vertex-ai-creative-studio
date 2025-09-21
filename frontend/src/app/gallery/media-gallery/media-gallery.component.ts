@@ -91,10 +91,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
-    if (this.filterByType) {
-      this.mediaTypeFilter = this.filterByType;
-    }
-
+    this.mediaTypeFilter = this.filterByType || '';
     this.searchTerm(); // Set initial filters
     this.loadingSubscription = this.galleryService.isLoading$.subscribe(
       loading => {
@@ -104,8 +101,9 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
       if (images) {
-        this.images = images;
-        this.images.forEach(image => {
+        // Find only the new images that have been added
+        const newImages = images.slice(this.images.length);
+        newImages.forEach(image => {
           if (this.currentImageIndices[image.id] === undefined) {
             this.currentImageIndices[image.id] = 0;
           }
@@ -113,6 +111,7 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
             this.startAutoSlide(image);
           }
         });
+        this.images = images;
         this.updateColumns();
       }
     });
@@ -344,15 +343,21 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.userEmailFilter) {
       filters['userEmail'] = this.userEmailFilter;
     }
-    if (this.mediaTypeFilter) {
-      filters['mimeType'] = this.mediaTypeFilter;
+    const mimeType = this.filterByType
+      ? this.filterByType
+      : this.isSelectionMode
+        ? null
+        : this.mediaTypeFilter;
+    if (mimeType) {
+      filters['mimeType'] = mimeType;
     }
-    if (this.generationModelFilter) {
+    if (this.generationModelFilter && !this.isSelectionMode) {
       filters['model'] = this.generationModelFilter;
     }
     if (this.statusFilter) {
       filters['status'] = this.statusFilter;
     }
+    console.log('Searching gallery with filters:', filters);
     this.galleryService.setFilters(filters);
   }
 }

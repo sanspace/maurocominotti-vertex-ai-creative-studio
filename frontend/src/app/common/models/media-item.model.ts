@@ -20,11 +20,13 @@ import {SourceMediaItemLink} from './search.model';
 export interface EnrichedSourceAsset {
   sourceAssetId: string;
   presignedUrl: string;
+  presignedThumbnailUrl: string;
   gcsUri: string;
 }
 
 export interface EnrichedSourceMediaItem extends SourceMediaItemLink {
   presignedUrl: string;
+  presignedThumbnailUrl: string;
   gcsUri: string;
 }
 

@@ -5,6 +5,7 @@ import {
   EventEmitter,
   NgZone,
   OnInit,
+  Input,
   OnDestroy,
   Output,
   ViewChild,
@@ -13,7 +14,9 @@ import {Subscription} from 'rxjs';
 import {
   SourceAssetService,
   SourceAssetResponseDto,
+  SourceAssetSearchDto,
 } from '../../services/source-asset.service';
+import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
 import {UserService} from '../../services/user.service';
 
 @Component({
@@ -25,6 +28,7 @@ export class SourceAssetGalleryComponent
   implements OnInit, OnDestroy, AfterViewInit
 {
   @Output() assetSelected = new EventEmitter<SourceAssetResponseDto>();
+  @Input() filterByType: AssetTypeEnum | null = null;
   @ViewChild('sentinel') private sentinel!: ElementRef<HTMLElement>;
 
   public assets: SourceAssetResponseDto[] = [];
@@ -54,17 +58,23 @@ export class SourceAssetGalleryComponent
         this.allAssetsLoaded = loaded;
       });
 
-    this.assetsSubscription = this.sourceAssetService.assets.subscribe(assets => {
-      this.assets = assets;
-    });
+    this.assetsSubscription = this.sourceAssetService.assets.subscribe(
+      assets => {
+        this.assets = assets;
+      },
+    );
 
     // Load assets for the current user
     const userDetails = this.userService.getUserDetails();
+    const filters: SourceAssetSearchDto = {};
     if (userDetails?.email) {
-      this.sourceAssetService.setFilters({
-        userEmail: userDetails.email,
-      });
+      filters.userEmail = userDetails.email;
     }
+    if (this.filterByType) {
+      filters.assetType = this.filterByType;
+    }
+
+    this.sourceAssetService.setFilters(filters);
   }
 
   ngAfterViewInit(): void {

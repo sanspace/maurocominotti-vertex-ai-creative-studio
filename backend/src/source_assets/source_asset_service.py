@@ -15,6 +15,8 @@
 import asyncio
 import hashlib
 import logging
+import os
+import shutil
 import uuid
 from typing import List, Optional
 
@@ -23,6 +25,7 @@ from fastapi import HTTPException, UploadFile, status
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
 from src.common.dto.pagination_response_dto import PaginationResponseDto
+from src.common.media_utils import generate_thumbnail
 from src.common.storage_service import GcsService
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.imagen_service import ImagenService
@@ -56,12 +59,29 @@ class SourceAssetService:
     async def _create_asset_response(
         self, asset: SourceAssetModel
     ) -> SourceAssetResponseDto:
-        """Generates a presigned URL for the asset."""
-        presigned_url = await asyncio.to_thread(
-            self.iam_signer.generate_presigned_url, asset.gcs_uri
-        )
+        """Generates presigned URLs for the asset and its thumbnail."""
+        tasks = [
+            asyncio.to_thread(
+                self.iam_signer.generate_presigned_url, asset.gcs_uri
+            )
+        ]
+
+        if asset.thumbnail_gcs_uri:
+            tasks.append(
+                asyncio.to_thread(
+                    self.iam_signer.generate_presigned_url,
+                    asset.thumbnail_gcs_uri,
+                )
+            )
+
+        results = await asyncio.gather(*tasks)
+        presigned_url = results[0]
+        presigned_thumbnail_url = results[1] if len(results) > 1 else ""
+
         return SourceAssetResponseDto(
-            **asset.model_dump(), presigned_url=presigned_url
+            **asset.model_dump(),
+            presigned_url=presigned_url,
+            presigned_thumbnail_url=presigned_thumbnail_url,
         )
 
     async def upload_asset(
@@ -93,63 +113,89 @@ class SourceAssetService:
             )
             return await self._create_asset_response(existing_asset)
 
-        # 2. If it's a new file, upload the original to GCS in the user's folder
-        logger.info(
-            f"New asset for user {user.email}. Uploading original file."
-        )
-        original_gcs_uri = self.gcs_service.store_to_gcs(
-            folder=f"source_assets/{user.id}/originals",
-            file_name=str(uuid.uuid4()),
-            mime_type=file.content_type or "image/jpeg",
-            contents=contents,
-            decode=False,
-        )
+        # 2. Handle file processing based on type (image vs. video)
+        is_video = file.content_type and "video" in file.content_type
+        final_gcs_uri: Optional[str] = None
+        thumbnail_gcs_uri: Optional[str] = None
+        temp_dir = f"temp/source_assets/{uuid.uuid4()}"
 
-        if not original_gcs_uri:
-            logger.error(
-                f"Failed to upload original asset to GCS for user {user.email}."
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Could not store the original asset before upscaling.",
-            )
-
-        # 3. Upscale the original image to get the best possible resolution
-        logger.info(f"Upscaling original asset from {original_gcs_uri}")
-        final_gcs_uri = original_gcs_uri
         try:
-            upscale_dto = UpscaleImagenDto(
-                user_image=original_gcs_uri,
-                upscale_factor="x2",
-                mime_type=MimeTypeEnum.IMAGE_PNG,
-                generation_model=GenerationModelEnum.IMAGEN_3_002,  # Use a model that supports upscale
-            )
-            upscaled_result = await self.imagen_service.upscale_image(
-                upscale_dto
-            )
+            if is_video:
+                # --- Video Upload Logic ---
+                os.makedirs(temp_dir, exist_ok=True)
+                local_path = os.path.join(temp_dir, file.filename or "asset")
+                with open(local_path, "wb") as buffer:
+                    buffer.write(contents)
 
-            if not upscaled_result or not upscaled_result.image.gcs_uri:
-                raise HTTPException(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "Failed to upscale image.",
+                # Upload the original video
+                final_gcs_uri = self.gcs_service.upload_file_to_gcs(
+                    local_path=local_path,
+                    destination_blob_name=f"source_assets/{user.id}/{file_hash}/{file.filename}",
+                    mime_type="video/mp4",
                 )
 
-            final_gcs_uri = upscaled_result.image.gcs_uri
-            logger.info(f"Upscaling complete. Final asset at {final_gcs_uri}")
+                # Generate and upload thumbnail
+                thumbnail_path = generate_thumbnail(local_path)
+                if thumbnail_path:
+                    thumbnail_gcs_uri = self.gcs_service.upload_file_to_gcs(
+                        local_path=thumbnail_path,
+                        destination_blob_name=f"source_assets/{user.id}/{file_hash}/thumbnail.png",
+                        mime_type="image/png",
+                    )
+            else:
+                # --- Image Upload & Upscale Logic ---
+                original_gcs_uri = self.gcs_service.store_to_gcs(
+                    folder=f"source_assets/{user.id}/originals",
+                    file_name=str(uuid.uuid4()),
+                    mime_type=file.content_type or "image/jpeg",
+                    contents=contents,
+                    decode=False,
+                )
+                if not original_gcs_uri:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Could not store the original asset.",
+                    )
 
+                # Upscale the image
+                logger.info(f"Upscaling original asset from {original_gcs_uri}")
+                upscale_dto = UpscaleImagenDto(
+                    user_image=original_gcs_uri,
+                    upscale_factor="x2",
+                    mime_type=MimeTypeEnum.IMAGE_PNG,
+                    generation_model=GenerationModelEnum.IMAGEN_3_002,
+                )
+                upscaled_result = await self.imagen_service.upscale_image(
+                    upscale_dto
+                )
+
+                if not upscaled_result or not upscaled_result.image.gcs_uri:
+                    logger.warning("Upscaling failed, using original image.")
+                    final_gcs_uri = original_gcs_uri
+                else:
+                    final_gcs_uri = upscaled_result.image.gcs_uri
+                    logger.info(
+                        f"Upscaling complete. Final asset at {final_gcs_uri}"
+                    )
+
+            if not final_gcs_uri:
+                raise Exception("Failed to process and upload asset.")
         except Exception as e:
-            logger.error(
-                f"Failed to upscale asset for user {user.email}: {e}",
-                exc_info=True,
+            logger.error(f"Asset processing failed: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process asset: {e}",
             )
-            # Fallback: if upscale fails, use the original URI
-            final_gcs_uri = original_gcs_uri
+        finally:
+            # Clean up the temporary directory if it was created
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
 
         # 4. Create and save the new UserAsset document
         mime_type: MimeTypeEnum = (
-            MimeTypeEnum.IMAGE_PNG
-            if file.content_type == MimeTypeEnum.IMAGE_PNG
-            else MimeTypeEnum.IMAGE_JPEG
+            MimeTypeEnum.VIDEO_MP4
+            if file.content_type == MimeTypeEnum.VIDEO_MP4
+            else MimeTypeEnum.IMAGE_PNG
         )
 
         is_admin = UserRoleEnum.ADMIN in user.roles
@@ -171,6 +217,7 @@ class SourceAssetService:
             workspace_id=workspace_id,
             user_id=user.id,
             gcs_uri=final_gcs_uri,
+            thumbnail_gcs_uri=thumbnail_gcs_uri,
             original_filename=file.filename or "untitled",
             mime_type=mime_type,
             file_hash=file_hash,

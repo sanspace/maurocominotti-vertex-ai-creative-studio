@@ -67,7 +67,7 @@
         <span>Edit</span>
       </button>
       <button
-        *ngIf="showGenerateVideoButton"
+        *ngIf="showGenerateVideoButton && !isVideo"
         class="action-button"
         [matMenuTriggerFor]="videoMenu"
         title="Generate video with this image"
@@ -127,8 +127,22 @@
         <span>See more info</span>
       </button>
     </div>
-  </div>
 
+    <button *ngIf="isVideo" mat-icon-button [matMenuTriggerFor]="extendMenu" class="action-button" title="More video options">
+      <mat-icon>more_vert</mat-icon>
+    </button>
+    <mat-menu #extendMenu="matMenu">
+      <button mat-menu-item (click)="onExtendWithAiClick()">
+        <mat-icon>auto_awesome</mat-icon>
+        <span>Extend with AI</span>
+      </button>
+      <button mat-menu-item (click)="onConcatenateClick()">
+        <mat-icon>add_to_photos</mat-icon>
+        <span>Concatenate Video</span>
+      </button>
+    </mat-menu>
+
+  </div>
 </div>
 
 <!-- Share Menu -->

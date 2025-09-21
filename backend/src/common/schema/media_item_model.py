@@ -40,6 +40,16 @@ class AssetRoleEnum(str, Enum):
     VTO_BOTTOM = "vto_bottom"  # Role for the bottom garment in a VTO generation
     VTO_DRESS = "vto_dress"  # Role for the dress in a VTO generation
     VTO_SHOE = "vto_shoe"  # Role for the shoe in a VTO generation
+    VIDEO_EXTENSION_SOURCE = (
+        "video_extension_source"  # The original video to be extended
+    )
+    VIDEO_EXTENSION_CHUNK = (
+        "video_extension_chunk"  # The generated chunk in an extension job
+    )
+    CONCATENATION_SOURCE = (
+        "concatenation_source"  # An input video in a concatenation job
+    )
+    SOURCE_VIDEO = "source_video"
 
 
 class SourceAssetLink(BaseModel):

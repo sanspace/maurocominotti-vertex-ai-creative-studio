@@ -8,6 +8,8 @@ import {
   SourceAssetResponseDto,
   SourceAssetService,
 } from '../../services/source-asset.service';
+import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
+import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
 
 export interface MediaItemSelection {
   mediaItem: MediaItem;
@@ -26,15 +28,40 @@ export class ImageSelectorComponent {
     public dialogRef: MatDialogRef<ImageSelectorComponent>,
     private http: HttpClient,
     private sourceAssetService: SourceAssetService,
-    @Inject(MAT_DIALOG_DATA) public data: {assetType?: string},
+    private workspaceStateService: WorkspaceStateService,
+    @Inject(MAT_DIALOG_DATA)
+    public data: {assetType: AssetTypeEnum | null},
   ) {}
+
+  get mimeTypeFilter(): 'image/png' | 'video/mp4' | null {
+    switch (this.data?.assetType) {
+      case AssetTypeEnum.GENERIC_IMAGE:
+        return 'image/png';
+      case AssetTypeEnum.GENERIC_VIDEO:
+        return 'video/mp4';
+      default:
+        return null;
+    }
+  }
 
   private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+
     formData.append('file', file);
     formData.append('scope', 'private');
-    if (this.data?.assetType) {
-      formData.append('assetType', this.data.assetType);
+
+    // Prioritize file's mime type, but fall back to dialog data if needed.
+    if (file.type.startsWith('video/')) {
+      formData.append('assetType', 'generic_video');
+    } else {
+      formData.append(
+        'assetType',
+        this.data?.assetType || AssetTypeEnum.GENERIC_IMAGE,
+      );
+    }
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
     }
 
     return this.http.post<SourceAssetResponseDto>(

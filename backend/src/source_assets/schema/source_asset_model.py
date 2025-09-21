@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import Field
 
@@ -17,6 +18,7 @@ class AssetTypeEnum(str, Enum):
     """Defines the purpose of an asset for easier filtering."""
 
     GENERIC_IMAGE = "generic_image"
+    GENERIC_VIDEO = "generic_video"
     VTO_PRODUCT = "vto_product"
     VTO_PERSON_FEMALE = "vto_person_female"
     VTO_PERSON_MALE = "vto_person_male"
@@ -45,6 +47,7 @@ class SourceAssetModel(BaseDocument):
     file_hash: str  # SHA-256 hash of the original file for de-duplication
     scope: AssetScopeEnum = AssetScopeEnum.PRIVATE
     asset_type: AssetTypeEnum = AssetTypeEnum.GENERIC_IMAGE
+    thumbnail_gcs_uri: Optional[str] = None  # In case of uploading a video
     """
     Describes the asset's intrinsic IDENTITY. It answers the question "What IS this file?".
     This is for categorizing the asset library (e.g., for an admin to find all 'VTO_PERSON' models).

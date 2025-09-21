@@ -29,7 +29,8 @@ from google.cloud.logging.handlers import CloudLoggingHandler
 from google.genai import types
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.base_dto import MimeTypeEnum
+from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.media_utils import concatenate_videos, generate_thumbnail
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import (
     AssetRoleEnum,
@@ -47,61 +48,17 @@ from src.source_assets.repository.source_asset_repository import (
     SourceAssetRepository,
 )
 from src.users.user_model import UserModel
+from src.videos.dto.concatenate_videos_dto import ConcatenateVideosDto
 from src.videos.dto.create_veo_dto import CreateVeoDto
 
 logger = logging.getLogger(__name__)
 
 
-# --- UTILITY FUNCTION ---
-def generate_thumbnail(video_path: str) -> str | None:
-    """
-    Generates a thumbnail from a video file using ffmpeg.
-
-    Args:
-        video_path: The path to the video file.
-
-    Returns:
-        The path to the generated thumbnail, or None if it fails.
-    """
-    if not video_path:
-        return None
-
-    thumbnail_filename = (
-        "thumbnail_"
-        + os.path.splitext(os.path.basename(video_path))[0]
-        + ".png"
-    )
-    thumbnail_path = os.path.join(
-        os.path.dirname(video_path), thumbnail_filename
-    )
-
-    command = [
-        "ffmpeg",
-        "-i",
-        video_path,
-        "-ss",
-        "00:00:00.000",  # Capture frame at 0 milisecond
-        "-vframes",
-        "1",
-        "-y",  # Overwrite output file if it exists
-        thumbnail_path,
-    ]
-    try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
-        return thumbnail_path
-    except FileNotFoundError:
-        logger.error(
-            "ffmpeg not found. Please ensure ffmpeg is installed and in your PATH."
-        )
-        return None
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error generating thumbnail: {e.stderr}")
-        return None
-
-
 # --- STANDALONE WORKER FUNCTION ---
 # This function will run in the background process. It is defined outside the class.
-def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
+def _process_video_in_background(
+    media_item_id: str, request_dto: CreateVeoDto, current_user: UserModel
+):  # type: ignore
     """
     This is the long-running worker task. It creates its own service instances
     because it runs in a completely separate process.
@@ -153,7 +110,22 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
             # --- Handle Source Assets for API Call ---
             start_image_for_api: Optional[types.Image] = None
             end_image_for_api: Optional[types.Image] = None
+            original_source_video_item_link: Optional[SourceMediaItemLink] = (
+                None
+            )
+            # --- Handle Video Extension ---
+            source_video_for_api: Optional[types.Video] = None
 
+            if request_dto.source_video_asset_id:
+                video_asset = source_asset_repo.get_by_id(
+                    request_dto.source_video_asset_id
+                )
+                if video_asset:
+                    source_video_for_api = types.Video(uri=video_asset.gcs_uri)
+                else:
+                    worker_logger.warning(
+                        f"Could not find source video asset: {request_dto.source_video_asset_id}"
+                    )
             if request_dto.start_image_asset_id:
                 start_asset = source_asset_repo.get_by_id(
                     request_dto.start_image_asset_id
@@ -190,6 +162,12 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                             start_image_for_api = image_for_api
                         elif gen_input.role == AssetRoleEnum.END_FRAME:
                             end_image_for_api = image_for_api
+                        elif (
+                            gen_input.role
+                            == AssetRoleEnum.VIDEO_EXTENSION_SOURCE
+                        ):
+                            original_source_video_item_link = gen_input
+                            source_video_for_api = types.Video(uri=gcs_uri)
                     else:
                         worker_logger.warning(
                             f"Could not find or use generated_input: {gen_input.media_item_id} at index {gen_input.media_index}"
@@ -204,6 +182,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                     model="veo-3.0-generate-preview",
                     prompt=request_dto.prompt,
                     image=start_image_for_api,
+                    video=source_video_for_api,
                     config=types.GenerateVideosConfig(
                         number_of_videos=request_dto.number_of_media,
                         output_gcs_uri=gcs_output_directory,
@@ -242,6 +221,84 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
 
             # Download the generated video and create thumbnail
             thumbnail_path = ""
+
+            final_source_media_items = request_dto.source_media_items
+            # --- POST-PROCESSING: CONCATENATION FOR VIDEO EXTENSION ---
+            if source_video_for_api and source_video_for_api.uri:
+                worker_logger.info(
+                    f"Starting concatenation for extension job: {media_item_id}"
+                )
+                # We assume extension generates only one video chunk.
+                if operation.response and operation.response.generated_videos:
+                    generated_chunk = operation.response.generated_videos[0]
+                    if generated_chunk.video and generated_chunk.video.uri:
+                        # 0. Create a new MediaItem for the generated chunk to preserve its data
+                        chunk_media_item = MediaItemModel(
+                            workspace_id=request_dto.workspace_id,
+                            user_email=current_user.email,
+                            user_id=current_user.id,
+                            mime_type=MimeTypeEnum.VIDEO_MP4,
+                            model=request_dto.generation_model,
+                            original_prompt=request_dto.prompt,
+                            status=JobStatusEnum.COMPLETED,  # This is an intermediate artifact
+                            aspect_ratio=request_dto.aspect_ratio,
+                            source_media_items=(
+                                [original_source_video_item_link]
+                                if original_source_video_item_link
+                                else []
+                            ),
+                            gcs_uris=[generated_chunk.video.uri],
+                        )
+                        media_repo.save(chunk_media_item)
+                        worker_logger.info(
+                            f"Saved intermediate video chunk as MediaItem: {chunk_media_item.id}"
+                        )
+
+                        # The final video will now be composed of the original source and this new chunk
+                        final_source_media_items = [
+                            SourceMediaItemLink(
+                                media_item_id=chunk_media_item.id,
+                                media_index=0,
+                                role=AssetRoleEnum.VIDEO_EXTENSION_CHUNK,
+                            )
+                        ] + (request_dto.source_media_items or [])
+
+                        # 1. Download both the original video and the new chunk
+                        original_video_path = gcs_service.download_from_gcs(
+                            gcs_uri_path=source_video_for_api.uri.replace(
+                                f"gs://{cfg.GENMEDIA_BUCKET}/", ""
+                            ),
+                            destination_file_path=f"temp/{media_item_id}/original.mp4",
+                        )
+                        new_chunk_path = gcs_service.download_from_gcs(
+                            gcs_uri_path=generated_chunk.video.uri.replace(
+                                f"gs://{cfg.GENMEDIA_BUCKET}/", ""
+                            ),
+                            destination_file_path=f"temp/{media_item_id}/chunk.mp4",
+                        )
+
+                        # 2. Concatenate them
+                        final_video_path = (
+                            f"temp/{media_item_id}/final_concatenated.mp4"
+                        )
+                        if original_video_path and new_chunk_path:
+                            concatenated_path = concatenate_videos(
+                                video_paths=[
+                                    original_video_path,
+                                    new_chunk_path,
+                                ],
+                                output_path=final_video_path,
+                            )
+
+                            # 3. Upload the final concatenated video
+                            if concatenated_path:
+                                final_gcs_uri = gcs_service.upload_file_to_gcs(
+                                    local_path=concatenated_path,
+                                    destination_blob_name=f"video_extensions/{media_item_id}.mp4",
+                                    mime_type="video/mp4",
+                                )
+                                # Overwrite the generated video URI with the final one
+                                generated_chunk.video.uri = final_gcs_uri
 
             permanent_thumbnail_gcs_uris = []
             for generated_video in operation.response.generated_videos:
@@ -316,6 +373,7 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
                 "thumbnail_uris": permanent_thumbnail_gcs_uris,
                 "generation_time": generation_time,
                 "num_media": len(permanent_gcs_uris),
+                "source_media_items": final_source_media_items,
             }
             media_repo.update(media_item_id, update_data)
             worker_logger.info(
@@ -349,6 +407,162 @@ def _process_video_in_background(media_item_id: str, request_dto: CreateVeoDto):
             extra={"json_fields": {"media_id": media_item_id, "error": str(e)}},
             exc_info=True,
         )  # exc_info=True still adds the full traceback
+
+
+def _process_video_concatenation_in_background(
+    media_item_id: str,
+    request_dto: ConcatenateVideosDto,
+):
+    """
+    Background worker to concatenate multiple videos.
+    """
+    worker_logger = logging.getLogger(f"video_concat_worker.{media_item_id}")
+    worker_logger.setLevel(logging.INFO)
+    temp_dir = f"temp/{media_item_id}"
+
+    try:
+        if worker_logger.hasHandlers():
+            worker_logger.handlers.clear()
+
+        if os.getenv("ENVIRONMENT") == "production":
+            log_client = LoggerClient()
+            handler = CloudLoggingHandler(
+                log_client, name=f"video_concat_worker.{media_item_id}"
+            )
+            worker_logger.addHandler(handler)
+        else:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                "%(asctime)s - [CONCAT_WORKER] - %(levelname)s - %(message)s"
+            )
+            handler.setFormatter(formatter)
+            worker_logger.addHandler(handler)
+
+        media_repo = MediaRepository()
+        gcs_service = GcsService()
+        source_asset_repo = SourceAssetRepository()
+        cfg = config_service
+
+        try:
+            start_time = time.monotonic()
+            local_video_paths = []
+
+            # 1. Download all source videos
+            source_items_to_process = []
+            if request_dto.media_item_ids:
+                for item_id in request_dto.media_item_ids:
+                    item = media_repo.get_by_id(item_id)
+                    if not item or not item.gcs_uris:
+                        raise ValueError(
+                            f"MediaItem '{item_id}' not found or has no video."
+                        )
+                    source_items_to_process.append(
+                        {
+                            "id": item_id,
+                            "uri": item.gcs_uris[0],
+                            "type": "MediaItem",
+                        }
+                    )
+
+            if request_dto.source_asset_ids:
+                for asset_id in request_dto.source_asset_ids:
+                    asset = source_asset_repo.get_by_id(asset_id)
+                    if not asset or not asset.gcs_uri:
+                        raise ValueError(
+                            f"SourceAsset '{asset_id}' not found or has no video."
+                        )
+                    source_items_to_process.append(
+                        {
+                            "id": asset_id,
+                            "uri": asset.gcs_uri,
+                            "type": "SourceAsset",
+                        }
+                    )
+
+            # The DTO ensures we have at least two items total. Now we download them.
+            for item_info in source_items_to_process:
+                gcs_uri = item_info["uri"]
+                item_id = item_info["id"]
+                item_type = item_info["type"]
+
+                # Basic validation that it's a video URI
+                if not gcs_uri.endswith((".mp4", ".mov", ".webm")):
+                    worker_logger.warning(
+                        f"Skipping non-video URI '{gcs_uri}' for {item_type} '{item_id}'"
+                    )
+                    continue
+
+                local_path = gcs_service.download_from_gcs(
+                    gcs_uri_path=gcs_uri.replace(
+                        f"gs://{cfg.GENMEDIA_BUCKET}/", ""
+                    ),
+                    destination_file_path=f"{temp_dir}/{item_id}.mp4",
+                )
+                if not local_path:
+                    raise Exception(f"Failed to download video: {gcs_uri}")
+                local_video_paths.append(local_path)
+
+            # 2. Concatenate them
+            final_video_path = f"{temp_dir}/final_concatenated.mp4"
+            concatenated_path = concatenate_videos(
+                video_paths=local_video_paths, output_path=final_video_path
+            )
+            if not concatenated_path:
+                raise Exception("ffmpeg concatenation failed.")
+
+            # 3. Upload the final video
+            final_gcs_uri = gcs_service.upload_file_to_gcs(
+                local_path=concatenated_path,
+                destination_blob_name=f"concatenated_videos/{media_item_id}.mp4",
+                mime_type="video/mp4",
+            )
+            if not final_gcs_uri:
+                raise Exception("Failed to upload final concatenated video.")
+
+            # 4. Generate and upload thumbnail
+            thumbnail_path = generate_thumbnail(concatenated_path)
+            thumbnail_gcs_uri = None
+            if thumbnail_path:
+                thumbnail_gcs_uri = gcs_service.upload_file_to_gcs(
+                    local_path=thumbnail_path,
+                    destination_blob_name=f"concatenated_videos/{media_item_id}_thumb.png",
+                    mime_type="image/png",
+                )
+
+            end_time = time.monotonic()
+
+            # 5. Update the placeholder MediaItem
+            update_data = {
+                "status": JobStatusEnum.COMPLETED,
+                "gcs_uris": [final_gcs_uri],
+                "thumbnail_uris": (
+                    [thumbnail_gcs_uri] if thumbnail_gcs_uri else []
+                ),
+                "generation_time": end_time - start_time,
+                "num_media": 1,
+            }
+            media_repo.update(media_item_id, update_data)
+            worker_logger.info(
+                f"Successfully concatenated videos for job {media_item_id}"
+            )
+
+        except Exception as e:
+            worker_logger.error(
+                f"Video concatenation task failed: {e}", exc_info=True
+            )
+            media_repo.update(
+                media_item_id,
+                {"status": JobStatusEnum.FAILED, "error_message": str(e)},
+            )
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
+    except Exception as e:
+        worker_logger.error(
+            f"Video concatenation worker failed to initialize: {e}",
+            exc_info=True,
+        )
 
 
 class VeoService:
@@ -392,6 +606,14 @@ class VeoService:
                     asset_id=request_dto.end_image_asset_id, role=AssetRoleEnum.END_FRAME
                 )
             )
+        if request_dto.source_video_asset_id:
+            source_assets.append(
+                SourceAssetLink(
+                    asset_id=request_dto.source_video_asset_id,
+                    role=AssetRoleEnum.SOURCE_VIDEO,
+                )
+            )
+
         # 2. Create a placeholder document
         placeholder_item = MediaItemModel(
             id=media_item_id,
@@ -424,6 +646,7 @@ class VeoService:
             _process_video_in_background,
             media_item_id=placeholder_item.id,
             request_dto=request_dto,
+            current_user=user,
         )
 
         logger.info(
@@ -490,4 +713,71 @@ class VeoService:
             **media_item.model_dump(),
             presigned_urls=presigned_urls,
             presigned_thumbnail_urls=presigned_thumbnail_urls,
+        )
+
+    def start_video_concatenation_job(
+        self,
+        request_dto: ConcatenateVideosDto,
+        user: UserModel,
+        executor: ProcessPoolExecutor,
+    ) -> MediaItemResponse:
+        """
+        Creates a placeholder for a video concatenation job and starts it in the background.
+        """
+        media_item_id = str(uuid.uuid4())
+
+        source_media_items = []
+        if request_dto.media_item_ids:
+            source_media_items.extend(
+                [
+                    SourceMediaItemLink(
+                        media_item_id=source_id,
+                        media_index=0,
+                        role=AssetRoleEnum.CONCATENATION_SOURCE,
+                    )
+                    for source_id in request_dto.media_item_ids
+                ]
+            )
+
+        source_assets = []
+        if request_dto.source_asset_ids:
+            source_assets.extend(
+                [
+                    SourceAssetLink(
+                        asset_id=asset_id,
+                        role=AssetRoleEnum.CONCATENATION_SOURCE,
+                    )
+                    for asset_id in request_dto.source_asset_ids
+                ]
+            )
+
+        placeholder_item = MediaItemModel(
+            id=media_item_id,
+            workspace_id=request_dto.workspace_id,
+            user_email=user.email,
+            user_id=user.id,
+            mime_type=MimeTypeEnum.VIDEO_MP4,
+            aspect_ratio=request_dto.aspect_ratio,
+            model=GenerationModelEnum.VEO_3_QUALITY,
+            original_prompt=request_dto.name,  # Use name as prompt
+            status=JobStatusEnum.PROCESSING,
+            source_media_items=source_media_items,
+            source_assets=source_assets,
+            gcs_uris=[],
+        )
+
+        self.media_repo.save(placeholder_item)
+
+        executor.submit(
+            _process_video_concatenation_in_background,
+            media_item_id=placeholder_item.id,
+            request_dto=request_dto,
+        )
+
+        logger.info(f"Video concatenation job queued: {placeholder_item.id}")
+
+        return MediaItemResponse(
+            **placeholder_item.model_dump(),
+            presigned_urls=[],
+            presigned_thumbnail_urls=[],
         )

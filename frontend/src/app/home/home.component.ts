@@ -48,6 +48,7 @@ import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 
 @Component({
   selector: 'app-home',
@@ -612,6 +613,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       width: '90vw',
       height: '80vh',
       maxWidth: '90vw',
+      data: {
+        assetType: AssetTypeEnum.GENERIC_IMAGE,
+      },
       panelClass: 'image-selector-dialog',
     });
 

@@ -1,4 +1,10 @@
-import {Component, HostListener, OnDestroy} from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  AfterViewInit,
+} from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {finalize, Observable} from 'rxjs';
@@ -18,15 +24,16 @@ import {JobStatus, MediaItem} from '../common/models/media-item.model';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../environments/environment';
-import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 
 @Component({
   selector: 'app-video',
   templateUrl: './video.component.html',
   styleUrl: './video.component.scss',
 })
-export class VideoComponent {
+export class VideoComponent implements AfterViewInit {
   // This observable will always reflect the current job's state
   activeVideoJob$: Observable<MediaItem | null>;
   public readonly JobStatus = JobStatus; // Expose enum to the template
@@ -52,6 +59,12 @@ export class VideoComponent {
   image2Preview: string | null = null;
   showDefaultDocuments = false;
   showErrorOverlay = true;
+  isConcatenateMode = false;
+  isExtensionMode = false;
+
+  // Internal state to track input types
+  private _input1IsVideo = false;
+  private _input2IsVideo = false;
 
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
@@ -173,14 +186,24 @@ export class VideoComponent {
       );
 
     this.templateParams =
-      this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
+      this.router.getCurrentNavigation()?.extras.state?.['templateParams'] ||
+      history.state?.templateParams;
     this.applyTemplateParameters();
 
-    const remixState =
-      this.router.getCurrentNavigation()?.extras.state?.['remixState'];
+    const remixState = history.state?.remixState;
     if (remixState) {
       this.applyRemixState(remixState);
     }
+  }
+
+  ngAfterViewInit(): void {
+    const remixState = history.state?.remixState;
+    // Use a timeout to ensure the view is stable before opening a dialog.
+    setTimeout(() => {
+      if (remixState?.startConcatenation) {
+        this.openImageSelector(2); // Open selector for the second video
+      }
+    });
   }
 
   private path = '../../assets/images';
@@ -278,7 +301,48 @@ export class VideoComponent {
   }
 
   searchTerm() {
-    if (!this.searchRequest.prompt) return;
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    this.searchRequest.workspaceId = activeWorkspaceId || '';
+    const workspaceId = activeWorkspaceId || '';
+
+    if (this.isConcatenateMode) {
+      const validSourceMediaItems = this.sourceMediaItems.filter(
+        (i): i is SourceMediaItemLink => !!i,
+      );
+      const validSourceAssetIds = [
+        this.startImageAssetId,
+        this.endImageAssetId,
+      ].filter((id): id is string => !!id);
+
+      if (validSourceMediaItems.length + validSourceAssetIds.length < 2) {
+        this._snackBar.open(
+          'Please select at least two videos to concatenate.',
+          'OK',
+          {duration: 5000},
+        );
+        return;
+      }
+
+      // This is a placeholder for getting the real names/prompts
+      const name = 'Concatenated Video';
+      const mediaItemIds = validSourceMediaItems.map(i => i.mediaItemId);
+
+      this.isLoading = true;
+      this.service
+        .concatenateVideos({
+          workspaceId,
+          name,
+          mediaItemIds,
+          sourceAssetIds: validSourceAssetIds,
+        })
+        .pipe(finalize(() => (this.isLoading = false)))
+        .subscribe({
+          error: err =>
+            handleErrorSnackbar(this._snackBar, err, 'Concatenate videos'),
+        });
+      return;
+    }
+    if (!this.searchRequest.prompt && !this.isExtensionMode) return;
     this.showErrorOverlay = true;
 
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
@@ -288,7 +352,12 @@ export class VideoComponent {
       'veo-3.0-generate-preview',
     ].includes(this.searchRequest.generationModel);
 
-    if ((hasSourceAssets || hasSourceMediaItems) && isVeo3) {
+    if (
+      (hasSourceAssets || hasSourceMediaItems) &&
+      isVeo3 &&
+      !this.isExtensionMode &&
+      !this.isConcatenateMode
+    ) {
       const veo2Model = this.generationModels.find(
         m => m.value === 'veo-2.0-generate-001',
       );
@@ -312,7 +381,6 @@ export class VideoComponent {
     const validSourceMediaItems = this.sourceMediaItems.filter(
       (i): i is SourceMediaItemLink => !!i,
     );
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
 
     const payload: VeoRequest = {
       ...this.searchRequest,
@@ -321,7 +389,6 @@ export class VideoComponent {
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
         : undefined,
-      workspaceId: activeWorkspaceId ?? undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -476,6 +543,9 @@ export class VideoComponent {
       width: '90vw',
       height: '80vh',
       maxWidth: '90vw',
+      data: {
+        assetType: this.isConcatenateMode ? AssetTypeEnum.GENERIC_VIDEO : null,
+      },
       panelClass: 'image-selector-dialog',
     });
 
@@ -483,38 +553,80 @@ export class VideoComponent {
       .afterClosed()
       .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
         if (result) {
-          const targetAssetId =
-            imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
-          const targetPreview =
-            imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-          const sourceMediaItemIndex = imageNumber - 1;
-
-          if ('gcsUri' in result) {
-            // Uploaded image (SourceAssetResponseDto)
-            this[targetAssetId] = result.id;
-            this[targetPreview] = result.presignedUrl;
-            this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
-          } else {
-            // Gallery image (MediaItemSelection)
-            const selection = result as MediaItemSelection;
-            this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
-            this.sourceMediaItems[sourceMediaItemIndex] = {
-              mediaItemId: selection.mediaItem.id,
-              mediaIndex: selection.selectedIndex,
-              role: imageNumber === 1 ? 'start_frame' : 'end_frame',
-            };
-
-            if (selection.mediaItem) {
-              this[targetPreview] =
-                selection.mediaItem.presignedUrls?.[selection.selectedIndex] ||
-                null;
-            }
-            this[targetAssetId] = null; // Clear the asset ID when a media item is selected
-          }
+          this.processInput(result, imageNumber);
+          this.updateModeAndNotify();
         }
         // If a new image is selected, clear the other one.
         this.clearOtherImage(imageNumber);
       });
+  }
+
+  private processInput(
+    result: MediaItemSelection | SourceAssetResponseDto,
+    imageNumber: 1 | 2,
+  ) {
+    // 1. Determine if the new input is a video
+    const isVideo =
+      'gcsUri' in result
+        ? result.mimeType?.startsWith('video/')
+        : (result as MediaItemSelection).mediaItem.mimeType?.startsWith(
+            'video/',
+          );
+
+    this.clearSourceMediaItem(imageNumber);
+    this.clearImageAssetId(imageNumber);
+
+    if (imageNumber === 1) {
+      this._input1IsVideo = !!isVideo;
+      this.image1Preview = this.getPreviewUrl(result);
+      this.setInputSource(1, result, 'video_extension_source');
+    } else {
+      // imageNumber === 2
+      this._input2IsVideo = !!isVideo;
+      this.image2Preview = this.getPreviewUrl(result);
+      this.setInputSource(2, result, 'end_frame');
+    }
+  }
+
+  private getPreviewUrl(
+    result: MediaItemSelection | SourceAssetResponseDto,
+  ): string | null {
+    if ('gcsUri' in result) {
+      return result.presignedThumbnailUrl || result.presignedUrl;
+    }
+    const selection = result as MediaItemSelection;
+    const isVideo = selection.mediaItem.mimeType?.startsWith('video/');
+    const urlArray = isVideo
+      ? selection.mediaItem.presignedThumbnailUrls
+      : selection.mediaItem.presignedUrls;
+    return urlArray?.[selection.selectedIndex] || null;
+  }
+
+  private setInputSource(
+    imageNumber: 1 | 2,
+    result: MediaItemSelection | SourceAssetResponseDto,
+    role: string,
+  ) {
+    const index = imageNumber - 1;
+    if ('gcsUri' in result) {
+      const targetAssetId =
+        imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
+      this[targetAssetId] = result.id;
+    } else {
+      const selection = result as MediaItemSelection;
+      const isVideo = selection.mediaItem.mimeType?.startsWith('video/');
+      // Determine role based on whether it's a video for extend/concat or just a frame
+      const finalRole = isVideo
+        ? role
+        : imageNumber === 1
+          ? 'start_frame'
+          : 'end_frame';
+      this.sourceMediaItems[index] = {
+        mediaItemId: selection.mediaItem.id,
+        mediaIndex: selection.selectedIndex,
+        role: finalRole,
+      };
+    }
   }
 
   onDrop(event: DragEvent, imageNumber: 1 | 2) {
@@ -526,14 +638,9 @@ export class VideoComponent {
       this.uploadAsset(file)
         .pipe(finalize(() => (this.isLoading = false)))
         .subscribe({
-          next: asset => {
-            const targetAssetId =
-              imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
-            const targetPreview =
-              imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-            this[targetAssetId] = asset.id;
-            this[targetPreview] = asset.presignedUrl || null;
-            // If a new image is dropped, clear the other one.
+          next: (asset: SourceAssetResponseDto) => {
+            this.processInput(asset, imageNumber);
+            this.updateModeAndNotify();
             this.clearOtherImage(imageNumber);
           },
           error: error => {
@@ -558,13 +665,27 @@ export class VideoComponent {
 
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {
     event.stopPropagation();
+
+    // Clear the specific input that was clicked
     if (imageNumber === 1) {
       this.startImageAssetId = null;
       this.image1Preview = null;
+      this._input1IsVideo = false;
+      this.clearSourceMediaItem(1);
     } else {
       this.endImageAssetId = null;
       this.image2Preview = null;
+      this._input2IsVideo = false;
+      this.clearSourceMediaItem(2);
     }
+
+    this.updateModeAndNotify();
+  }
+
+  private clearImageAssetId(imageNumber: 1 | 2) {
+    const targetAssetId =
+      imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
+    this[targetAssetId] = null;
     this.clearSourceMediaItem(imageNumber); // Clear the corresponding media item slot
   }
 
@@ -585,7 +706,12 @@ export class VideoComponent {
     const image2Set = !!this.endImageAssetId || !!this.sourceMediaItems[1];
     const totalImages = (image1Set ? 1 : 0) + (image2Set ? 1 : 0);
 
-    if (isVeo3 && totalImages === 2) {
+    if (
+      isVeo3 &&
+      !this.isConcatenateMode &&
+      !this.isExtensionMode &&
+      totalImages === 2
+    ) {
       const imageToClear = imageNumberJustSet === 1 ? 2 : 1;
       if (imageToClear === 1) {
         this.startImageAssetId = null;
@@ -613,6 +739,54 @@ export class VideoComponent {
     this.showErrorOverlay = false;
   }
 
+  private resetInputs() {
+    this.sourceMediaItems = [null, null];
+    this.image1Preview = null;
+    this.image2Preview = null;
+    this.startImageAssetId = null;
+    this.endImageAssetId = null;
+    this.isExtensionMode = false;
+    this.isConcatenateMode = false;
+    this.service.clearActiveVideoJob();
+  }
+
+  private updateModeAndNotify() {
+    if (this._input1IsVideo && this._input2IsVideo) {
+      if (!this.isConcatenateMode) {
+        this.isConcatenateMode = true;
+        this.isExtensionMode = false;
+        this.searchRequest.prompt = '';
+        this._showModeNotification('concatenate');
+      }
+    } else if (this._input1IsVideo) {
+      if (!this.isExtensionMode || this.isConcatenateMode) {
+        this.isExtensionMode = true;
+        this.isConcatenateMode = false;
+        this.searchRequest.prompt = '';
+        this._showModeNotification('extend');
+      }
+    } else {
+      this.isExtensionMode = false;
+      this.isConcatenateMode = false;
+    }
+  }
+
+  private _showModeNotification(mode: 'extend' | 'concatenate') {
+    let message = '';
+    if (mode === 'extend') {
+      message =
+        'Extend Mode: You can now write a prompt to add a new segment to this video.';
+    } else if (mode === 'concatenate') {
+      message =
+        'Concatenate Mode: The prompt is disabled. Click "Concatenate" to join the videos.';
+    }
+
+    this._snackBar.open(message, 'OK', {
+      duration: 6000,
+      panelClass: ['green-toast'],
+    });
+  }
+
   private applyRemixState(remixState: {
     prompt?: string;
     startImageAssetId?: string;
@@ -620,8 +794,10 @@ export class VideoComponent {
     startImagePreviewUrl?: string;
     endImagePreviewUrl?: string;
     sourceMediaItems?: SourceMediaItemLink[];
+    startConcatenation?: boolean;
     aspectRatio?: string;
   }): void {
+    this.resetInputs();
     if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
     if (remixState.startImageAssetId) {
       this.startImageAssetId = remixState.startImageAssetId;
@@ -646,8 +822,24 @@ export class VideoComponent {
           this.sourceMediaItems[1] = item;
           this.endImageAssetId = null;
           this.image2Preview = remixState.endImagePreviewUrl || null;
+        } else if (item.role === 'video_extension_source') {
+          // This is the case for extending a video
+          this.sourceMediaItems[0] = item;
+          this.startImageAssetId = null;
+          this.image1Preview = remixState.startImagePreviewUrl || null;
+          this.isExtensionMode = true;
+          this.searchRequest.prompt = ''; // Clear prompt for extension
+        } else if (item.role === 'video_source') {
+          this.sourceMediaItems[0] = item;
+          this.image1Preview = remixState.startImagePreviewUrl || null;
+          this.isConcatenateMode = true;
+          this.searchRequest.prompt = ''; // Clear prompt for extension
         }
       });
+    }
+
+    if (remixState.startConcatenation) {
+      this.isConcatenateMode = true;
     }
 
     if (remixState.aspectRatio) {
@@ -659,5 +851,40 @@ export class VideoComponent {
         this.selectedAspectRatio = aspectRatioOption.viewValue;
       }
     }
+  }
+
+  handleExtendWithAi(event: {mediaItem: MediaItem; selectedIndex: number}) {
+    const remixState = {
+      sourceMediaItems: [
+        {
+          mediaItemId: event.mediaItem.id,
+          mediaIndex: event.selectedIndex,
+          role: 'video_extension_source',
+        },
+      ],
+      startImagePreviewUrl:
+        event.mediaItem.presignedThumbnailUrls?.[event.selectedIndex],
+    };
+    this.applyRemixState(remixState);
+  }
+
+  handleConcatenate(event: {mediaItem: MediaItem; selectedIndex: number}) {
+    const remixState = {
+      sourceMediaItems: [
+        {
+          mediaItemId: event.mediaItem.id,
+          mediaIndex: event.selectedIndex,
+          role: 'video_source',
+        },
+      ],
+      startImagePreviewUrl:
+        event.mediaItem.presignedThumbnailUrls?.[event.selectedIndex],
+      startConcatenation: true,
+    };
+    this.applyRemixState(remixState);
+    // Use a timeout to ensure the view is stable before opening a dialog.
+    setTimeout(() => {
+      this.openImageSelector(2);
+    });
   }
 }

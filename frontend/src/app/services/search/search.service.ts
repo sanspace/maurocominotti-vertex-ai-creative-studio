@@ -14,13 +14,37 @@
  * limitations under the License.
  */
 
-import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {
+  BehaviorSubject,
+  catchError,
+  EMPTY,
+  finalize,
+  interval,
+  map,
+  Observable,
+  startWith,
+  Subscription,
+  switchMap,
+  takeWhile,
+  tap,
+  timer,
+} from 'rxjs';
 import {environment} from '../../../environments/environment';
-import {catchError, map, switchMap, tap} from 'rxjs/operators';
 import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
-import {BehaviorSubject, EMPTY, Observable, Subscription, timer} from 'rxjs';
 import {JobStatus, MediaItem} from '../../common/models/media-item.model';
+
+export interface RewritePromptRequest {
+  targetType: 'image' | 'video';
+  userPrompt: string;
+}
+export interface ConcatenateVideosDto {
+  workspaceId: string;
+  name: string;
+  mediaItemIds?: string[];
+  sourceAssetIds?: string[];
+}
 
 @Injectable({
   providedIn: 'root',
@@ -56,6 +80,20 @@ export class SearchService {
         this.startVeoPolling(initialItem.id);
       }),
     );
+  }
+
+  concatenateVideos(payload: ConcatenateVideosDto): Observable<MediaItem> {
+    const url = `${environment.backendURL}/videos/concatenate`;
+    return this.http.post<MediaItem>(url, payload).pipe(
+      tap(initialResponse => {
+        this.activeVideoJob.next(initialResponse);
+        this.startVeoPolling(initialResponse.id);
+      }),
+    );
+  }
+
+  clearActiveVideoJob() {
+    this.activeVideoJob.next(null);
   }
 
   /**

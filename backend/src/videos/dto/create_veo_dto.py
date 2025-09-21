@@ -79,6 +79,10 @@ class CreateVeoDto(BaseDto):
         default=None,
         description="The ID of the SourceAsset to use as the ending image.",
     )
+    source_video_asset_id: Optional[str] = Field(
+        default=None,
+        description="The ID of the SourceAsset to use as the source video.",
+    )
     source_media_items: Optional[list[SourceMediaItemLink]] = Field(
         default=None,
         description="A list of previously generated media items (from the gallery) to be used as inputs (e.g., start/end frames).",
@@ -96,7 +100,11 @@ class CreateVeoDto(BaseDto):
     ) -> Optional[list[SourceMediaItemLink]]:
         """Ensures that source_media_items for video have a valid role."""
         if value:
-            valid_roles = {AssetRoleEnum.START_FRAME, AssetRoleEnum.END_FRAME}
+            valid_roles = {
+                AssetRoleEnum.START_FRAME,
+                AssetRoleEnum.END_FRAME,
+                AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
+            }
             for item in value:
                 if item.role not in valid_roles:
                     raise ValueError(

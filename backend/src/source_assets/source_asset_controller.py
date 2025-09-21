@@ -57,7 +57,7 @@ router = APIRouter(
 @router.post("/upload", response_model=SourceAssetResponseDto)
 async def upload_source_asset(
     file: UploadFile = File(),
-    workspace_id: str = Form(),
+    workspaceId: str = Form(),
     scope: Optional[AssetScopeEnum] = Form(None),
     assetType: Optional[AssetTypeEnum] = Form(None),
     current_user: UserModel = Depends(get_current_user),
@@ -74,14 +74,14 @@ async def upload_source_asset(
     # Use our centralized dependency to authorize the user for the workspace
     # before proceeding with the upload.
     workspace_auth_service.authorize(
-        workspace_id=workspace_id, user=current_user
+        workspace_id=workspaceId, user=current_user
     )
 
     return await service.upload_asset(
         user=current_user,
         file=file,
         scope=scope,
-        workspace_id=workspace_id,
+        workspace_id=workspaceId,
         asset_type=assetType,
     )
 

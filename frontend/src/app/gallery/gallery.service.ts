@@ -1,6 +1,12 @@
 import {Injectable, OnDestroy} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
-import {BehaviorSubject, Observable, of, Subscription} from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  Observable,
+  of,
+  Subscription,
+} from 'rxjs';
 import {
   tap,
   catchError,
@@ -33,16 +39,19 @@ export class GalleryService implements OnDestroy {
     private http: HttpClient,
     private workspaceStateService: WorkspaceStateService,
   ) {
-    this.dataLoadingSubscription = this.workspaceStateService.activeWorkspaceId$
+    this.dataLoadingSubscription = combineLatest([
+      this.workspaceStateService.activeWorkspaceId$,
+      this.filters$,
+    ])
       .pipe(
         // Use debounceTime to wait for filters to be set and prevent rapid reloads
         debounceTime(50),
-        switchMap(workspaceId => {
+        switchMap(([workspaceId, filters]) => {
           this.isLoading$.next(true);
           this.resetCache();
 
           const body: GallerySearchDto = {
-            ...this.filters$.value,
+            ...filters,
             workspaceId: workspaceId ?? undefined,
           };
 
