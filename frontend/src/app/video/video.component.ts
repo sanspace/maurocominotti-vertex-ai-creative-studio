@@ -8,7 +8,10 @@ import {
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {finalize, Observable} from 'rxjs';
-import {SearchService} from '../services/search/search.service';
+import {
+  ConcatenationInput,
+  SearchService,
+} from '../services/search/search.service';
 import {Router} from '@angular/router';
 import {SourceMediaItemLink, VeoRequest} from '../common/models/search.model';
 import {MatChipInputEvent} from '@angular/material/chips';
@@ -306,15 +309,29 @@ export class VideoComponent implements AfterViewInit {
     const workspaceId = activeWorkspaceId || '';
 
     if (this.isConcatenateMode) {
-      const validSourceMediaItems = this.sourceMediaItems.filter(
-        (i): i is SourceMediaItemLink => !!i,
-      );
-      const validSourceAssetIds = [
-        this.startImageAssetId,
-        this.endImageAssetId,
-      ].filter((id): id is string => !!id);
+      const inputs: ConcatenationInput[] = [];
 
-      if (validSourceMediaItems.length + validSourceAssetIds.length < 2) {
+      // Input 1
+      if (this.sourceMediaItems[0]) {
+        inputs.push({
+          id: this.sourceMediaItems[0].mediaItemId,
+          type: 'media_item',
+        });
+      } else if (this.startImageAssetId) {
+        inputs.push({id: this.startImageAssetId, type: 'source_asset'});
+      }
+
+      // Input 2
+      if (this.sourceMediaItems[1]) {
+        inputs.push({
+          id: this.sourceMediaItems[1].mediaItemId,
+          type: 'media_item',
+        });
+      } else if (this.endImageAssetId) {
+        inputs.push({id: this.endImageAssetId, type: 'source_asset'});
+      }
+
+      if (inputs.length < 2) {
         this._snackBar.open(
           'Please select at least two videos to concatenate.',
           'OK',
@@ -323,17 +340,15 @@ export class VideoComponent implements AfterViewInit {
         return;
       }
 
-      // This is a placeholder for getting the real names/prompts
       const name = 'Concatenated Video';
-      const mediaItemIds = validSourceMediaItems.map(i => i.mediaItemId);
 
       this.isLoading = true;
       this.service
         .concatenateVideos({
           workspaceId,
           name,
-          mediaItemIds,
-          sourceAssetIds: validSourceAssetIds,
+          inputs,
+          aspectRatio: this.searchRequest.aspectRatio,
         })
         .pipe(finalize(() => (this.isLoading = false)))
         .subscribe({
@@ -544,7 +559,7 @@ export class VideoComponent implements AfterViewInit {
       height: '80vh',
       maxWidth: '90vw',
       data: {
-        assetType: this.isConcatenateMode ? AssetTypeEnum.GENERIC_VIDEO : null,
+        assetType: this.getAssetTypeForSelector(imageNumber),
       },
       panelClass: 'image-selector-dialog',
     });
@@ -666,12 +681,21 @@ export class VideoComponent implements AfterViewInit {
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {
     event.stopPropagation();
 
-    // Clear the specific input that was clicked
     if (imageNumber === 1) {
       this.startImageAssetId = null;
       this.image1Preview = null;
       this._input1IsVideo = false;
       this.clearSourceMediaItem(1);
+
+      // If the second input was a video, move it to the first slot.
+      if (this._input2IsVideo) {
+        this.image1Preview = this.image2Preview;
+        this.sourceMediaItems[0] = this.sourceMediaItems[1];
+        this.startImageAssetId = this.endImageAssetId;
+        this._input1IsVideo = true;
+        this.clearImage(2, event); // Clear the second slot now that it's moved
+        return; // updateModeAndNotify will be called by the recursive clearImage
+      }
     } else {
       this.endImageAssetId = null;
       this.image2Preview = null;
@@ -751,6 +775,9 @@ export class VideoComponent implements AfterViewInit {
   }
 
   private updateModeAndNotify() {
+    const wasInExtensionMode = this.isExtensionMode;
+    const wasInConcatenateMode = this.isConcatenateMode;
+
     if (this._input1IsVideo && this._input2IsVideo) {
       if (!this.isConcatenateMode) {
         this.isConcatenateMode = true;
@@ -758,7 +785,7 @@ export class VideoComponent implements AfterViewInit {
         this.searchRequest.prompt = '';
         this._showModeNotification('concatenate');
       }
-    } else if (this._input1IsVideo) {
+    } else if (this._input1IsVideo || this._input2IsVideo) {
       if (!this.isExtensionMode || this.isConcatenateMode) {
         this.isExtensionMode = true;
         this.isConcatenateMode = false;
@@ -785,6 +812,21 @@ export class VideoComponent implements AfterViewInit {
       duration: 6000,
       panelClass: ['green-toast'],
     });
+  }
+
+  private getAssetTypeForSelector(imageNumber: 1 | 2): AssetTypeEnum | null {
+    const anyInputIsPresent = !!this.image1Preview || !!this.image2Preview;
+    const anyInputIsVideo = this._input1IsVideo || this._input2IsVideo;
+
+    if (!anyInputIsPresent) {
+      // If both slots are empty, allow anything.
+      return null;
+    }
+
+    // If any slot has something, restrict to that type.
+    return anyInputIsVideo
+      ? AssetTypeEnum.GENERIC_VIDEO
+      : AssetTypeEnum.GENERIC_IMAGE;
   }
 
   private applyRemixState(remixState: {

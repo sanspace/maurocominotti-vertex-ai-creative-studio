@@ -10,7 +10,7 @@
   </p>
 </div>
 
-<div class="asset-grid" *ngIf="assets.length > 0">
+<div class="asset-grid" *ngIf="assets.length > 0 && !isLoading">
   <div
     *ngFor="let asset of assets; trackBy: trackByAsset"
     class="asset-item"

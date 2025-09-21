@@ -1,8 +1,17 @@
-from typing import List, Optional
+from typing import List, Literal
 
-from pydantic import Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from src.common.base_dto import AspectRatioEnum, BaseDto
+
+
+class ConcatenationInput(BaseModel):
+    """Defines a single item to be included in the concatenation, preserving order."""
+
+    id: str = Field(description="The ID of the asset or media item.")
+    type: Literal["media_item", "source_asset"] = Field(
+        description="The type of the input."
+    )
 
 
 class ConcatenateVideosDto(BaseDto):
@@ -16,13 +25,9 @@ class ConcatenateVideosDto(BaseDto):
     workspace_id: str = Field(
         min_length=1, description="The ID of the workspace for this generation."
     )
-    media_item_ids: Optional[List[str]] = Field(
-        default=None,
-        description="An ordered list of MediaItem IDs to concatenate.",
-    )
-    source_asset_ids: Optional[List[str]] = Field(
-        default=None,
-        description="An ordered list of SourceAsset IDs to concatenate.",
+    inputs: List[ConcatenationInput] = Field(
+        min_length=2,
+        description="An ordered list of videos to concatenate.",
     )
     aspect_ratio: AspectRatioEnum = Field(
         default=AspectRatioEnum.RATIO_16_9,
@@ -32,12 +37,6 @@ class ConcatenateVideosDto(BaseDto):
     @model_validator(mode="after")
     def validate_inputs(self) -> "ConcatenateVideosDto":
         """Ensures at least two total video inputs are provided."""
-        media_items_count = (
-            len(self.media_item_ids) if self.media_item_ids else 0
-        )
-        source_assets_count = (
-            len(self.source_asset_ids) if self.source_asset_ids else 0
-        )
-        if (media_items_count + source_assets_count) < 2:
+        if len(self.inputs) < 2:
             raise ValueError("Concatenation requires at least two video inputs.")
         return self

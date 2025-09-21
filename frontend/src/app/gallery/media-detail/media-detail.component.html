@@ -150,7 +150,7 @@
               *ngIf="mediaItem.enrichedSourceAssets?.length || mediaItem.enrichedSourceMediaItems?.length"
             >
               <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
-                Source Images
+                Source Assets
               </h3>
               <div class="flex flex-wrap gap-2">
                 <!-- From uploaded assets -->
@@ -177,7 +177,7 @@
                   class="block w-20 h-20 rounded-md overflow-hidden hover:opacity-80 transition-opacity"
                 >
                   <img
-                    [src]="source.presignedUrl"
+                    [src]="source?.presignedThumbnailUrl || source.presignedUrl"
                     alt="Source Media Item"
                     class="w-full h-full object-cover"
                   />

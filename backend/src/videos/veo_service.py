@@ -448,47 +448,29 @@ def _process_video_concatenation_in_background(
             local_video_paths = []
 
             # 1. Download all source videos
-            source_items_to_process = []
-            if request_dto.media_item_ids:
-                for item_id in request_dto.media_item_ids:
-                    item = media_repo.get_by_id(item_id)
+            for video_input in request_dto.inputs:
+                gcs_uri: Optional[str] = None
+                if video_input.type == "media_item":
+                    item = media_repo.get_by_id(video_input.id)
                     if not item or not item.gcs_uris:
                         raise ValueError(
-                            f"MediaItem '{item_id}' not found or has no video."
+                            f"MediaItem '{video_input.id}' not found or has no video."
                         )
-                    source_items_to_process.append(
-                        {
-                            "id": item_id,
-                            "uri": item.gcs_uris[0],
-                            "type": "MediaItem",
-                        }
-                    )
-
-            if request_dto.source_asset_ids:
-                for asset_id in request_dto.source_asset_ids:
-                    asset = source_asset_repo.get_by_id(asset_id)
+                    gcs_uri = item.gcs_uris[0]
+                elif video_input.type == "source_asset":
+                    asset = source_asset_repo.get_by_id(video_input.id)
                     if not asset or not asset.gcs_uri:
                         raise ValueError(
-                            f"SourceAsset '{asset_id}' not found or has no video."
+                            f"SourceAsset '{video_input.id}' not found or has no video."
                         )
-                    source_items_to_process.append(
-                        {
-                            "id": asset_id,
-                            "uri": asset.gcs_uri,
-                            "type": "SourceAsset",
-                        }
-                    )
-
-            # The DTO ensures we have at least two items total. Now we download them.
-            for item_info in source_items_to_process:
-                gcs_uri = item_info["uri"]
-                item_id = item_info["id"]
-                item_type = item_info["type"]
+                    gcs_uri = asset.gcs_uri
 
                 # Basic validation that it's a video URI
-                if not gcs_uri.endswith((".mp4", ".mov", ".webm")):
+                if not gcs_uri or not gcs_uri.endswith(
+                    (".mp4", ".mov", ".webm")
+                ):
                     worker_logger.warning(
-                        f"Skipping non-video URI '{gcs_uri}' for {item_type} '{item_id}'"
+                        f"Skipping non-video URI for {video_input.type} '{video_input.id}'"
                     )
                     continue
 
@@ -496,7 +478,7 @@ def _process_video_concatenation_in_background(
                     gcs_uri_path=gcs_uri.replace(
                         f"gs://{cfg.GENMEDIA_BUCKET}/", ""
                     ),
-                    destination_file_path=f"{temp_dir}/{item_id}.mp4",
+                    destination_file_path=f"{temp_dir}/{video_input.id}.mp4",
                 )
                 if not local_path:
                     raise Exception(f"Failed to download video: {gcs_uri}")
@@ -726,30 +708,25 @@ class VeoService:
         """
         media_item_id = str(uuid.uuid4())
 
-        source_media_items = []
-        if request_dto.media_item_ids:
-            source_media_items.extend(
-                [
+        source_media_items: List[SourceMediaItemLink] = []
+        source_assets: List[SourceAssetLink] = []
+
+        for video_input in request_dto.inputs:
+            if video_input.type == "media_item":
+                source_media_items.append(
                     SourceMediaItemLink(
-                        media_item_id=source_id,
+                        media_item_id=video_input.id,
                         media_index=0,
                         role=AssetRoleEnum.CONCATENATION_SOURCE,
                     )
-                    for source_id in request_dto.media_item_ids
-                ]
-            )
-
-        source_assets = []
-        if request_dto.source_asset_ids:
-            source_assets.extend(
-                [
+                )
+            elif video_input.type == "source_asset":
+                source_assets.append(
                     SourceAssetLink(
-                        asset_id=asset_id,
+                        asset_id=video_input.id,
                         role=AssetRoleEnum.CONCATENATION_SOURCE,
                     )
-                    for asset_id in request_dto.source_asset_ids
-                ]
-            )
+                )
 
         placeholder_item = MediaItemModel(
             id=media_item_id,

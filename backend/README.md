@@ -357,6 +357,16 @@ gcloud firestore indexes composite create \
   --field-config=field-path=created_at,order=DESCENDING \
   --field-config=field-path=__name__,order=DESCENDING \
 
+
+# For Source Assets
+gcloud firestore indexes composite create \
+  --collection-group=source_assets \
+  --query-scope=COLLECTION \
+  --field-config=field-path=asset_type,order=ASCENDING \
+  --field-config=field-path=user_id,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+  --field-config=field-path=__name__,order=DESCENDING \
+
 # After a while you can check with
 gcloud beta firestore indexes composite list
 ```

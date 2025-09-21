@@ -39,11 +39,15 @@ export interface RewritePromptRequest {
   targetType: 'image' | 'video';
   userPrompt: string;
 }
+export interface ConcatenationInput {
+  id: string;
+  type: 'media_item' | 'source_asset';
+}
 export interface ConcatenateVideosDto {
   workspaceId: string;
   name: string;
-  mediaItemIds?: string[];
-  sourceAssetIds?: string[];
+  inputs: ConcatenationInput[];
+  aspectRatio: string;
 }
 
 @Injectable({
