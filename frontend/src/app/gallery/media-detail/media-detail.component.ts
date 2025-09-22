@@ -295,6 +295,7 @@ export class MediaDetailComponent implements OnDestroy {
       // Since it's a video, we can use the thumbnail as a preview.
       startImagePreviewUrl:
         this.mediaItem.presignedThumbnailUrls?.[event.selectedIndex],
+      generationModel: 'veo-2.0-generate-001', // Switch to Veo 2 for video input
     };
 
     const navigationExtras: NavigationExtras = {
@@ -314,7 +315,7 @@ export class MediaDetailComponent implements OnDestroy {
     const sourceMediaItem: SourceMediaItemLink = {
       mediaItemId: this.mediaItem.id,
       mediaIndex: event.selectedIndex,
-      role: 'video_source', // Generic role for concatenation
+      role: 'concatenation_source', // Generic role for concatenation
     };
 
     const remixState = {

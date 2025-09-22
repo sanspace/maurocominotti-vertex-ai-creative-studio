@@ -34,6 +34,12 @@ import {
 import {environment} from '../../../environments/environment';
 import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
 import {JobStatus, MediaItem} from '../../common/models/media-item.model';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
+import {
+  handleErrorSnackbar,
+  handleSuccessSnackbar,
+} from '../../utils/handleErrorSnackbar';
 
 export interface RewritePromptRequest {
   targetType: 'image' | 'video';
@@ -58,7 +64,10 @@ export class SearchService {
   public activeVideoJob$ = this.activeVideoJob.asObservable();
   private pollingSubscription: Subscription | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private _snackBar: MatSnackBar,
+  ) {}
 
   searchImagen(searchRequest: ImagenRequest) {
     const searchURL = `${environment.backendURL}/images/generate-images`;
@@ -120,6 +129,15 @@ export class SearchService {
             latestItem.status === JobStatus.FAILED
           ) {
             this.stopVeoPolling();
+            if (latestItem.status === JobStatus.COMPLETED) {
+              handleSuccessSnackbar(this._snackBar, 'Your video is ready!');
+            } else {
+              handleErrorSnackbar(
+                this._snackBar,
+                {message: latestItem.errorMessage || latestItem.error_message},
+                `Video generation failed: ${latestItem.errorMessage || latestItem.error_message}`,
+              );
+            }
           }
         }),
         catchError(err => {

@@ -33,6 +33,7 @@
       <div class="my-uploads-container">
         <h3 class="mat-h3">My Uploads</h3>
         <app-source-asset-gallery
+          [filterByMimeType]="mimeTypeFilter"
           [filterByType]="data.assetType"
           (assetSelected)="onAssetSelected($event)"
         ></app-source-asset-gallery>

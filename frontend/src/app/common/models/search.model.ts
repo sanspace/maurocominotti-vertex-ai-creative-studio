@@ -51,6 +51,7 @@ export type VeoRequest = {
   durationSeconds: number;
   startImageAssetId?: string;
   endImageAssetId?: string;
+  sourceVideoAssetId?: string;
   sourceMediaItems?: SourceMediaItemLink[];
   workspaceId?: string;
 };

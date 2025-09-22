@@ -425,6 +425,8 @@ To implement a proper search bar, you must integrate a dedicated third-party sea
   export FRONTEND_PROD_URL="https://your-frontend-app-url.com" && \
   export SIGNING_SA_EMAIL=sa-genmedia-creative-studio@$PROJECT_ID.iam.gserviceaccount.com && \
   export IMAGE_NAME="creative-studio-backend" && \
+  export GOOGLE_TOKEN_AUDIENCE="your-token-audience.apps.googleusercontent.com" && \
+  export IDENTITY_PLATFORM_ALLOWED_ORGS="your-company" && \
 
   # 2. Deploy the function
   gcloud run deploy $FUNCTION_NAME \

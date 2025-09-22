@@ -105,6 +105,7 @@ def _process_video_in_background(
             rewritten_prompt = gemini_service.enhance_prompt_from_dto(
                 dto=request_dto, target_type=PromptTargetEnum.VIDEO
             )
+            original_prompt = request_dto.prompt
             request_dto.prompt = rewritten_prompt
 
             # --- Handle Source Assets for API Call ---
@@ -179,7 +180,7 @@ def _process_video_in_background(
 
             operation: types.GenerateVideosOperation = (
                 client.models.generate_videos(
-                    model="veo-3.0-generate-preview",
+                    model=request_dto.generation_model,
                     prompt=request_dto.prompt,
                     image=start_image_for_api,
                     video=source_video_for_api,
@@ -189,7 +190,12 @@ def _process_video_in_background(
                         aspect_ratio=request_dto.aspect_ratio,
                         negative_prompt=request_dto.negative_prompt,
                         generate_audio=request_dto.generate_audio,
-                        duration_seconds=request_dto.duration_seconds,
+                        # TODO: Pass from dto the secs if extending video (4, 5, 6, 7)
+                        duration_seconds=(
+                            request_dto.duration_seconds
+                            if not source_video_for_api
+                            else 7
+                        ),
                         last_frame=end_image_for_api,
                     ),
                 )
@@ -223,84 +229,8 @@ def _process_video_in_background(
             thumbnail_path = ""
 
             final_source_media_items = request_dto.source_media_items
-            # --- POST-PROCESSING: CONCATENATION FOR VIDEO EXTENSION ---
-            if source_video_for_api and source_video_for_api.uri:
-                worker_logger.info(
-                    f"Starting concatenation for extension job: {media_item_id}"
-                )
-                # We assume extension generates only one video chunk.
-                if operation.response and operation.response.generated_videos:
-                    generated_chunk = operation.response.generated_videos[0]
-                    if generated_chunk.video and generated_chunk.video.uri:
-                        # 0. Create a new MediaItem for the generated chunk to preserve its data
-                        chunk_media_item = MediaItemModel(
-                            workspace_id=request_dto.workspace_id,
-                            user_email=current_user.email,
-                            user_id=current_user.id,
-                            mime_type=MimeTypeEnum.VIDEO_MP4,
-                            model=request_dto.generation_model,
-                            original_prompt=request_dto.prompt,
-                            status=JobStatusEnum.COMPLETED,  # This is an intermediate artifact
-                            aspect_ratio=request_dto.aspect_ratio,
-                            source_media_items=(
-                                [original_source_video_item_link]
-                                if original_source_video_item_link
-                                else []
-                            ),
-                            gcs_uris=[generated_chunk.video.uri],
-                        )
-                        media_repo.save(chunk_media_item)
-                        worker_logger.info(
-                            f"Saved intermediate video chunk as MediaItem: {chunk_media_item.id}"
-                        )
-
-                        # The final video will now be composed of the original source and this new chunk
-                        final_source_media_items = [
-                            SourceMediaItemLink(
-                                media_item_id=chunk_media_item.id,
-                                media_index=0,
-                                role=AssetRoleEnum.VIDEO_EXTENSION_CHUNK,
-                            )
-                        ] + (request_dto.source_media_items or [])
-
-                        # 1. Download both the original video and the new chunk
-                        original_video_path = gcs_service.download_from_gcs(
-                            gcs_uri_path=source_video_for_api.uri.replace(
-                                f"gs://{cfg.GENMEDIA_BUCKET}/", ""
-                            ),
-                            destination_file_path=f"temp/{media_item_id}/original.mp4",
-                        )
-                        new_chunk_path = gcs_service.download_from_gcs(
-                            gcs_uri_path=generated_chunk.video.uri.replace(
-                                f"gs://{cfg.GENMEDIA_BUCKET}/", ""
-                            ),
-                            destination_file_path=f"temp/{media_item_id}/chunk.mp4",
-                        )
-
-                        # 2. Concatenate them
-                        final_video_path = (
-                            f"temp/{media_item_id}/final_concatenated.mp4"
-                        )
-                        if original_video_path and new_chunk_path:
-                            concatenated_path = concatenate_videos(
-                                video_paths=[
-                                    original_video_path,
-                                    new_chunk_path,
-                                ],
-                                output_path=final_video_path,
-                            )
-
-                            # 3. Upload the final concatenated video
-                            if concatenated_path:
-                                final_gcs_uri = gcs_service.upload_file_to_gcs(
-                                    local_path=concatenated_path,
-                                    destination_blob_name=f"video_extensions/{media_item_id}.mp4",
-                                    mime_type="video/mp4",
-                                )
-                                # Overwrite the generated video URI with the final one
-                                generated_chunk.video.uri = final_gcs_uri
-
             permanent_thumbnail_gcs_uris = []
+
             for generated_video in operation.response.generated_videos:
                 if generated_video.video and generated_video.video.uri:
                     output_path = f"{generated_video.video.uri.replace(f"gs://{cfg.GENMEDIA_BUCKET}/", "")}"
@@ -373,7 +303,11 @@ def _process_video_in_background(
                 "thumbnail_uris": permanent_thumbnail_gcs_uris,
                 "generation_time": generation_time,
                 "num_media": len(permanent_gcs_uris),
-                "source_media_items": final_source_media_items,
+                "source_media_items": (
+                    [item.model_dump() for item in final_source_media_items]
+                    if final_source_media_items
+                    else None
+                ),
             }
             media_repo.update(media_item_id, update_data)
             worker_logger.info(
@@ -592,7 +526,7 @@ class VeoService:
             source_assets.append(
                 SourceAssetLink(
                     asset_id=request_dto.source_video_asset_id,
-                    role=AssetRoleEnum.SOURCE_VIDEO,
+                    role=AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
                 )
             )
 

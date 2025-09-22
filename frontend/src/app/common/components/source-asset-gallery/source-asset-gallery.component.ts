@@ -29,6 +29,8 @@ export class SourceAssetGalleryComponent
 {
   @Output() assetSelected = new EventEmitter<SourceAssetResponseDto>();
   @Input() filterByType: AssetTypeEnum | null = null;
+  @Input() filterByMimeType: 'image/png' | 'video/mp4' | 'audio/mpeg' | null =
+    null;
   @ViewChild('sentinel') private sentinel!: ElementRef<HTMLElement>;
 
   public assets: SourceAssetResponseDto[] = [];
@@ -72,6 +74,9 @@ export class SourceAssetGalleryComponent
     }
     if (this.filterByType) {
       filters.assetType = this.filterByType;
+    }
+    if (this.filterByMimeType) {
+      filters.mimeType = this.filterByMimeType;
     }
 
     this.sourceAssetService.setFilters(filters);

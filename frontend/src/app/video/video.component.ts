@@ -206,7 +206,7 @@ export class VideoComponent implements AfterViewInit {
       if (remixState?.startConcatenation) {
         this.openImageSelector(2); // Open selector for the second video
       }
-    });
+    }, 1500);
   }
 
   private path = '../../assets/images';
@@ -399,7 +399,12 @@ export class VideoComponent implements AfterViewInit {
 
     const payload: VeoRequest = {
       ...this.searchRequest,
-      startImageAssetId: this.startImageAssetId ?? undefined,
+      startImageAssetId: !this._input1IsVideo
+        ? (this.startImageAssetId ?? undefined)
+        : undefined,
+      sourceVideoAssetId: this._input1IsVideo
+        ? (this.startImageAssetId ?? undefined)
+        : undefined,
       endImageAssetId: this.endImageAssetId ?? undefined,
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
@@ -588,6 +593,29 @@ export class VideoComponent implements AfterViewInit {
             'video/',
           );
 
+    if (isVideo) {
+      const isVeo3 = [
+        'veo-3.0-fast-generate-preview',
+        'veo-3.0-generate-preview',
+      ].includes(this.searchRequest.generationModel);
+
+      if (isVeo3) {
+        const veo2Model = this.generationModels.find(
+          m => m.value === 'veo-2.0-generate-001',
+        );
+        if (veo2Model) {
+          this.selectModel(veo2Model);
+          this._snackBar.openFromComponent(ToastMessageComponent, {
+            panelClass: ['green-toast'],
+            duration: 8000,
+            data: {
+              text: "Veo 3 doesn't support video as input, so we've switched to Veo 2 for you.",
+              matIcon: 'info_outline',
+            },
+          });
+        }
+      }
+    }
     this.clearSourceMediaItem(imageNumber);
     this.clearImageAssetId(imageNumber);
 
@@ -623,6 +651,7 @@ export class VideoComponent implements AfterViewInit {
     role: string,
   ) {
     const index = imageNumber - 1;
+
     if ('gcsUri' in result) {
       const targetAssetId =
         imageNumber === 1 ? 'startImageAssetId' : 'endImageAssetId';
@@ -838,6 +867,7 @@ export class VideoComponent implements AfterViewInit {
     sourceMediaItems?: SourceMediaItemLink[];
     startConcatenation?: boolean;
     aspectRatio?: string;
+    generationModel?: string;
   }): void {
     this.resetInputs();
     if (remixState.prompt) this.searchRequest.prompt = remixState.prompt;
@@ -867,15 +897,17 @@ export class VideoComponent implements AfterViewInit {
         } else if (item.role === 'video_extension_source') {
           // This is the case for extending a video
           this.sourceMediaItems[0] = item;
+          this._input1IsVideo = true;
           this.startImageAssetId = null;
           this.image1Preview = remixState.startImagePreviewUrl || null;
           this.isExtensionMode = true;
           this.searchRequest.prompt = ''; // Clear prompt for extension
-        } else if (item.role === 'video_source') {
-          this.sourceMediaItems[0] = item;
+        } else if (item.role === 'concatenation_source') {
+          this.sourceMediaItems[0] = {...item, role: 'video_source'};
           this.image1Preview = remixState.startImagePreviewUrl || null;
+          this._input1IsVideo = true;
           this.isConcatenateMode = true;
-          this.searchRequest.prompt = ''; // Clear prompt for extension
+          this.searchRequest.prompt = '';
         }
       });
     }
@@ -892,6 +924,13 @@ export class VideoComponent implements AfterViewInit {
         this.searchRequest.aspectRatio = aspectRatioOption.value;
         this.selectedAspectRatio = aspectRatioOption.viewValue;
       }
+    }
+
+    if (remixState.generationModel) {
+      const modelOption = this.generationModels.find(
+        m => m.value === remixState.generationModel,
+      );
+      if (modelOption) this.selectModel(modelOption);
     }
   }
 
@@ -916,7 +955,7 @@ export class VideoComponent implements AfterViewInit {
         {
           mediaItemId: event.mediaItem.id,
           mediaIndex: event.selectedIndex,
-          role: 'video_source',
+          role: 'concatenation_source',
         },
       ],
       startImagePreviewUrl:
@@ -927,6 +966,6 @@ export class VideoComponent implements AfterViewInit {
     // Use a timeout to ensure the view is stable before opening a dialog.
     setTimeout(() => {
       this.openImageSelector(2);
-    });
+    }, 1500);
   }
 }

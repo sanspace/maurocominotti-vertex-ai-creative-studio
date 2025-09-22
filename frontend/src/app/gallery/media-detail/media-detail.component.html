@@ -34,12 +34,19 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <!-- Left Column: The Image/Video -->
     <div class="lg:col-span-2">
-      <app-media-lightbox [mediaItem]="mediaItem" [initialIndex]="initialSlideIndex" [showEditButton]="!mediaItem.mimeType?.startsWith('video/')" [showGenerateVideoButton]="true"
-        [showVtoButton]="true" (editClicked)="generateWithThisImage($event)"
-        (generateVideoClicked)="generateVideoWithImage($event)" (sendToVtoClicked)="sendToVto($event)"
+      <app-media-lightbox
+        [mediaItem]="mediaItem"
+        [initialIndex]="initialSlideIndex"
+        [showEditButton]="!mediaItem.mimeType?.startsWith('video/')"
+        [showGenerateVideoButton]="true"
+        [showVtoButton]="!mediaItem.mimeType?.startsWith('video/')"
+        (editClicked)="generateWithThisImage($event)"
+        (generateVideoClicked)="generateVideoWithImage($event)"
+        (sendToVtoClicked)="sendToVto($event)"
         (extendWithAiClicked)="handleExtendWithAi($event)"
         (concatenateClicked)="handleConcatenate($event)"
-        style="max-height: 80vh;"></app-media-lightbox>
+        style="max-height: 80vh"
+      ></app-media-lightbox>
     </div>
 
     <!-- Right Column: The Metadata -->
@@ -52,9 +59,7 @@
           <div class="py-4 space-y-6">
             <!-- Parameters Section -->
             <section class="space-y-3">
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Parameters
               </h3>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -68,9 +73,7 @@
                   {{ mediaItem.userEmail || 'N/A' }}
                 </p>
 
-                <strong class="font-semibold text-gray-400"
-                  >Created At:</strong
-                >
+                <strong class="font-semibold text-gray-400">Created At:</strong>
                 <p class="text-right">
                   {{ mediaItem.createdAt | date: 'medium' }}
                 </p>
@@ -97,9 +100,7 @@
                 </div>
 
                 <div *ngIf="mediaItem.duration" class="contents">
-                  <strong class="font-semibold text-gray-400"
-                    >Duration:</strong
-                  >
+                  <strong class="font-semibold text-gray-400">Duration:</strong>
                   <p class="text-right">{{ mediaItem.duration }}s</p>
                 </div>
 
@@ -119,9 +120,7 @@
 
             <!-- Prompt Section -->
             <section class="space-y-3" *ngIf="mediaItem.originalPrompt">
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Prompt
               </h3>
               <div>
@@ -132,7 +131,18 @@
                   class="p-3 rounded-md bg-gray-800 text-gray-300 text-sm"
                   [class.line-clamp-3]="!isPromptExpanded"
                 >
-                  {{ mediaItem.originalPrompt.split(' ').slice(0, isPromptExpanded ? undefined : 20).join(' ') }}<span *ngIf="!isPromptExpanded && mediaItem.originalPrompt.split(' ').length > 20">...</span>
+                  {{
+                    mediaItem.originalPrompt
+                      .split(' ')
+                      .slice(0, isPromptExpanded ? undefined : 20)
+                      .join(' ')
+                  }}<span
+                    *ngIf="
+                      !isPromptExpanded &&
+                      mediaItem.originalPrompt.split(' ').length > 20
+                    "
+                    >...</span
+                  >
                 </p>
                 <button
                   *ngIf="mediaItem.originalPrompt.split(' ').length > 20"
@@ -147,7 +157,10 @@
             <!-- Source Assets -->
             <section
               class="space-y-3"
-              *ngIf="mediaItem.enrichedSourceAssets?.length || mediaItem.enrichedSourceMediaItems?.length"
+              *ngIf="
+                mediaItem.enrichedSourceAssets?.length ||
+                mediaItem.enrichedSourceMediaItems?.length
+              "
             >
               <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Source Assets
@@ -196,9 +209,7 @@
                 mediaItem.modifiers?.length
               "
             >
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Style
               </h3>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -209,9 +220,7 @@
                   <p class="text-right">{{ mediaItem.style }}</p>
                 </div>
                 <div *ngIf="mediaItem.lighting" class="contents">
-                  <strong class="font-semibold text-gray-400"
-                    >Lighting:</strong
-                  >
+                  <strong class="font-semibold text-gray-400">Lighting:</strong>
                   <p class="text-right">{{ mediaItem.lighting }}</p>
                 </div>
                 <div *ngIf="mediaItem.colorAndTone" class="contents">
@@ -228,8 +237,7 @@
                 </div>
               </div>
               <div *ngIf="mediaItem.modifiers?.length" class="pt-2">
-                <strong
-                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                <strong class="font-semibold text-gray-400 mb-2 block text-sm"
                   >Modifiers:</strong
                 >
                 <mat-chip-listbox aria-label="Style modifiers">
@@ -247,32 +255,30 @@
         <!-- Prompt Details Tab -->
         <mat-tab label="Prompt Details" *ngIf="promptJson">
           <section class="py-4 space-y-4">
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
-                Prompt
-              </h3>
+            <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
+              Prompt
+            </h3>
 
-              <!-- Other Prompts -->
-              <div class="text-sm space-y-3">
-                <div *ngIf="mediaItem.rewrittenPrompt">
-                  <strong class="font-semibold text-gray-400 block mb-1"
-                    >Rewritten Prompt:</strong
-                  >
-                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
-                    {{ mediaItem.rewrittenPrompt }}
-                  </p>
-                </div>
-                <div *ngIf="mediaItem.negativePrompt">
-                  <strong class="font-semibold text-gray-400 block mb-1"
-                    >Negative Prompt:</strong
-                  >
-                  <p class="p-3 rounded-md bg-gray-800 text-gray-300">
-                    {{ mediaItem.negativePrompt }}
-                  </p>
-                </div>
+            <!-- Other Prompts -->
+            <div class="text-sm space-y-3">
+              <div *ngIf="mediaItem.rewrittenPrompt">
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Rewritten Prompt:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ mediaItem.rewrittenPrompt }}
+                </p>
               </div>
-            </section>
+              <div *ngIf="mediaItem.negativePrompt">
+                <strong class="font-semibold text-gray-400 block mb-1"
+                  >Negative Prompt:</strong
+                >
+                <p class="p-3 rounded-md bg-gray-800 text-gray-300">
+                  {{ mediaItem.negativePrompt }}
+                </p>
+              </div>
+            </div>
+          </section>
           <div class="py-4 space-y-6">
             <!-- Raw JSON Prompt -->
             <mat-expansion-panel class="!bg-gray-800 !text-white">
@@ -350,8 +356,7 @@
                 </p>
               </div>
               <div *ngIf="promptJson.scene_setup.key_objects?.length">
-                <strong
-                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                <strong class="font-semibold text-gray-400 mb-2 block text-sm"
                   >Key Objects:</strong
                 >
                 <mat-chip-listbox aria-label="Scene key objects">
@@ -386,8 +391,7 @@
                 </p>
               </div>
               <div *ngIf="promptJson.subject.key_objects?.length">
-                <strong
-                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                <strong class="font-semibold text-gray-400 mb-2 block text-sm"
                   >Key Objects:</strong
                 >
                 <mat-chip-listbox aria-label="Subject key objects">
@@ -410,9 +414,7 @@
                   >Resolution & Format:</strong
                 >
                 <p class="text-right break-all">
-                  {{
-                    promptJson.visual_style.resolution_and_format || 'N/A'
-                  }}
+                  {{ promptJson.visual_style.resolution_and_format || 'N/A' }}
                 </p>
               </div>
               <div>
@@ -434,10 +436,7 @@
             </section>
 
             <!-- Camera Directives Section -->
-            <section
-              class="space-y-3"
-              *ngIf="promptJson.camera_directives"
-            >
+            <section class="space-y-3" *ngIf="promptJson.camera_directives">
               <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Camera Directives
               </h3>
@@ -448,9 +447,7 @@
                   >Lens & Optical Effects:</strong
                 >
                 <p class="p-3 rounded-md bg-gray-800 text-gray-300">
-                  {{
-                    promptJson.camera_directives.lens_and_optical_effects
-                  }}
+                  {{ promptJson.camera_directives.lens_and_optical_effects }}
                 </p>
               </div>
               <div *ngIf="promptJson.camera_directives.overall_movement">
@@ -470,8 +467,7 @@
                 </p>
               </div>
               <div *ngIf="promptJson.camera_directives.camera_angles?.length">
-                <strong
-                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                <strong class="font-semibold text-gray-400 mb-2 block text-sm"
                   >Camera Angles:</strong
                 >
                 <mat-chip-listbox aria-label="Camera angles">
@@ -487,8 +483,7 @@
               <div
                 *ngIf="promptJson.camera_directives.camera_movements?.length"
               >
-                <strong
-                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                <strong class="font-semibold text-gray-400 mb-2 block text-sm"
                   >Camera Movements:</strong
                 >
                 <mat-chip-listbox aria-label="Camera movements">
@@ -515,9 +510,7 @@
                 >
                   <mat-expansion-panel-header>
                     <mat-panel-title class="!font-semibold">
-                      Sequence {{ event.sequence_id }} ({{
-                        event.timestamp
-                      }})
+                      Sequence {{ event.sequence_id }} ({{ event.timestamp }})
                     </mat-panel-title>
                   </mat-expansion-panel-header>
                   <div class="space-y-3 text-sm py-2">
@@ -557,8 +550,7 @@
                 Constraints
               </h3>
               <div>
-                <strong
-                  class="font-semibold text-gray-400 mb-2 block text-sm"
+                <strong class="font-semibold text-gray-400 mb-2 block text-sm"
                   >Negative Prompts:</strong
                 >
                 <mat-chip-listbox aria-label="Negative prompts">
@@ -574,10 +566,7 @@
             </section>
 
             <!-- Final Summary Prompt Section -->
-            <section
-              class="space-y-3"
-              *ngIf="promptJson.final_summary_prompt"
-            >
+            <section class="space-y-3" *ngIf="promptJson.final_summary_prompt">
               <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Final Summary Prompt
               </h3>
@@ -593,20 +582,14 @@
           <div class="py-4 space-y-6">
             <!-- File Info -->
             <section class="space-y-3">
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 File Info
               </h3>
               <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <strong class="font-semibold text-gray-400"
-                  >Mime Type:</strong
-                >
+                <strong class="font-semibold text-gray-400">Mime Type:</strong>
                 <p class="text-right">{{ mediaItem.mimeType || 'N/A' }}</p>
 
-                <strong class="font-semibold text-gray-400"
-                  >Watermark:</strong
-                >
+                <strong class="font-semibold text-gray-400">Watermark:</strong>
                 <p class="text-right">
                   {{ mediaItem.addWatermark ?? 'N/A' }}
                 </p>
@@ -615,9 +598,7 @@
 
             <!-- Storage -->
             <section class="space-y-3">
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Storage
               </h3>
               <div class="text-sm space-y-3">
@@ -660,9 +641,7 @@
 
             <!-- Other -->
             <section class="space-y-3">
-              <h3
-                class="text-lg font-semibold border-b border-gray-700 pb-2"
-              >
+              <h3 class="text-lg font-semibold border-b border-gray-700 pb-2">
                 Other
               </h3>
               <div class="text-sm space-y-3">

@@ -49,7 +49,6 @@ class AssetRoleEnum(str, Enum):
     CONCATENATION_SOURCE = (
         "concatenation_source"  # An input video in a concatenation job
     )
-    SOURCE_VIDEO = "source_video"
 
 
 class SourceAssetLink(BaseModel):

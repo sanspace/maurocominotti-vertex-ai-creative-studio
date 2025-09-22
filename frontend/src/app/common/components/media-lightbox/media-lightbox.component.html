@@ -29,7 +29,7 @@
 
   <!-- Bottom Controls: Thumbnails and Actions -->
   <div
-    *ngIf="mediaItem.presignedUrls && mediaItem.presignedUrls.length > 1"
+    *ngIf="mediaItem.presignedUrls && mediaItem.presignedUrls.length >= 1"
     class="bottom-controls"
   >
     <!-- Thumbnails on the left -->
@@ -128,8 +128,9 @@
       </button>
     </div>
 
-    <button *ngIf="isVideo" mat-icon-button [matMenuTriggerFor]="extendMenu" class="action-button" title="More video options">
-      <mat-icon>more_vert</mat-icon>
+    <button *ngIf="isVideo" mat-icon-button [matMenuTriggerFor]="extendMenu" class="action-button" title="More video options"
+    >
+      <mat-icon>movie_edit</mat-icon>
     </button>
     <mat-menu #extendMenu="matMenu">
       <button mat-menu-item (click)="onExtendWithAiClick()">
