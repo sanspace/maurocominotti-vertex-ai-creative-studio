@@ -25,7 +25,7 @@ class UserModel(BaseDocument):
     email: str
     roles: List[UserRoleEnum] = Field(default_factory=list)
     name: str
-    picture: str
+    picture: str = ""
 
     @field_validator("roles", mode="after")
     @classmethod

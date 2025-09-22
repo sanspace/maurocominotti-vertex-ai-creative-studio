@@ -15,7 +15,7 @@ class UserService:
         self.user_repo = UserRepository()
 
     def create_user_if_not_exists(
-        self, email: str, name: str, picture: str
+        self, email: str, name: str, picture: Optional[str]
     ) -> UserModel:
         """
         Retrieves a user by their UID. If the user exists, it updates their
@@ -38,7 +38,7 @@ class UserService:
                 UserRoleEnum.USER
             ],  # Assign a default role "user" for all new users
             name=name,
-            picture=picture,
+            picture=picture or "",  # Ensure picture is a string, not None
         )
 
         # 3. Call the repository's save() method to create the new document
