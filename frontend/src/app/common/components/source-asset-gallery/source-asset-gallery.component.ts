@@ -29,7 +29,7 @@ export class SourceAssetGalleryComponent
 {
   @Output() assetSelected = new EventEmitter<SourceAssetResponseDto>();
   @Input() filterByType: AssetTypeEnum | null = null;
-  @Input() filterByMimeType: 'image/png' | 'video/mp4' | 'audio/mpeg' | null =
+  @Input() filterByMimeType: 'image/*' | 'image/png' | 'video/mp4' | 'audio/mpeg' | null =
     null;
   @ViewChild('sentinel') private sentinel!: ElementRef<HTMLElement>;
 

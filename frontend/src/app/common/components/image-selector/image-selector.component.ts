@@ -30,19 +30,11 @@ export class ImageSelectorComponent {
     private sourceAssetService: SourceAssetService,
     private workspaceStateService: WorkspaceStateService,
     @Inject(MAT_DIALOG_DATA)
-    public data: {assetType: AssetTypeEnum | null},
+    public data: {
+      mimeType: 'image/*' | 'image/png' | 'video/mp4' | null;
+      assetType: AssetTypeEnum;
+    },
   ) {}
-
-  get mimeTypeFilter(): 'image/png' | 'video/mp4' | null {
-    switch (this.data?.assetType) {
-      case AssetTypeEnum.GENERIC_IMAGE:
-        return 'image/png';
-      case AssetTypeEnum.GENERIC_VIDEO:
-        return 'video/mp4';
-      default:
-        return null;
-    }
-  }
 
   private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();

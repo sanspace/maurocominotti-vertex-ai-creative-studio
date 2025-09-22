@@ -367,6 +367,21 @@ gcloud firestore indexes composite create \
   --field-config=field-path=created_at,order=DESCENDING \
   --field-config=field-path=__name__,order=DESCENDING \
 
+gcloud firestore indexes composite create \
+  --collection-group=source_assets \
+  --query-scope=COLLECTION \
+  --field-config=field-path=user_id,order=ASCENDING \
+  --field-config=field-path=mime_type,order=ASCENDING \
+  --field-config=field-path=__name__,order=ASCENDING \
+
+gcloud firestore indexes composite create \
+  --collection-group=source_assets \
+  --query-scope=COLLECTION \
+  --field-config=field-path=user_id,order=ASCENDING \
+  --field-config=field-path=created_at,order=DESCENDING \
+  --field-config=field-path=mime_type,order=DESCENDING \
+  --field-config=field-path=__name__,order=DESCENDING \
+
 # After a while you can check with
 gcloud beta firestore indexes composite list
 ```
@@ -405,12 +420,12 @@ To implement a proper search bar, you must integrate a dedicated third-party sea
   export PROJECT_ID=creative-studio-arena && \
   export REGION="us-central1" && \
   export REPO_NAME="creative-studio-repo" && \
-  export IMAGE_NAME="creative-studio-backend"
+  export SERVICE_NAME="creative-studio-backend" && \
 
   # 3. Build the container image and push it to Artifact Registry
   gcloud builds submit . \
-  --config cloudbuild.yaml \
-  --substitutions=_REGION="${REGION}",_REPO_NAME="${REPO_NAME}",_IMAGE_NAME="${IMAGE_NAME}"
+  --config backend/cloudbuild.yaml \
+  --substitutions=_REGION="${REGION}",_REPO_NAME="${REPO_NAME}",_SERVICE_NAME="${SERVICE_NAME}"
 ```
 
 ## Deploy the Cloud Function

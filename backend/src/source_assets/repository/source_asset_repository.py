@@ -43,9 +43,15 @@ class SourceAssetRepository(BaseRepository[SourceAssetModel]):
 
         # Apply filters from the DTO
         if search_dto.mime_type:
-            base_query = base_query.where(
-                "mime_type", "==", search_dto.mime_type
-            )
+            if search_dto.mime_type.endswith("image/*"):
+                # TODO: Handle wildcard prefix search (e.g., "image/*")
+                # by creating a range query that finds all strings starting with the prefix.
+                base_query = base_query.where("mime_type", "!=", "video/mp4")
+            else:
+                # Standard exact match
+                base_query = base_query.where(
+                    "mime_type", "==", search_dto.mime_type
+                )
         if target_user_id:
             base_query = base_query.where("user_id", "==", target_user_id)
         if search_dto.scope:
@@ -82,9 +88,7 @@ class SourceAssetRepository(BaseRepository[SourceAssetModel]):
 
         # Stream results and validate with the Pydantic model
         documents = list(data_query.stream())
-        media_item_data = [
-            self.model.model_validate(doc.to_dict()) for doc in documents
-        ]
+        media_item_data = [doc.to_dict() for doc in documents]
 
         next_page_cursor = None
         if len(documents) == search_dto.limit:
@@ -94,7 +98,7 @@ class SourceAssetRepository(BaseRepository[SourceAssetModel]):
         return PaginationResponseDto[SourceAssetModel](
             count=total_count,
             next_page_cursor=next_page_cursor,
-            data=media_item_data,
+            data=media_item_data,  # type: ignore
         )
 
     def find_by_scope_and_types(

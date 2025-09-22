@@ -1,15 +1,12 @@
-import {AfterViewInit, Component, OnInit, ViewChild} from '@angular/core';
+import {Component, OnInit, ViewChild} from '@angular/core';
 import {MatTableDataSource} from '@angular/material/table';
-import {MatPaginator} from '@angular/material/paginator';
+import {MatPaginator, PageEvent} from '@angular/material/paginator';
 import {MatSort} from '@angular/material/sort';
 import {MatDialog} from '@angular/material/dialog';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {SourceAssetsService} from './source-assets.service';
-import {
-  AssetScopeEnum,
-  AssetTypeEnum,
-  SourceAsset,
-} from './source-asset.model';
+import {firstValueFrom} from 'rxjs';
+import {SourceAssetsService as SourceAssetAdminService} from './source-assets.service';
+import {AssetScopeEnum, AssetTypeEnum} from './source-asset.model';
 import {SourceAssetFormComponent} from './source-asset-form/source-asset-form.component';
 import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
 import {SourceAssetResponseDto} from '../../common/services/source-asset.service';
@@ -20,7 +17,7 @@ import {SourceAssetUploadFormComponent} from './source-asset-upload-form/source-
   templateUrl: './source-assets-management.component.html',
   styleUrls: ['./source-assets-management.component.scss'],
 })
-export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
+export class SourceAssetsManagementComponent implements OnInit {
   displayedColumns: string[] = [
     'thumbnail',
     'originalFilename',
@@ -38,13 +35,23 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
   filterAssetType: AssetTypeEnum | null = null;
   assetScopes = Object.values(AssetScopeEnum);
   assetTypes = Object.values(AssetTypeEnum);
+
+  // Pagination properties
+  totalAssets = 0;
+  limit = 10;
+  currentPageIndex = 0;
+  // Stores the cursor for the START of each page.
+  // pageCursors[0] is null
+  // pageCursors[i] is the last document of page i-1
+  private pageCursors: Array<string | null | undefined> = [null];
+
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
   constructor(
-    private sourceAssetsService: SourceAssetsService,
+    private sourceAssetService: SourceAssetAdminService,
     public dialog: MatDialog,
-    private _snackBar: MatSnackBar,
+    private snackBar: MatSnackBar,
   ) {
     this.dataSource = new MatTableDataSource<SourceAssetResponseDto>([]);
   }
@@ -53,40 +60,86 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
     this.fetchAssets();
   }
 
-  ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
-    this.dataSource.sort = this.sort;
-  }
-
-  fetchAssets(): void {
+  async fetchPage(targetPageIndex: number) {
     this.isLoading = true;
-    this.errorLoading = null;
+
+    // Find the most recent page we have a cursor for that is before our target.
+    let startPageIndex = 0;
+    for (let i = targetPageIndex; i >= 0; i--) {
+      if (this.pageCursors[i] !== undefined) {
+        startPageIndex = i;
+        break;
+      }
+    }
+
+    // Get the cursor for our starting point.
+    let cursor: string | null | undefined = this.pageCursors[startPageIndex];
+
     const filters = {
       originalFilename: this.filterName.trim() || undefined,
       scope: this.filterScope || undefined,
       assetType: this.filterAssetType || undefined,
     };
-    this.sourceAssetsService.searchSourceAssets(filters).subscribe({
-      next: assets => {
-        this.dataSource.data = assets.data;
-        this.isLoading = false;
-      },
-      error: err => {
-        console.error('Error fetching source assets', err);
-        this.errorLoading =
-          'Could not load source assets. Please try again later.';
-        this.isLoading = false;
-      },
-    });
+
+    try {
+      // Walk from the known page to the target page, fetching and discarding pages
+      for (let i = startPageIndex; i < targetPageIndex; i++) {
+        const response = await firstValueFrom(
+          this.sourceAssetService.searchSourceAssets(
+            filters,
+            this.limit,
+            cursor ?? undefined,
+          ),
+        );
+
+        if (!response || response.data.length === 0) {
+          this.isLoading = false;
+          this.dataSource.data = []; // Show empty table
+          return;
+        }
+        cursor = response.nextPageCursor ?? null;
+        this.pageCursors[i + 1] = cursor; // Cache the new cursor
+      }
+
+      // Now we have the correct cursor to fetch the target page
+      const finalResponse = await firstValueFrom(
+        this.sourceAssetService.searchSourceAssets(
+          filters,
+          this.limit,
+          cursor ?? undefined,
+        ),
+      );
+
+      this.dataSource.data = finalResponse.data;
+      this.totalAssets = finalResponse.count;
+      this.currentPageIndex = targetPageIndex;
+
+      // Cache the cursor for the *next* page if it exists and we don't have it
+      if (
+        finalResponse.nextPageCursor &&
+        this.pageCursors[targetPageIndex + 1] === undefined
+      ) {
+        this.pageCursors[targetPageIndex + 1] = finalResponse.nextPageCursor;
+      }
+    } catch (err) {
+      this.errorLoading = 'Failed to load assets.';
+      console.error(err);
+    } finally {
+      this.isLoading = false;
+    }
   }
 
-  applyFilter(event: Event) {
-    this.filterName = (event.target as HTMLInputElement).value.trim();
-    this.fetchAssets();
+  fetchAssets() {
+    this.resetPaginationAndFetch();
+  }
 
+  private resetPaginationAndFetch() {
+    this.currentPageIndex = 0;
     if (this.dataSource.paginator) {
       this.dataSource.paginator.firstPage();
     }
+    this.pageCursors = [null];
+    this.fetchPage(0);
   }
 
   createAsset(): void {
@@ -100,7 +153,7 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
       .subscribe((result: SourceAssetResponseDto | null) => {
         if (result) {
           this.fetchAssets();
-          this._snackBar.openFromComponent(ToastMessageComponent, {
+          this.snackBar.openFromComponent(ToastMessageComponent, {
             panelClass: ['green-toast'],
             duration: 3000,
             data: {
@@ -112,7 +165,7 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
       });
   }
 
-  editAsset(asset: SourceAsset): void {
+  editAsset(asset: SourceAssetResponseDto): void {
     const dialogRef = this.dialog.open(SourceAssetFormComponent, {
       width: '800px',
       data: {asset: {...asset}},
@@ -121,17 +174,20 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.sourceAssetsService.updateSourceAsset(result).subscribe({
+        this.sourceAssetService.updateSourceAsset(result).subscribe({
           next: () => {
             this.fetchAssets();
-            this._snackBar.openFromComponent(ToastMessageComponent, {
+            this.snackBar.openFromComponent(ToastMessageComponent, {
               panelClass: ['green-toast'],
               duration: 3000,
-              data: {text: 'Asset updated successfully', matIcon: 'check_circle'},
+              data: {
+                text: 'Asset updated successfully',
+                matIcon: 'check_circle',
+              },
             });
           },
           error: (err: Error) => {
-            this._snackBar.openFromComponent(ToastMessageComponent, {
+            this.snackBar.openFromComponent(ToastMessageComponent, {
               panelClass: ['red-toast'],
               duration: 5000,
               data: {text: 'Error updating asset', matIcon: 'error'},
@@ -142,22 +198,24 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
     });
   }
 
-  deleteAsset(asset: SourceAsset): void {
+  deleteAsset(asset: SourceAssetResponseDto): void {
     if (
       asset.id &&
-      confirm(`Are you sure you want to delete asset "${asset.originalFilename}"?`)
+      confirm(
+        `Are you sure you want to delete asset "${asset.originalFilename}"?`,
+      )
     ) {
-      this.sourceAssetsService.deleteSourceAsset(asset.id).subscribe({
+      this.sourceAssetService.deleteSourceAsset(asset.id).subscribe({
         next: () => {
           this.fetchAssets();
-          this._snackBar.openFromComponent(ToastMessageComponent, {
+          this.snackBar.openFromComponent(ToastMessageComponent, {
             panelClass: ['green-toast'],
             duration: 3000,
             data: {text: 'Asset deleted successfully', matIcon: 'check_circle'},
           });
         },
         error: (err: Error) => {
-          this._snackBar.openFromComponent(ToastMessageComponent, {
+          this.snackBar.openFromComponent(ToastMessageComponent, {
             panelClass: ['red-toast'],
             duration: 5000,
             data: {text: 'Error deleting asset', matIcon: 'error'},
@@ -165,5 +223,15 @@ export class SourceAssetsManagementComponent implements OnInit, AfterViewInit {
         },
       });
     }
+  }
+
+  handlePageEvent(event: PageEvent) {
+    // If page size changes, we must reset everything.
+    if (this.limit !== event.pageSize) {
+      this.limit = event.pageSize;
+      this.resetPaginationAndFetch();
+      return;
+    }
+    this.fetchPage(event.pageIndex);
   }
 }

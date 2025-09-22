@@ -564,7 +564,7 @@ export class VideoComponent implements AfterViewInit {
       height: '80vh',
       maxWidth: '90vw',
       data: {
-        assetType: this.getAssetTypeForSelector(imageNumber),
+        mimeType: this.getMimeTypeForSelector(),
       },
       panelClass: 'image-selector-dialog',
     });
@@ -843,19 +843,16 @@ export class VideoComponent implements AfterViewInit {
     });
   }
 
-  private getAssetTypeForSelector(imageNumber: 1 | 2): AssetTypeEnum | null {
+  private getMimeTypeForSelector(): 'image/*' | 'image/png' | 'video/mp4' | null {
     const anyInputIsPresent = !!this.image1Preview || !!this.image2Preview;
     const anyInputIsVideo = this._input1IsVideo || this._input2IsVideo;
 
     if (!anyInputIsPresent) {
-      // If both slots are empty, allow anything.
       return null;
     }
 
-    // If any slot has something, restrict to that type.
-    return anyInputIsVideo
-      ? AssetTypeEnum.GENERIC_VIDEO
-      : AssetTypeEnum.GENERIC_IMAGE;
+    // If any slot has something, restrict to that type's mimeType.
+    return anyInputIsVideo ? 'video/mp4' : 'image/*';
   }
 
   private applyRemixState(remixState: {

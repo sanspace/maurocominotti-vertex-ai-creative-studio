@@ -614,7 +614,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       height: '80vh',
       maxWidth: '90vw',
       data: {
-        assetType: AssetTypeEnum.GENERIC_IMAGE,
+        mimeType: 'image/*',
       },
       panelClass: 'image-selector-dialog',
     });
