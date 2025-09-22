@@ -219,40 +219,6 @@ class GeminiService:
         if target_type not in [PromptTargetEnum.IMAGE, PromptTargetEnum.VIDEO]:
             raise ValueError("Invalid target_type. Must be IMAGE or VIDEO.")
 
-        # --- Prepend Brand Guidelines if available ---
-        if dto.workspace_id:
-            search_dto = BrandGuidelineSearchDto(
-                workspace_id=dto.workspace_id, limit=1
-            )
-            workspace_filter = FieldFilter(
-                "workspace_id", "==", dto.workspace_id
-            )
-            guideline_response = self.brand_guideline_repo.query(
-                search_dto, extra_filters=[workspace_filter]
-            )
-
-            if guideline_response and guideline_response.data:
-                guideline = guideline_response.data[0]
-                # Construct a prefix to guide the prompt rewriter.
-                prefix_parts = [
-                    "Based on the following brand guidelines, enhance the user's prompt."
-                ]
-                if guideline.visual_style_summary:
-                    prefix_parts.append(
-                        f"**Visual Style:** {guideline.visual_style_summary}"
-                    )
-                if guideline.tone_of_voice_summary:
-                    prefix_parts.append(
-                        f"**Tone of Voice:** {guideline.tone_of_voice_summary}"
-                    )
-                prefix_parts.append("\n---")
-                brand_guideline_prefix = "\n".join(prefix_parts) + "\n\n"
-                dto.prompt = brand_guideline_prefix + dto.prompt
-            else:
-                logger.info(
-                    f"No brand guidelines found for workspace '{dto.workspace_id}'."
-                )
-
         # --- Prompt Enhancement for Gemini Image-to-Image ---
         # This logic is placed here to ensure that any call to enhance a prompt
         # for Gemini Flash i2i will automatically include these critical
@@ -288,6 +254,40 @@ class GeminiService:
                 "--- End of Scenarios ---\n\n"
                 f"**User's Request:** {dto.prompt}"
             )
+
+        # --- Prepend Brand Guidelines if available ---
+        if dto.workspace_id and not is_gemini_i2i:
+            search_dto = BrandGuidelineSearchDto(
+                workspace_id=dto.workspace_id, limit=1
+            )
+            workspace_filter = FieldFilter(
+                "workspace_id", "==", dto.workspace_id
+            )
+            guideline_response = self.brand_guideline_repo.query(
+                search_dto, extra_filters=[workspace_filter]
+            )
+
+            if guideline_response and guideline_response.data:
+                guideline = guideline_response.data[0]
+                # Construct a prefix to guide the prompt rewriter.
+                prefix_parts = [
+                    "Based on the following brand guidelines, enhance the user's prompt."
+                ]
+                if guideline.visual_style_summary:
+                    prefix_parts.append(
+                        f"**Visual Style:** {guideline.visual_style_summary}"
+                    )
+                if guideline.tone_of_voice_summary:
+                    prefix_parts.append(
+                        f"**Tone of Voice:** {guideline.tone_of_voice_summary}"
+                    )
+                prefix_parts.append("\n---")
+                brand_guideline_prefix = "\n".join(prefix_parts) + "\n\n"
+                dto.prompt = brand_guideline_prefix + dto.prompt
+            else:
+                logger.info(
+                    f"No brand guidelines found for workspace '{dto.workspace_id}'."
+                )
 
         prompt_template = (
             REWRITE_IMAGE_JSON_PROMPT_TEMPLATE
