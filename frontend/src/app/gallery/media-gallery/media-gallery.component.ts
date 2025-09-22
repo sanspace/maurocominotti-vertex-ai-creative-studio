@@ -52,11 +52,11 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
       viewValue: 'Nano Banana',
     },
     {
-      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      value: 'imagen-4.0-ultra-generate-001',
       viewValue: 'Imagen 4 Ultra',
     },
     {
-      value: 'imagen-4.0-fast-generate-preview-06-06',
+      value: 'imagen-4.0-fast-generate-001',
       viewValue: 'Imagen 4 Ultra',
     },
   ];

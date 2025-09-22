@@ -104,13 +104,19 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       imageSrc: 'assets/images/banana-peel.png',
     },
     {
-      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      value: 'imagen-4.0-generate-001',
+      viewValue: 'Imagen 4', // Keeping gemini-spark-icon for Imagen
+      icon: 'gemini-spark-icon',
+      isSvg: true,
+    },
+    {
+      value: 'imagen-4.0-ultra-generate-001',
       viewValue: 'Imagen 4 Ultra', // Keeping gemini-spark-icon for Imagen
       icon: 'gemini-spark-icon',
       isSvg: true,
     },
     {
-      value: 'imagen-4.0-fast-generate-preview-06-06',
+      value: 'imagen-4.0-fast-generate-001',
       viewValue: 'Imagen 4 Fast', // Keeping gemini-spark-icon for Imagen
       icon: 'gemini-spark-icon',
       isSvg: true,
@@ -477,8 +483,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const hasSourceAssets = this.sourceAssetId1 || this.sourceAssetId2;
     const isImagen4 = [
-      'imagen-4.0-ultra-generate-preview-06-06',
-      'imagen-4.0-fast-generate-preview-06-06',
+      'imagen-4.0-generate-001',
+      'imagen-4.0-ultra-generate-001',
+      'imagen-4.0-fast-generate-001',
     ].includes(this.searchRequest.generationModel);
 
     if (hasSourceAssets && isImagen4) {

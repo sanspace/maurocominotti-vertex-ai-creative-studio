@@ -214,32 +214,6 @@ class ImagenService:
             if not reference_images_for_api:
                 if (
                     request_dto.generation_model
-                    == GenerationModelEnum.IMAGEN_4_ULTRA
-                ):
-                    # --- IMAGEN 4 TEXT-TO-IMAGE: Parallel API Calls ---
-                    tasks = [
-                        asyncio.to_thread(
-                            client.models.generate_images,
-                            model=request_dto.generation_model,
-                            prompt=request_dto.prompt,
-                            config=types.GenerateImagesConfig(
-                                number_of_images=1,
-                                output_gcs_uri=gcs_output_directory,
-                                aspect_ratio=request_dto.aspect_ratio,
-                                negative_prompt=request_dto.negative_prompt,
-                                add_watermark=request_dto.add_watermark,
-                                image_size="2K",
-                            ),
-                        )
-                        for _ in range(request_dto.number_of_media)
-                    ]
-                    api_responses = await asyncio.gather(*tasks)
-                    for response in api_responses:
-                        all_generated_images.extend(
-                            response.generated_images or []
-                        )
-                elif (
-                    request_dto.generation_model
                     == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
                 ):
                     # --- GEMINI FLASH TEXT-TO-IMAGE ---
@@ -269,6 +243,7 @@ class ImagenService:
                             aspect_ratio=request_dto.aspect_ratio,
                             negative_prompt=request_dto.negative_prompt,
                             add_watermark=request_dto.add_watermark,
+                            image_size="2K",
                         ),
                     )
                     all_generated_images = (
