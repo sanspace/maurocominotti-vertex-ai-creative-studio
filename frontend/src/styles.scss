@@ -350,6 +350,11 @@ app-workspace-switcher .workspace-name {
   margin-right: 16px;
 }
 
+.mat-mdc-menu-item .mat-mdc-menu-item-text {
+  display: flex;
+  align-items: center;
+}
+
 /* Brand Guideline Dialog Overrides */
 .brand-guideline-dialog .mat-mdc-dialog-content {
   max-height: 80vh;

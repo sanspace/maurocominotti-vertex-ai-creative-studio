@@ -18,6 +18,7 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union
 
+from google.cloud.firestore_v1.base_query import FieldFilter
 from google.genai import Client, types
 from pydantic import BaseModel, Field
 from tenacity import (
@@ -27,6 +28,12 @@ from tenacity import (
     wait_exponential,
 )
 
+from src.brand_guidelines.dto.brand_guideline_search_dto import (
+    BrandGuidelineSearchDto,
+)
+from src.brand_guidelines.repository.brand_guideline_repository import (
+    BrandGuidelineRepository,
+)
 from src.brand_guidelines.schema.brand_guideline_model import (
     BrandGuidelineModel,
 )
@@ -70,6 +77,7 @@ class GeminiService:
         self.client: Client = GeminiModelSetup.init()
         self.cfg = config_service
         self.rewriter_model = self.cfg.GEMINI_MODEL_ID
+        self.brand_guideline_repo = BrandGuidelineRepository()
 
     def _get_response_schema(self, target: PromptTargetEnum) -> Type[BaseModel]:
         """Dynamically gets the Pydantic schema based on the target type."""
@@ -210,6 +218,40 @@ class GeminiService:
         """
         if target_type not in [PromptTargetEnum.IMAGE, PromptTargetEnum.VIDEO]:
             raise ValueError("Invalid target_type. Must be IMAGE or VIDEO.")
+
+        # --- Prepend Brand Guidelines if available ---
+        if dto.workspace_id:
+            search_dto = BrandGuidelineSearchDto(
+                workspace_id=dto.workspace_id, limit=1
+            )
+            workspace_filter = FieldFilter(
+                "workspace_id", "==", dto.workspace_id
+            )
+            guideline_response = self.brand_guideline_repo.query(
+                search_dto, extra_filters=[workspace_filter]
+            )
+
+            if guideline_response and guideline_response.data:
+                guideline = guideline_response.data[0]
+                # Construct a prefix to guide the prompt rewriter.
+                prefix_parts = [
+                    "Based on the following brand guidelines, enhance the user's prompt."
+                ]
+                if guideline.visual_style_summary:
+                    prefix_parts.append(
+                        f"**Visual Style:** {guideline.visual_style_summary}"
+                    )
+                if guideline.tone_of_voice_summary:
+                    prefix_parts.append(
+                        f"**Tone of Voice:** {guideline.tone_of_voice_summary}"
+                    )
+                prefix_parts.append("\n---")
+                brand_guideline_prefix = "\n".join(prefix_parts) + "\n\n"
+                dto.prompt = brand_guideline_prefix + dto.prompt
+            else:
+                logger.info(
+                    f"No brand guidelines found for workspace '{dto.workspace_id}'."
+                )
 
         # --- Prompt Enhancement for Gemini Image-to-Image ---
         # This logic is placed here to ensure that any call to enhance a prompt
