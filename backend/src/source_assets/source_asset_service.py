@@ -157,26 +157,38 @@ class SourceAssetService:
                         detail="Could not store the original asset.",
                     )
 
-                # Upscale the image
-                logger.info(f"Upscaling original asset from {original_gcs_uri}")
-                upscale_dto = UpscaleImagenDto(
-                    user_image=original_gcs_uri,
-                    upscale_factor="x2",
-                    mime_type=MimeTypeEnum.IMAGE_PNG,
-                    generation_model=GenerationModelEnum.IMAGEN_3_002,
-                )
-                upscaled_result = await self.imagen_service.upscale_image(
-                    upscale_dto
-                )
-
-                if not upscaled_result or not upscaled_result.image.gcs_uri:
-                    logger.warning("Upscaling failed, using original image.")
-                    final_gcs_uri = original_gcs_uri
-                else:
-                    final_gcs_uri = upscaled_result.image.gcs_uri
+                try:
+                    # Upscale the image
                     logger.info(
-                        f"Upscaling complete. Final asset at {final_gcs_uri}"
+                        f"Upscaling original asset from {original_gcs_uri}"
                     )
+                    upscale_dto = UpscaleImagenDto(
+                        user_image=original_gcs_uri,
+                        upscale_factor="x2",
+                        mime_type=MimeTypeEnum.IMAGE_PNG,
+                        generation_model=GenerationModelEnum.IMAGEN_3_002,
+                    )
+                    upscaled_result = await self.imagen_service.upscale_image(
+                        upscale_dto
+                    )
+
+                    if not upscaled_result or not upscaled_result.image.gcs_uri:
+                        logger.warning(
+                            "Upscaling failed, using original image."
+                        )
+                        final_gcs_uri = original_gcs_uri
+                    else:
+                        final_gcs_uri = upscaled_result.image.gcs_uri
+                        logger.info(
+                            f"Upscaling complete. Final asset at {final_gcs_uri}"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to upscale asset for user {user.email}: {e}",
+                        exc_info=True,
+                    )
+                    # Fallback: if upscale fails, use the original URI
+                    final_gcs_uri = original_gcs_uri
 
             if not final_gcs_uri:
                 raise Exception("Failed to process and upload asset.")

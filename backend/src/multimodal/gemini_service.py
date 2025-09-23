@@ -255,6 +255,14 @@ class GeminiService:
                 f"**User's Request:** {dto.prompt}"
             )
 
+            # For Gemini image-to-image, we do NOT want to rewrite the prompt into a
+            # complex JSON structure. The detailed instructions above are designed to
+            # be sent directly to the model to ensure it makes minimal, targeted
+            # changes. Bypassing the structured prompt generation prevents the model
+            # from deforming or completely changing the original image.
+            # We also set the response mime type to TEXT to reflect this.
+            return dto.prompt
+
         # --- Prepend Brand Guidelines if available ---
         if dto.workspace_id and not is_gemini_i2i:
             search_dto = BrandGuidelineSearchDto(

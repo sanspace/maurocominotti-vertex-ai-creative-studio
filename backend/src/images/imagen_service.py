@@ -24,11 +24,7 @@ from google.cloud import aiplatform
 from google.genai import Client, types
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.base_dto import (
-    AspectRatioEnum,
-    GenerationModelEnum,
-    MimeTypeEnum,
-)
+from src.common.base_dto import AspectRatioEnum, GenerationModelEnum, MimeTypeEnum
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import (
     AssetRoleEnum,
@@ -50,9 +46,7 @@ from src.images.schema.imagen_result_model import (
     ImageGenerationResult,
 )
 from src.multimodal.gemini_service import GeminiService, PromptTargetEnum
-from src.source_assets.repository.source_asset_repository import (
-    SourceAssetRepository,
-)
+from src.source_assets.repository.source_asset_repository import SourceAssetRepository
 from src.users.user_model import UserModel
 
 logger = logging.getLogger(__name__)
@@ -820,11 +814,11 @@ class ImagenService:
                     image_bytes=base64.b64decode(request_dto.user_image)
                 )
 
-            http_opts = types.HttpOptions(
-                timeout=300
-            )  # 300 seconds = 5 minutes
+            # Upscaling can be a long-running operation. We set a generous timeout
+            # of 10 minutes (600 seconds) to prevent premature client-side timeouts.
+            http_opts = types.HttpOptions(timeout=600)
             response = client.models.upscale_image(
-                model=GenerationModelEnum.IMAGEN_3_002,
+                model=GenerationModelEnum.IMAGEN_3_002.value,
                 image=image,
                 upscale_factor=request_dto.upscale_factor,
                 config=types.UpscaleImageConfig(
