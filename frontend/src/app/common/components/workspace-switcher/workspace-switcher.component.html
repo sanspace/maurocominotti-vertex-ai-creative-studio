@@ -57,6 +57,12 @@
         <mat-spinner *ngIf="isFetchingGuidelines" [diameter]="20" class="inline-block mr-2"></mat-spinner>
         <span>Brand Guidelines</span>
       </button>
+
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="openFeedbackForm($event)">
+        <mat-icon>feedback</mat-icon>
+        <span>Feedback</span>
+      </button>
     </mat-menu>
   </ng-container>
 </div>

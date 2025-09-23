@@ -269,14 +269,10 @@ export class WorkspaceSwitcherComponent implements OnInit {
             .pipe(finalize(() => (this.isFetchingGuidelines = false)))
             .subscribe({
               next: () => {
-                handleSuccessSnackbar(this.snackBar, 'Brand Guideline uploaded!');
-                // this.snackBar.open(
-                //   'Brand Guideline uploaded successfully!',
-                //   'OK',
-                //   {
-                //     duration: 3000,
-                //   },
-                // );
+                handleSuccessSnackbar(
+                  this.snackBar,
+                  'Brand Guideline uploaded!',
+                );
               },
               error: error => {
                 handleErrorSnackbar(
@@ -288,5 +284,13 @@ export class WorkspaceSwitcherComponent implements OnInit {
             });
         }
       });
+  }
+
+  openFeedbackForm(event: MouseEvent): void {
+    event.stopPropagation();
+    window.open(
+      'https://docs.google.com/forms/d/e/1FAIpQLSceWvu7G354h-dTbOGvNGEraEjcUAgPE300WNY5qr-WJbh3Eg/viewform',
+      '_blank',
+    );
   }
 }
