@@ -14,6 +14,7 @@
 
 import asyncio
 import hashlib
+import io
 import logging
 import os
 import shutil
@@ -21,6 +22,7 @@ import uuid
 from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile, status
+from PIL import Image as PILImage
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
@@ -144,51 +146,85 @@ class SourceAssetService:
                     )
             else:
                 # --- Image Upload & Upscale Logic ---
-                original_gcs_uri = self.gcs_service.store_to_gcs(
-                    folder=f"source_assets/{user.id}/originals",
-                    file_name=str(uuid.uuid4()),
-                    mime_type=file.content_type or "image/jpeg",
-                    contents=contents,
-                    decode=False,
-                )
-                if not original_gcs_uri:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Could not store the original asset.",
-                    )
+                # Convert image to PNG for standardization before storing.
+                pil_image = PILImage.open(io.BytesIO(contents))
+                png_contents: bytes
 
-                try:
-                    # Upscale the image
-                    logger.info(
-                        f"Upscaling original asset from {original_gcs_uri}"
-                    )
-                    upscale_dto = UpscaleImagenDto(
-                        user_image=original_gcs_uri,
-                        upscale_factor="x2",
+                if pil_image.format != "PNG":
+                    with io.BytesIO() as output:
+                        # Convert to RGB to avoid issues with palettes (e.g., in GIFs)
+                        if pil_image.mode != "RGB":
+                            pil_image = pil_image.convert("RGB")
+                        pil_image.save(output, format="PNG")
+                        png_contents = output.getvalue()
+                else:
+                    png_contents = contents
+
+                # If the image is already high-resolution, we skip upscaling.
+                if pil_image.width >= 2048 or pil_image.height >= 2048:
+                    final_gcs_uri = self.gcs_service.store_to_gcs(
+                        folder=f"source_assets/{user.id}/originals",
+                        file_name=f"{file_hash}.png",
                         mime_type=MimeTypeEnum.IMAGE_PNG,
-                        generation_model=GenerationModelEnum.IMAGEN_3_002,
+                        contents=png_contents,
+                        decode=False,
                     )
-                    upscaled_result = await self.imagen_service.upscale_image(
-                        upscale_dto
+                else:
+                    # --- Upscale Logic for lower-resolution images ---
+                    original_gcs_uri = self.gcs_service.store_to_gcs(
+                        folder=f"source_assets/{user.id}/originals",
+                        file_name=f"{file_hash}.png",
+                        mime_type=MimeTypeEnum.IMAGE_PNG,
+                        contents=png_contents,
+                        decode=False,
                     )
+                    if not original_gcs_uri:
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Could not store the original asset.",
+                        )
 
-                    if not upscaled_result or not upscaled_result.image.gcs_uri:
-                        logger.warning(
-                            "Upscaling failed, using original image."
+                    try:
+                        # Determine the best upscale factor. If a 2x upscale is
+                        # still not high-res, use 4x for the best quality.
+                        upscale_factor = (
+                            "x4"
+                            if (pil_image.width * 2 < 2048)
+                            and (pil_image.height * 2 < 2048)
+                            else "x2"
                         )
+
+                        # Upscale the standardized PNG image.
+                        upscale_dto = UpscaleImagenDto(
+                            user_image=original_gcs_uri,
+                            upscale_factor=upscale_factor,
+                            mime_type=MimeTypeEnum.IMAGE_PNG,
+                            generation_model=GenerationModelEnum.IMAGEN_3_002,
+                        )
+                        upscaled_result = (
+                            await self.imagen_service.upscale_image(upscale_dto)
+                        )
+
+                        if (
+                            not upscaled_result
+                            or not upscaled_result.image.gcs_uri
+                        ):
+                            logger.warning(
+                                "Upscaling failed, using original image."
+                            )
+                            final_gcs_uri = original_gcs_uri
+                        else:
+                            final_gcs_uri = upscaled_result.image.gcs_uri
+                            logger.info(
+                                f"Upscaling complete. Final asset at {final_gcs_uri}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to upscale asset for user {user.email}: {e}",
+                            exc_info=True,
+                        )
+                        # Fallback: if upscale fails, use the original URI
                         final_gcs_uri = original_gcs_uri
-                    else:
-                        final_gcs_uri = upscaled_result.image.gcs_uri
-                        logger.info(
-                            f"Upscaling complete. Final asset at {final_gcs_uri}"
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to upscale asset for user {user.email}: {e}",
-                        exc_info=True,
-                    )
-                    # Fallback: if upscale fails, use the original URI
-                    final_gcs_uri = original_gcs_uri
 
             if not final_gcs_uri:
                 raise Exception("Failed to process and upload asset.")

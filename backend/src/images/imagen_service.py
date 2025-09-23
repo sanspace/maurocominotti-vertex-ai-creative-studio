@@ -15,13 +15,16 @@
 
 import asyncio
 import base64
+import io
 import logging
+import os
 import time
 import uuid
 from typing import List, Optional
 
 from google.cloud import aiplatform
 from google.genai import Client, types
+from PIL import Image as PILImage
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import AspectRatioEnum, GenerationModelEnum, MimeTypeEnum
@@ -799,81 +802,53 @@ class ImagenService:
         Upscale an image.
         """
         client = GenAIModelSetup.init()
-        new_gcs_uri = None
         try:
-            # TODO: Detect if image size is not already scaled up
-            if request_dto.user_image[:5] == "gs://":
-                image = types.Image(gcs_uri=request_dto.user_image)
-                uri_parts = request_dto.user_image.split("/")
-                uri_parts[-1] = (
-                    f"upscaled_{request_dto.upscale_factor}_{uri_parts[-1]}"
-                )
-                new_gcs_uri = "/".join(uri_parts)
-            else:
-                image = types.Image(
-                    image_bytes=base64.b64decode(request_dto.user_image)
-                )
+            # --- Step 1: Perform the Upscale API Call ---
+            image_for_api = types.Image(gcs_uri=request_dto.user_image)
 
-            # Upscaling can be a long-running operation. We set a generous timeout
-            # of 10 minutes (600 seconds) to prevent premature client-side timeouts.
-            http_opts = types.HttpOptions(timeout=600)
             response = client.models.upscale_image(
                 model=GenerationModelEnum.IMAGEN_3_002.value,
-                image=image,
+                image=image_for_api,
                 upscale_factor=request_dto.upscale_factor,
                 config=types.UpscaleImageConfig(
-                    http_options=http_opts,
                     include_rai_reason=request_dto.include_rai_reason,
+                    output_mime_type=MimeTypeEnum.IMAGE_PNG.value,
                 ),
             )
+
+            # --- Step 2: Process the response and save to GCS ---
             if (
                 response.generated_images
                 and response.generated_images[0].image
                 and response.generated_images[0].image.image_bytes
             ):
-                rai_filtered_reason = (
-                    response.generated_images[0].rai_filtered_reason or ""
+                upscaled_bytes = response.generated_images[0].image.image_bytes
+                # Create a unique filename for the upscaled image.
+                original_filename = os.path.basename(
+                    request_dto.user_image.split("?")[0]
                 )
-                generated_image = response.generated_images[0].image
-                image_bytes = response.generated_images[0].image.image_bytes
+                upscaled_blob_name = f"upscaled_images/upscaled_{request_dto.upscale_factor}_{original_filename}"
 
-                if new_gcs_uri:
-                    destination_blob_name = new_gcs_uri.replace(
-                        f"gs://{self.gcs_service.bucket_name}/", ""
-                    )
-                    generated_image.gcs_uri = (
-                        self.gcs_service.upload_bytes_to_gcs(
-                            image_bytes,
-                            destination_blob_name,
-                            request_dto.mime_type,
-                        )
-                    )
+                final_gcs_uri = self.gcs_service.upload_bytes_to_gcs(
+                    upscaled_bytes, upscaled_blob_name, MimeTypeEnum.IMAGE_PNG
+                )
 
-                    return ImageGenerationResult(
-                        enhanced_prompt="",
-                        rai_filtered_reason=rai_filtered_reason,
-                        image=CustomImagenResult(
-                            gcs_uri=generated_image.gcs_uri,
-                            encoded_image=base64.b64encode(image_bytes).decode(
-                                "utf-8"
-                            ),
-                            mime_type=generated_image.mime_type or "",
-                            presigned_url="",
-                        ),
-                    )
-                else:
-                    return ImageGenerationResult(
-                        enhanced_prompt="",
-                        rai_filtered_reason=rai_filtered_reason,
-                        image=CustomImagenResult(
-                            gcs_uri="",
-                            encoded_image=base64.b64encode(image_bytes).decode(
-                                "utf-8"
-                            ),
-                            mime_type=generated_image.mime_type or "",
-                            presigned_url="",
-                        ),
-                    )
+                if not final_gcs_uri:
+                    raise ValueError("Failed to upload upscaled image to GCS.")
+
+                return ImageGenerationResult(
+                    enhanced_prompt="",
+                    rai_filtered_reason=response.generated_images[
+                        0
+                    ].rai_filtered_reason
+                    or "",
+                    image=CustomImagenResult(
+                        gcs_uri=final_gcs_uri,
+                        encoded_image="",
+                        mime_type=MimeTypeEnum.IMAGE_PNG,
+                        presigned_url="",
+                    ),
+                )
             else:
                 raise ValueError(
                     "Image upscaling generation failed or returned no data."
