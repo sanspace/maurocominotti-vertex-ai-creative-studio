@@ -19,6 +19,7 @@ import {MatCheckboxChange} from '@angular/material/checkbox';
 import {GalleryService} from '../gallery.service';
 import {MediaItemSelection} from '../../common/components/image-selector/image-selector.component';
 import {UserService} from '../../common/services/user.service';
+import {GallerySearchDto} from '../../common/models/search.model';
 
 @Component({
   selector: 'app-media-gallery',
@@ -51,11 +52,11 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
       viewValue: 'Nano Banana',
     },
     {
-      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      value: 'imagen-4.0-ultra-generate-001',
       viewValue: 'Imagen 4 Ultra',
     },
     {
-      value: 'imagen-4.0-fast-generate-preview-06-06',
+      value: 'imagen-4.0-fast-generate-001',
       viewValue: 'Imagen 4 Ultra',
     },
   ];
@@ -90,10 +91,8 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit(): void {
-    if (this.filterByType) {
-      this.mediaTypeFilter = this.filterByType;
-    }
-
+    this.mediaTypeFilter = this.filterByType || '';
+    this.searchTerm(); // Set initial filters
     this.loadingSubscription = this.galleryService.isLoading$.subscribe(
       loading => {
         this.isLoading = loading;
@@ -102,8 +101,9 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.imagesSubscription = this.galleryService.images$.subscribe(images => {
       if (images) {
-        this.images = images;
-        this.images.forEach(image => {
+        // Find only the new images that have been added
+        const newImages = images.slice(this.images.length);
+        newImages.forEach(image => {
           if (this.currentImageIndices[image.id] === undefined) {
             this.currentImageIndices[image.id] = 0;
           }
@@ -111,11 +111,8 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
             this.startAutoSlide(image);
           }
         });
+        this.images = images;
         this.updateColumns();
-      }
-
-      if (!images || images.length === 0) {
-        this.searchTerm();
       }
     });
 
@@ -342,19 +339,25 @@ export class MediaGalleryComponent implements OnInit, OnDestroy, AfterViewInit {
     // Reset local component state for a new search to show the main loader
     this.images = [];
 
-    const filters: {[key: string]: string} = {};
+    const filters: GallerySearchDto = {limit: 20};
     if (this.userEmailFilter) {
       filters['userEmail'] = this.userEmailFilter;
     }
-    if (this.mediaTypeFilter) {
-      filters['mimeType'] = this.mediaTypeFilter;
+    const mimeType = this.filterByType
+      ? this.filterByType
+      : this.isSelectionMode
+        ? null
+        : this.mediaTypeFilter;
+    if (mimeType) {
+      filters['mimeType'] = mimeType;
     }
-    if (this.generationModelFilter) {
+    if (this.generationModelFilter && !this.isSelectionMode) {
       filters['model'] = this.generationModelFilter;
     }
     if (this.statusFilter) {
       filters['status'] = this.statusFilter;
     }
+    console.log('Searching gallery with filters:', filters);
     this.galleryService.setFilters(filters);
   }
 }

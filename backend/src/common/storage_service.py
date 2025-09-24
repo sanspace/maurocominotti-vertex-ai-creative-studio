@@ -20,6 +20,7 @@ from typing import Optional
 
 from google.api_core import exceptions
 from google.cloud import storage
+
 from src.config.config_service import config_service
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,35 @@ class GcsService:
         except exceptions.GoogleAPICallError as e:
             logger.error(f"Failed to upload '{destination_blob_name}': {e}")
             return None
+
+    def delete_blob_from_uri(self, gcs_uri: str):
+        """
+        Deletes a blob from GCS using its full gs:// URI.
+
+        Args:
+            gcs_uri: The full GCS URI (e.g., "gs://bucket-name/path/to/blob").
+
+        Returns:
+            True if deletion was successful or blob didn't exist, False on error.
+        """
+        if not gcs_uri.startswith(f"gs://{self.bucket_name}/"):
+            logger.error(
+                f"GCS URI '{gcs_uri}' does not belong to bucket '{self.bucket_name}'."
+            )
+            return False
+
+        blob_name = gcs_uri.replace(f"gs://{self.bucket_name}/", "")
+        blob = self.bucket.blob(blob_name)
+        try:
+            blob.delete()
+            logger.info(f"Successfully deleted blob: {gcs_uri}")
+            return True
+        except exceptions.NotFound:
+            logger.warning(f"Blob not found, could not delete: {gcs_uri}")
+            return True  # Treat as success if it's already gone
+        except exceptions.GoogleAPICallError as e:
+            logger.error(f"Failed to delete blob '{gcs_uri}': {e}")
+            return False
 
     def store_to_gcs(
         self,

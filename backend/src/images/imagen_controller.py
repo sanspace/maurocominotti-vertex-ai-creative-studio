@@ -24,6 +24,7 @@ from src.images.dto.vto_dto import VtoDto
 from src.images.imagen_service import ImagenService
 from src.images.schema.imagen_result_model import ImageGenerationResult
 from src.users.user_model import UserModel, UserRoleEnum
+from src.workspaces.workspace_auth_guard import workspace_auth_service
 
 # Define role checkers for convenience
 user_only = Depends(
@@ -41,10 +42,16 @@ router = APIRouter(
 @router.post("/generate-images")
 async def generate_images(
     image_request: CreateImagenDto,
+    service: ImagenService = Depends(),
     current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
     try:
-        service = ImagenService()
+        # Use our centralized dependency to authorize the user for the workspace
+        # before proceeding with the expensive generation job.
+        workspace_auth_service.authorize(
+            workspace_id=image_request.workspace_id, user=current_user
+        )
+
         return await service.generate_images(
             request_dto=image_request, user=current_user
         )
@@ -65,11 +72,11 @@ async def generate_images(
 @router.post("/generate-images-for-vto")
 async def generate_images_vto(
     image_request: VtoDto,
+    service: ImagenService = Depends(),
     current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
 
     try:
-        service = ImagenService()
         return await service.generate_image_for_vto(
             request_dto=image_request, user=current_user
         )
@@ -89,10 +96,12 @@ async def generate_images_vto(
 
 @router.post("/recontextualize-product-in-scene")
 def recontextualize_product_in_scene(
-    image_uris_list: list[str], prompt: str, sample_count: int
+    image_uris_list: list[str],
+    prompt: str,
+    sample_count: int,
+    service: ImagenService = Depends(),
 ) -> list[str]:
     try:
-        service = ImagenService()
         return service.recontextualize_product_in_scene(
             image_uris_list, prompt, sample_count
         )
@@ -103,9 +112,10 @@ def recontextualize_product_in_scene(
 
 
 @router.post("/edit-image")
-def edit_image(image_request: EditImagenDto) -> list[ImageGenerationResult]:
+def edit_image(
+    image_request: EditImagenDto, service: ImagenService = Depends()
+) -> list[ImageGenerationResult]:
     try:
-        service = ImagenService()
         return service.edit_image(image_request)
     except Exception as e:
         raise HTTPException(
@@ -116,9 +126,9 @@ def edit_image(image_request: EditImagenDto) -> list[ImageGenerationResult]:
 @router.post("/upscale-image")
 async def upscale_image(
     image_request: UpscaleImagenDto,
+    service: ImagenService = Depends(),
 ) -> ImageGenerationResult | None:
     try:
-        service = ImagenService()
         return await service.upscale_image(request_dto=image_request)
     except HTTPException as http_exception:
         raise http_exception

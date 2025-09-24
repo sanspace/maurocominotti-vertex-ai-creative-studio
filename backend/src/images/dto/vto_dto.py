@@ -45,6 +45,9 @@ class VtoInputLink(BaseDto):
 class VtoDto(BaseDto):
     """Request schema for Virtual Try-On image generation."""
 
+    workspace_id: str = Field(
+        min_length=1, description="The ID of the workspace for this generation."
+    )
     number_of_media: int = Field(
         default=1,
         ge=1,

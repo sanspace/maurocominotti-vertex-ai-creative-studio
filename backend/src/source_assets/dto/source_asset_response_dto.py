@@ -22,3 +22,4 @@ class SourceAssetResponseDto(SourceAssetModel):
     temporary, accessible URL.
     """
     presigned_url: str
+    presigned_thumbnail_url: str

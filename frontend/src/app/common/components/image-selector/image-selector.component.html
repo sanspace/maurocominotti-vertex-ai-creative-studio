@@ -1,7 +1,7 @@
-<h2 mat-dialog-title>Select an Image</h2>
+<h2 mat-dialog-title>Select your Media</h2>
 <mat-dialog-content>
   <mat-tab-group>
-    <mat-tab label="Upload Image">
+    <mat-tab label="Upload Media">
       <div
         class="upload-area"
         [class.uploading]="isUploading"
@@ -26,13 +26,15 @@
           type="file"
           #fileInput
           (change)="onFileSelected($event)"
-          accept="image/png, image/jpeg"
+          [accept]="data.mimeType || 'image/*,video/mp4'"
           [disabled]="isUploading"
         />
       </div>
       <div class="my-uploads-container">
         <h3 class="mat-h3">My Uploads</h3>
         <app-source-asset-gallery
+          [filterByMimeType]="data.mimeType"
+          [filterByType]="data.assetType"
           (assetSelected)="onAssetSelected($event)"
         ></app-source-asset-gallery>
       </div>
@@ -40,7 +42,7 @@
     <mat-tab label="From Gallery">
       <app-media-gallery
         (mediaItemSelected)="onMediaItemSelected($event)"
-        filterByType="image/png"
+        [filterByType]="data.mimeType ? (data.mimeType.startsWith('video/') ? 'video/mp4' : 'image/png') : null"
       ></app-media-gallery>
     </mat-tab>
   </mat-tab-group>

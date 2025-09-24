@@ -22,19 +22,27 @@ export class SourceAssetsService {
   constructor(private http: HttpClient) {}
 
   searchSourceAssets(
-    filters: SourceAssetSearch
+    filters: SourceAssetSearch,
+    limit: number,
+    startAfter?: string,
   ): Observable<PaginatedResponse<SourceAssetResponseDto>> {
     const backendFilters: {[key: string]: any} = {
       original_filename: filters.originalFilename,
       scope: filters.scope,
-      assetType: filters.assetType,
+      asset_type: filters.assetType,
+      limit,
+      start_after: startAfter,
     };
     // Remove undefined properties so they are not sent to the backend
     Object.keys(backendFilters).forEach(
-      key => backendFilters[key] === undefined && delete backendFilters[key]
+      key =>
+        (backendFilters[key] === undefined || backendFilters[key] === null) &&
+        delete backendFilters[key],
     );
     return this.http
-      .post<PaginatedResponse<SourceAssetResponseDto>>(`${this.apiUrl}/search`, backendFilters)
+      .post<
+        PaginatedResponse<SourceAssetResponseDto>
+      >(`${this.apiUrl}/search`, backendFilters)
       .pipe(catchError(this.handleError));
   }
 
@@ -47,7 +55,7 @@ export class SourceAssetsService {
   uploadSourceAsset(
     file: File,
     scope: AssetScopeEnum,
-    assetType: AssetTypeEnum
+    assetType: AssetTypeEnum,
   ): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);

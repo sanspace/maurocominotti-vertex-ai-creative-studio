@@ -20,6 +20,7 @@ import {
   OnDestroy,
   AfterViewInit,
   ElementRef,
+  Inject,
   ViewChild,
   HostListener,
 } from '@angular/core';
@@ -46,6 +47,8 @@ import {MatChipInputEvent} from '@angular/material/chips';
 import {SourceAssetResponseDto} from '../common/services/source-asset.service';
 import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
+import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 
 @Component({
   selector: 'app-home',
@@ -63,6 +66,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   image1Preview: string | null = null;
   image2Preview: string | null = null;
   sourceMediaItems: (SourceMediaItemLink | null)[] = [];
+  activeWorkspaceId$: Observable<string | null>;
 
   @HostListener('window:keydown.control.enter', ['$event'])
   handleCtrlEnter(event: KeyboardEvent) {
@@ -100,13 +104,19 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       imageSrc: 'assets/images/banana-peel.png',
     },
     {
-      value: 'imagen-4.0-ultra-generate-preview-06-06',
+      value: 'imagen-4.0-generate-001',
+      viewValue: 'Imagen 4', // Keeping gemini-spark-icon for Imagen
+      icon: 'gemini-spark-icon',
+      isSvg: true,
+    },
+    {
+      value: 'imagen-4.0-ultra-generate-001',
       viewValue: 'Imagen 4 Ultra', // Keeping gemini-spark-icon for Imagen
       icon: 'gemini-spark-icon',
       isSvg: true,
     },
     {
-      value: 'imagen-4.0-fast-generate-preview-06-06',
+      value: 'imagen-4.0-fast-generate-001',
       viewValue: 'Imagen 4 Fast', // Keeping gemini-spark-icon for Imagen
       icon: 'gemini-spark-icon',
       isSvg: true,
@@ -264,6 +274,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private _snackBar: MatSnackBar,
     public dialog: MatDialog,
     private http: HttpClient,
+    @Inject(WorkspaceStateService)
+    private workspaceStateService: WorkspaceStateService,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -301,6 +313,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.router.getCurrentNavigation()?.extras.state?.['templateParams'];
       this.applyTemplateParameters();
     }
+
+    this.activeWorkspaceId$ = this.workspaceStateService.activeWorkspaceId$;
   }
 
   private path = '../../assets/images';
@@ -469,8 +483,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const hasSourceAssets = this.sourceAssetId1 || this.sourceAssetId2;
     const isImagen4 = [
-      'imagen-4.0-ultra-generate-preview-06-06',
-      'imagen-4.0-fast-generate-preview-06-06',
+      'imagen-4.0-generate-001',
+      'imagen-4.0-ultra-generate-001',
+      'imagen-4.0-fast-generate-001',
     ].includes(this.searchRequest.generationModel);
 
     if (hasSourceAssets && isImagen4) {
@@ -494,12 +509,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const validSourceMediaItems = this.sourceMediaItems.filter(
       Boolean,
     ) as SourceMediaItemLink[];
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
     const payload: ImagenRequest = {
       ...this.searchRequest,
       negativePrompt: this.negativePhrases.join(', '),
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
         : undefined,
+      workspaceId: activeWorkspaceId ?? undefined,
     };
 
     const sourceAssetIds = [];
@@ -603,6 +620,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       width: '90vw',
       height: '80vh',
       maxWidth: '90vw',
+      data: {
+        mimeType: 'image/*',
+      },
       panelClass: 'image-selector-dialog',
     });
 
@@ -640,6 +660,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
+    }
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,
       formData,

@@ -274,4 +274,57 @@ export class MediaDetailComponent implements OnDestroy {
     };
     this.router.navigate(['/vto'], navigationExtras);
   }
+
+  handleExtendWithAi(event: {
+    mediaItem: MediaItem;
+    selectedIndex: number;
+  }): void {
+    if (!this.mediaItem) {
+      return;
+    }
+
+    const sourceMediaItem: SourceMediaItemLink = {
+      mediaItemId: this.mediaItem.id,
+      mediaIndex: event.selectedIndex,
+      role: 'video_extension_source',
+    };
+
+    const remixState = {
+      prompt: this.mediaItem.originalPrompt,
+      sourceMediaItems: [sourceMediaItem],
+      // Since it's a video, we can use the thumbnail as a preview.
+      startImagePreviewUrl:
+        this.mediaItem.presignedThumbnailUrls?.[event.selectedIndex],
+      generationModel: 'veo-2.0-generate-001', // Switch to Veo 2 for video input
+    };
+
+    const navigationExtras: NavigationExtras = {
+      state: {remixState},
+    };
+    this.router.navigate(['/video'], navigationExtras);
+  }
+
+  handleConcatenate(event: {
+    mediaItem: MediaItem;
+    selectedIndex: number;
+  }): void {
+    if (!this.mediaItem) {
+      return;
+    }
+
+    const sourceMediaItem: SourceMediaItemLink = {
+      mediaItemId: this.mediaItem.id,
+      mediaIndex: event.selectedIndex,
+      role: 'concatenation_source', // Generic role for concatenation
+    };
+
+    const remixState = {
+      sourceMediaItems: [sourceMediaItem],
+      startImagePreviewUrl:
+        this.mediaItem.presignedThumbnailUrls?.[event.selectedIndex],
+      startConcatenation: true,
+    };
+
+    this.router.navigate(['/video'], {state: {remixState}});
+  }
 }

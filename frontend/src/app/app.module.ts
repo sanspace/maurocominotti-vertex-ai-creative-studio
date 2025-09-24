@@ -78,6 +78,7 @@ import {VtoComponent} from './vto/vto.component';
 import {ImageSelectorComponent} from './common/components/image-selector/image-selector.component';
 import {MatDialogModule} from '@angular/material/dialog';
 import {SourceAssetGalleryComponent} from './common/components/source-asset-gallery/source-asset-gallery.component';
+import {SharedModule} from './common/shared.module';
 
 @NgModule({
   declarations: [
@@ -126,6 +127,7 @@ import {SourceAssetGalleryComponent} from './common/components/source-asset-gall
     MatExpansionModule,
     MatTabsModule,
     MatDialogModule,
+    SharedModule,
   ],
   providers: [
     provideClientHydration(),

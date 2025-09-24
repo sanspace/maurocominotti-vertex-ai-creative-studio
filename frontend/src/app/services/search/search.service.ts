@@ -14,13 +14,47 @@
  * limitations under the License.
  */
 
-import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
+import {HttpClient} from '@angular/common/http';
+import {
+  BehaviorSubject,
+  catchError,
+  EMPTY,
+  finalize,
+  interval,
+  map,
+  Observable,
+  startWith,
+  Subscription,
+  switchMap,
+  takeWhile,
+  tap,
+  timer,
+} from 'rxjs';
 import {environment} from '../../../environments/environment';
-import {catchError, map, switchMap, tap} from 'rxjs/operators';
 import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
-import {BehaviorSubject, EMPTY, Observable, Subscription, timer} from 'rxjs';
 import {JobStatus, MediaItem} from '../../common/models/media-item.model';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
+import {
+  handleErrorSnackbar,
+  handleSuccessSnackbar,
+} from '../../utils/handleErrorSnackbar';
+
+export interface RewritePromptRequest {
+  targetType: 'image' | 'video';
+  userPrompt: string;
+}
+export interface ConcatenationInput {
+  id: string;
+  type: 'media_item' | 'source_asset';
+}
+export interface ConcatenateVideosDto {
+  workspaceId: string;
+  name: string;
+  inputs: ConcatenationInput[];
+  aspectRatio: string;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -30,7 +64,10 @@ export class SearchService {
   public activeVideoJob$ = this.activeVideoJob.asObservable();
   private pollingSubscription: Subscription | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private _snackBar: MatSnackBar,
+  ) {}
 
   searchImagen(searchRequest: ImagenRequest) {
     const searchURL = `${environment.backendURL}/images/generate-images`;
@@ -58,6 +95,20 @@ export class SearchService {
     );
   }
 
+  concatenateVideos(payload: ConcatenateVideosDto): Observable<MediaItem> {
+    const url = `${environment.backendURL}/videos/concatenate`;
+    return this.http.post<MediaItem>(url, payload).pipe(
+      tap(initialResponse => {
+        this.activeVideoJob.next(initialResponse);
+        this.startVeoPolling(initialResponse.id);
+      }),
+    );
+  }
+
+  clearActiveVideoJob() {
+    this.activeVideoJob.next(null);
+  }
+
   /**
    * Private method to poll the status of a media item.
    * @param mediaId The ID of the job to poll.
@@ -78,6 +129,15 @@ export class SearchService {
             latestItem.status === JobStatus.FAILED
           ) {
             this.stopVeoPolling();
+            if (latestItem.status === JobStatus.COMPLETED) {
+              handleSuccessSnackbar(this._snackBar, 'Your video is ready!');
+            } else {
+              handleErrorSnackbar(
+                this._snackBar,
+                {message: latestItem.errorMessage || latestItem.error_message},
+                `Video generation failed: ${latestItem.errorMessage || latestItem.error_message}`,
+              );
+            }
           }
         }),
         catchError(err => {

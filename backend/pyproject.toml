@@ -25,6 +25,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "pydantic[email]>=2.11.7",
     "pydantic-settings>=2.10.1",
+    "pypdf>=6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -60,3 +61,6 @@ source = ["livecov"]
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-report=lcov:lcov.info --cov-report=term"
+
+[tool.isort]
+profile = "black"

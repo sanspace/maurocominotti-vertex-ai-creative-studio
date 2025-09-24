@@ -16,8 +16,8 @@ from typing import List, Optional
 
 from src.common.schema.media_item_model import (
     MediaItemModel,
-    SourceMediaItemLink,
     SourceAssetLink,
+    SourceMediaItemLink,
 )
 
 
@@ -28,6 +28,7 @@ class SourceAssetLinkResponse(SourceAssetLink):
 
     presigned_url: str
     gcs_uri: str
+    presigned_thumbnail_url: Optional[str] = None
 
 
 class SourceMediaItemLinkResponse(SourceMediaItemLink):
@@ -37,6 +38,7 @@ class SourceMediaItemLinkResponse(SourceMediaItemLink):
 
     presigned_url: str
     gcs_uri: str
+    presigned_thumbnail_url: Optional[str] = None
 
 
 class MediaItemResponse(MediaItemModel):

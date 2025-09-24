@@ -25,6 +25,9 @@ class CreateImagenDto(BaseDto):
     prompt: Annotated[str, Query(max_length=10000)] = Field(
         description="Prompt term to be passed to the model"
     )
+    workspace_id: str = Field(
+        min_length=1, description="The ID of the workspace for this generation."
+    )
     generation_model: GenerationModelEnum = Field(
         default=GenerationModelEnum.IMAGEN_4_ULTRA,
         description="Model used for image generation.",
@@ -85,17 +88,19 @@ class CreateImagenDto(BaseDto):
         cls, value: GenerationModelEnum
     ) -> GenerationModelEnum:
         """Ensures that only supported generation models for imagen are used."""
-        valid_video_ratios = [
+        valid_generation_models = [
             GenerationModelEnum.IMAGEGEN_002,
             GenerationModelEnum.IMAGEGEN_005,
             GenerationModelEnum.IMAGEGEN_006,
             GenerationModelEnum.IMAGEN_3_001,
             GenerationModelEnum.IMAGEN_3_002,
             GenerationModelEnum.IMAGEN_3_FAST,
+            GenerationModelEnum.IMAGEN_4_FAST,
             GenerationModelEnum.IMAGEN_4_ULTRA,
+            GenerationModelEnum.IMAGEN_4_001,
             GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
         ]
-        if value not in valid_video_ratios:
+        if value not in valid_generation_models:
             raise ValueError("Invalid generation model for imagen.")
         return value
 

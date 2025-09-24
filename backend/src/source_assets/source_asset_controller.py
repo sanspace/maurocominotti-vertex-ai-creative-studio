@@ -35,10 +35,12 @@ from src.source_assets.dto.vto_assets_response_dto import VtoAssetsResponseDto
 from src.source_assets.schema.source_asset_model import (
     AssetScopeEnum,
     AssetTypeEnum,
+    SourceAssetModel,
 )
 from src.source_assets.source_asset_service import SourceAssetService
 from src.users.repository.user_repository import UserRepository
 from src.users.user_model import UserModel, UserRoleEnum
+from src.workspaces.workspace_auth_guard import workspace_auth_service
 
 router = APIRouter(
     prefix="/api/source_assets",
@@ -55,6 +57,7 @@ router = APIRouter(
 @router.post("/upload", response_model=SourceAssetResponseDto)
 async def upload_source_asset(
     file: UploadFile = File(),
+    workspaceId: str = Form(),
     scope: Optional[AssetScopeEnum] = Form(None),
     assetType: Optional[AssetTypeEnum] = Form(None),
     current_user: UserModel = Depends(get_current_user),
@@ -65,12 +68,20 @@ async def upload_source_asset(
     Accepts multipart/form-data.
 
     - **scope**: (Admin only) Set the asset's scope. Defaults to 'private'.
+    - **workspace_id**: The ID of the workspace to upload the asset to.
     - **assetType**: Set the asset's type. Defaults to 'generic_image'.
     """
+    # Use our centralized dependency to authorize the user for the workspace
+    # before proceeding with the upload.
+    workspace_auth_service.authorize(
+        workspace_id=workspaceId, user=current_user
+    )
+
     return await service.upload_asset(
         user=current_user,
         file=file,
         scope=scope,
+        workspace_id=workspaceId,
         asset_type=assetType,
     )
 

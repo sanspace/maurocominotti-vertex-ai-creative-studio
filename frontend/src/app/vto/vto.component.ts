@@ -25,6 +25,8 @@ import {MatStepper} from '@angular/material/stepper';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
+import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 
 interface Garment {
   id: string;
@@ -110,6 +112,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
     private cdr: ChangeDetectorRef,
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
+    private workspaceStateService: WorkspaceStateService,
   ) {
     this.matIconRegistry.addSvgIcon(
       'mobile-white-gemini-spark-icon',
@@ -263,6 +266,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
       height: '80vh',
       maxWidth: '90vw',
       panelClass: 'image-selector-dialog',
+      data: {mimeType: 'image/*'},
     });
 
     dialogRef
@@ -302,6 +306,10 @@ export class VtoComponent implements OnInit, AfterViewInit {
     formData.append('file', file);
     formData.append('scope', 'private');
     if (assetType) formData.append('assetType', assetType);
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
+    }
 
     return this.http.post<SourceAssetResponseDto>(
       `${environment.backendURL}/source_assets/upload`,
@@ -379,6 +387,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
     const payload: VtoRequest = {
       numberOfMedia: 4, // Defaulting to 4 as per DTO
       personImage: selectedModel.inputLink,
+      workspaceId: this.workspaceStateService.getActiveWorkspaceId() ?? '',
     };
 
     if (this.selectedTop) payload.topImage = this.selectedTop.inputLink;
@@ -505,7 +514,10 @@ export class VtoComponent implements OnInit, AfterViewInit {
       height: '80vh',
       maxWidth: '90vw',
       panelClass: 'image-selector-dialog',
-      data: {assetType: `vto_${type}`},
+      data: {
+        assetType: `vto_${type}`,
+        mimeType: 'image/*', // VTO garments are always images
+      },
     });
 
     dialogRef

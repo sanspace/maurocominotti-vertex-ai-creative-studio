@@ -37,6 +37,14 @@ export class MediaLightboxComponent
     index: number;
   }>();
   @Output() sendToVtoClicked = new EventEmitter<number>();
+  @Output() extendWithAiClicked = new EventEmitter<{
+    mediaItem: MediaItem;
+    selectedIndex: number;
+  }>();
+  @Output() concatenateClicked = new EventEmitter<{
+    mediaItem: MediaItem;
+    selectedIndex: number;
+  }>();
 
   selectedIndex = 0;
   selectedUrl: string | undefined;
@@ -306,5 +314,23 @@ export class MediaLightboxComponent
 
   onSendToVtoClick(): void {
     this.sendToVtoClicked.emit(this.selectedIndex);
+  }
+
+  onExtendWithAiClick() {
+    if (this.mediaItem) {
+      this.extendWithAiClicked.emit({
+        mediaItem: this.mediaItem,
+        selectedIndex: this.selectedIndex,
+      });
+    }
+  }
+
+  onConcatenateClick() {
+    if (this.mediaItem) {
+      this.concatenateClicked.emit({
+        mediaItem: this.mediaItem,
+        selectedIndex: this.selectedIndex,
+      });
+    }
   }
 }

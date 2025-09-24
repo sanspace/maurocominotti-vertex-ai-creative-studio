@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Annotated, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic.alias_generators import to_camel
 
 from src.common.base_dto import (
     AspectRatioEnum,
@@ -14,7 +15,6 @@ from src.common.base_dto import (
     StyleEnum,
 )
 from src.common.base_repository import BaseDocument
-from pydantic.alias_generators import to_camel
 
 
 class JobStatusEnum(str, Enum):
@@ -40,6 +40,15 @@ class AssetRoleEnum(str, Enum):
     VTO_BOTTOM = "vto_bottom"  # Role for the bottom garment in a VTO generation
     VTO_DRESS = "vto_dress"  # Role for the dress in a VTO generation
     VTO_SHOE = "vto_shoe"  # Role for the shoe in a VTO generation
+    VIDEO_EXTENSION_SOURCE = (
+        "video_extension_source"  # The original video to be extended
+    )
+    VIDEO_EXTENSION_CHUNK = (
+        "video_extension_chunk"  # The generated chunk in an extension job
+    )
+    CONCATENATION_SOURCE = (
+        "concatenation_source"  # An input video in a concatenation job
+    )
 
 
 class SourceAssetLink(BaseModel):
@@ -95,8 +104,11 @@ class MediaItemModel(BaseDocument):
 
     # Indexes that shouldn't and mustn't be empty
     # created_at is an index but is autopopulated by BaseDocument
+    workspace_id: str = Field(
+        description="Foreign key (ID) to the 'workspaces' collection this creation belongs to."
+    )
     user_email: str
-    user_id: Optional[str] = None  # TODO: Change to required in the near future
+    user_id: Optional[str] = None  # TODO: Change to 'required' in the future
     mime_type: MimeTypeEnum
     model: GenerationModelEnum
 
@@ -158,8 +170,4 @@ class MediaItemModel(BaseDocument):
     created_from_template_id: Optional[str] = Field(
         default=None,
         description="The ID of the template used to generate this item, if any.",
-    )
-    created_from_media_id: Optional[str] = Field(
-        default=None,
-        description="The ID of the MediaItem used to generate this item, if any.",
     )

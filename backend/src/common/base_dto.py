@@ -30,8 +30,11 @@ class GenerationModelEnum(str, Enum):
     """Enum representing the available Imagen generation models."""
 
     # Image-Specific Models
-    IMAGEN_4_ULTRA = "imagen-4.0-ultra-generate-preview-06-06"
-    IMAGEN_4_FAST = "imagen-4.0-fast-generate-preview-06-06"
+    IMAGEN_4_001 = "imagen-4.0-generate-001"
+    IMAGEN_4_ULTRA = "imagen-4.0-ultra-generate-001"
+    IMAGEN_4_ULTRA_PREVIEW = "imagen-4.0-ultra-generate-preview-06-06"
+    IMAGEN_4_FAST = "imagen-4.0-fast-generate-001"
+    IMAGEN_4_FAST_PREVIEW = "imagen-4.0-fast-generate-preview-06-06"
     IMAGEN_3_001 = "imagen-3.0-generate-001"
     IMAGEN_3_FAST = "imagen-3.0-fast-generate-001"
     IMAGEN_3_002 = "imagen-3.0-generate-002"

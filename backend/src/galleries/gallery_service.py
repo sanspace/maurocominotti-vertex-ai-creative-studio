@@ -13,7 +13,11 @@
 # limitations under the License.
 
 import asyncio
+import logging
 from typing import Optional
+
+from fastapi import HTTPException, status
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.dto.pagination_response_dto import PaginationResponseDto
@@ -35,6 +39,11 @@ from src.source_assets.repository.source_asset_repository import (
     SourceAssetRepository,
 )
 from src.users.user_model import UserModel, UserRoleEnum
+from src.workspaces.repository.workspace_repository import WorkspaceRepository
+from src.workspaces.schema.workspace_model import WorkspaceScopeEnum
+from src.workspaces.workspace_auth_guard import workspace_auth_service
+
+logger = logging.getLogger(__name__)
 
 
 class GalleryService:
@@ -47,6 +56,7 @@ class GalleryService:
         self.media_repo = MediaRepository()
         self.iam_signer_credentials = IamSignerCredentials()
         self.source_asset_repo = SourceAssetRepository()
+        self.workspace_repo = WorkspaceRepository()
 
     async def _enrich_source_asset_link(
         self, link: SourceAssetLink
@@ -60,12 +70,32 @@ class GalleryService:
         if not asset_doc:
             return None
 
-        presigned_url = await asyncio.to_thread(
-            self.iam_signer_credentials.generate_presigned_url, asset_doc.gcs_uri
-        )
+        tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url,
+                asset_doc.gcs_uri,
+            )
+        ]
+
+        # Check if the asset has a thumbnail and create a task for it.
+        # This requires the SourceAsset model to have a `thumbnail_gcs_uri` field.
+        if asset_doc.thumbnail_gcs_uri:
+            tasks.append(
+                asyncio.to_thread(
+                    self.iam_signer_credentials.generate_presigned_url,
+                    asset_doc.thumbnail_gcs_uri,
+                )
+            )
+
+        results = await asyncio.gather(*tasks)
+        presigned_url = results[0]
+        presigned_thumbnail_url = results[1] if len(results) > 1 else None
 
         return SourceAssetLinkResponse(
-            **link.model_dump(), presigned_url=presigned_url, gcs_uri=asset_doc.gcs_uri
+            **link.model_dump(),
+            presigned_url=presigned_url,
+            presigned_thumbnail_url=presigned_thumbnail_url,
+            gcs_uri=asset_doc.gcs_uri,
         )
 
     async def _enrich_source_media_item_link(
@@ -88,12 +118,37 @@ class GalleryService:
         # Get the specific GCS URI of the parent image that was edited.
         parent_gcs_uri = parent_item.gcs_uris[link.media_index]
 
-        presigned_url = await asyncio.to_thread(
-            self.iam_signer_credentials.generate_presigned_url, parent_gcs_uri
-        )
+        # Prepare tasks for both the main media and its thumbnail
+        tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url,
+                parent_gcs_uri,
+            )
+        ]
+
+        parent_thumbnail_gcs_uri = None
+        if parent_item.thumbnail_uris and 0 <= link.media_index < len(
+            parent_item.thumbnail_uris
+        ):
+            parent_thumbnail_gcs_uri = parent_item.thumbnail_uris[
+                link.media_index
+            ]
+            tasks.append(
+                asyncio.to_thread(
+                    self.iam_signer_credentials.generate_presigned_url,
+                    parent_thumbnail_gcs_uri,
+                )
+            )
+
+        results = await asyncio.gather(*tasks)
+        presigned_url = results[0]
+        presigned_thumbnail_url = results[1] if len(results) > 1 else None
 
         return SourceMediaItemLinkResponse(
-            **link.model_dump(), presigned_url=presigned_url, gcs_uri=parent_gcs_uri
+            **link.model_dump(),
+            presigned_url=presigned_url,
+            presigned_thumbnail_url=presigned_thumbnail_url,
+            gcs_uri=parent_gcs_uri,
         )
 
     async def _create_gallery_response(
@@ -107,8 +162,11 @@ class GalleryService:
 
         # 1. Create tasks for main media URLs
         main_url_tasks = [
-            asyncio.to_thread(self.iam_signer_credentials.generate_presigned_url, uri)
-            for uri in all_gcs_uris if uri
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in all_gcs_uris
+            if uri
         ]
 
         # 2. Create tasks for thumbnail URLs
@@ -124,14 +182,16 @@ class GalleryService:
         source_asset_tasks = []
         if item.source_assets:
             source_asset_tasks = [
-                self._enrich_source_asset_link(link) for link in item.source_assets
+                self._enrich_source_asset_link(link)
+                for link in item.source_assets
             ]
 
         # 4. Create tasks for generated input asset URLs
         source_media_item_tasks = []
         if item.source_media_items:
             source_media_item_tasks = [
-                self._enrich_source_media_item_link(link) for link in item.source_media_items
+                self._enrich_source_media_item_link(link)
+                for link in item.source_media_items
             ]
 
         # 5. Gather all results concurrently
@@ -147,8 +207,12 @@ class GalleryService:
             asyncio.gather(*source_media_item_tasks),
         )
 
-        enriched_source_assets = [asset for asset in enriched_source_assets_with_nones if asset]
-        enriched_source_media_items = [asset for asset in enriched_source_media_items_with_nones if asset]
+        enriched_source_assets = [
+            asset for asset in enriched_source_assets_with_nones if asset
+        ]
+        enriched_source_media_items = [
+            asset for asset in enriched_source_media_items_with_nones if asset
+        ]
 
         # Create the response DTO, copying all original data and adding the new URLs
         return MediaItemResponse(
@@ -164,21 +228,34 @@ class GalleryService:
     ) -> PaginationResponseDto[MediaItemResponse]:
         """
         Performs a paginated and filtered search for media items.
+        Authorization is handled by a dependency in the controller.
         """
-        is_admin = UserRoleEnum.ADMIN in current_user.roles
+        logger.info(
+            f"Fetching gallery for workspace_id: {search_dto.workspace_id} with params: {search_dto}"
+        )
 
+        is_admin = UserRoleEnum.ADMIN in current_user.roles
         # If the user is not an admin, force the search to only show completed items
         if not is_admin:
             search_dto.status = JobStatusEnum.COMPLETED
 
+        # Add the mandatory workspace filter to the search criteria
+        workspace_filter = FieldFilter(
+            "workspace_id", "==", search_dto.workspace_id
+        )
+
         # Run the synchronous database query in a separate thread
         media_items_query = await asyncio.to_thread(
-            self.media_repo.query, search_dto
+            self.media_repo.query,
+            search_dto,
+            extra_filters=[workspace_filter],
         )
         media_items = media_items_query.data or []
 
         # Convert each MediaItem to a GalleryItemResponse in parallel
-        response_tasks = [self._create_gallery_response(item) for item in media_items]
+        response_tasks = [
+            self._create_gallery_response(item) for item in media_items
+        ]
         enriched_items = await asyncio.gather(*response_tasks)
 
         return PaginationResponseDto[MediaItemResponse](
@@ -188,15 +265,33 @@ class GalleryService:
         )
 
     async def get_media_by_id(
-        self, item_id: str
+        self, item_id: str, current_user: UserModel
     ) -> Optional[MediaItemResponse]:
         """
-        Retrieves a single media item and enriches it with presigned URLs.
+        Retrieves a single media item, performs an authorization check,
+        and enriches it with presigned URLs.
         """
         # Run the synchronous database query in a separate thread
         item = await asyncio.to_thread(self.media_repo.get_by_id, item_id)
 
         if not item:
             return None
+
+        # Fetch the workspace for authorization check
+        workspace = await asyncio.to_thread(
+            self.workspace_repo.get_by_id, item.workspace_id
+        )
+
+        # This should ideally not happen if data is consistent, but it's a good safeguard.
+        if not workspace:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent workspace for this item not found.",
+            )
+
+        # Use the centralized authorization logic
+        workspace_auth_service.authorize(
+            workspace_id=item.workspace_id, user=current_user
+        )
 
         return await self._create_gallery_response(item)

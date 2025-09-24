@@ -150,7 +150,15 @@
           [matMenuTriggerFor]="modelMenu"
           class="!w-16 !h-16 !shadow-none text-center justify-center text-stone-300"
         >
-          <mat-icon svgIcon="content-type-icon"></mat-icon>
+          @if (selectedGenerationModelObject.isImage) {
+            <img
+              [src]="selectedGenerationModelObject.imageSrc"
+              class="w-8 h-8"
+              alt="model icon"
+            />
+          } @else {
+            <mat-icon svgIcon="content-type-icon"></mat-icon>
+          }
         </button>
         <div
           class="text-center justify-center text-neutral-200 text-base mt-2 inline-flex items-center"
