@@ -17,10 +17,16 @@ resource "google_storage_bucket_iam_member" "bucket_viewer_binding" {
   member = "serviceAccount:${google_service_account.bucket_reader_sa.email}"
 }
 
+data "google_project" "project" {
+  project_id = var.gcp_project_id
+}
+
 # --- Predictable URLs & Environment Variables ---
 locals {
   region_code  = join("", [for s in split("-", var.gcp_region) : substr(s, 0, 1)])
-  backend_url  = "https://${var.backend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
+  # backend_url  = "https://${var.backend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
+  backend_url = "https://${var.backend_service_name}-${data.google_project.project.number}.${var.gcp_region}.run.app"
+
   frontend_url = "https://${var.gcp_project_id}.web.app" # Predictable Firebase URL
 
   backend_env_vars = merge(
