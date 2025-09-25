@@ -38,6 +38,8 @@ steps:
     dir: 'frontend'
     env:
       - 'BACKEND_URL=${_BACKEND_URL}'
+      - '_FE_SERVICE_NAME=${_FE_SERVICE_NAME}'
+      - '_BACKEND_SERVICE_ID=${_BACKEND_SERVICE_ID}'
     secretEnv:
       - FIREBASE_API_KEY
       - FIREBASE_AUTH_DOMAIN
