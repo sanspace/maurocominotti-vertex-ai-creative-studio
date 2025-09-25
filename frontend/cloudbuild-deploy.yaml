@@ -56,7 +56,7 @@ steps:
       - 'firebase'
       - 'deploy'
       - '--project=${PROJECT_ID}'
-      - '--only=hosting:${PROJECT_ID}'
+      - '--only=hosting:${_FE_SERVICE_NAME}'
       - '--non-interactive'
     waitFor: ['Build Angular App']
     dir: frontend

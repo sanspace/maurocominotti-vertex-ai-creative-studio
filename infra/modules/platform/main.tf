@@ -313,10 +313,12 @@ module "frontend_service" {
   build_substitutions = merge(
     var.fe_build_substitutions,
     {
-      _BACKEND_URL = local.backend_url
-      _REGION = var.gcp_region
-      _TARGET_PROJECT_ID: var.gcp_project_id
-      _FIREBASE_PROJECT_ID: var.gcp_project_id
+      # This block should ONLY contain non-secret, underscore-prefixed values
+      _BACKEND_URL         = local.backend_url
+      _REGION              = var.gcp_region
+      _TARGET_PROJECT_ID   = var.gcp_project_id
+      _FIREBASE_PROJECT_ID = var.gcp_project_id
+      _FE_SERVICE_NAME     = var.frontend_service_name
     }
   )
 }
