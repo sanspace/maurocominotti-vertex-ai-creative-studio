@@ -20,6 +20,38 @@ steps:
     args: ['ci']
     dir: frontend
 
+  - name: 'node:20-alpine'
+    id: 'Debug Variables'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "--- SUBSTITUTIONS (from Terraform) ---"
+        echo "Backend URL: ${_BACKEND_URL}"
+        echo "Service Name: ${_FE_SERVICE_NAME}"
+        echo "-----------------------------------------"
+        echo "--- SECRETS (from Secret Manager) ---"
+        # WARNING: NEVER echo the secret value itself.
+        # This just checks if the variable is set.
+        if [ -n "$FIREBASE_API_KEY" ]; then
+          echo "FIREBASE_API_KEY: is SET"
+        else
+          echo "FIREBASE_API_KEY: is NOT SET (ERROR)"
+        fi
+        if [ -n "$GOOGLE_CLIENT_ID" ]; then
+          echo "GOOGLE_CLIENT_ID: is SET"
+        else
+          echo "GOOGLE_CLIENT_ID: is NOT SET (ERROR)"
+        fi
+        echo "-----------------------------------------"
+    dir: 'frontend'
+    # This step uses both variable types
+    env:
+      - 'BACKEND_URL=${_BACKEND_URL}'
+    secretEnv:
+      - 'FIREBASE_API_KEY'
+      - 'GOOGLE_CLIENT_ID'
+
   # 2. Inject Secrets and Config from the build environment
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'Inject Environment Variables'
@@ -37,6 +69,7 @@ steps:
       - FIREBASE_API_KEY
       - FIREBASE_AUTH_DOMAIN
       - GOOGLE_CLIENT_ID
+    waitFor: ['Debug Variables']
 
   # 3. Build the application
   - name: 'node:20-alpine' # Use the same version
