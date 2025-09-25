@@ -282,11 +282,9 @@ module "backend_service" {
   cpu = var.be_cpu
   memory = var.be_memory
   build_substitutions   = merge(var.be_build_substitutions,
-    var.be_build_substitutions,
     {
       _REGION = var.gcp_region
       _SERVICE_NAME = var.backend_service_name
-      _REPO_NAME = var.github_repo_name
     }
   )
 }
@@ -336,4 +334,17 @@ module "backend_secrets" {
   gcp_project_id    = var.gcp_project_id
   secret_names      = var.backend_secrets
   accessor_sa_email = module.backend_service.trigger_sa_email
+}
+
+# --- Cross-Module Permissions ---
+
+# Grant the Frontend's deploy trigger (which runs `firebase deploy`)
+# permission to "get" the Backend's Cloud Run service to validate the rewrite rule.
+resource "google_cloud_run_v2_service_iam_member" "fe_trigger_can_view_backend" {
+  provider = google-beta
+  project  = var.gcp_project_id
+  name     = module.backend_service.service_name
+  location = module.backend_service.location
+  role     = "roles/run.viewer"
+  member   = "serviceAccount:${module.frontend_service.trigger_sa_email}"
 }
