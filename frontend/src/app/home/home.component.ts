@@ -79,8 +79,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
   searchRequest: ImagenRequest = {
-    prompt:
-      'This cyberpunk cityscape is electrifying! The neon signs piercing through the rainy dusk create a stunning atmosphere, and the level of detail is impressive.  The reflections on the wet streets add a touch of realism, and the overall composition draws the eye deep into the scene. The play of light and shadow is particularly striking. It might benefit from a bit more variation in the neon colors to further enhance the vibrant, futuristic feel.',
+    prompt: '',
     generationModel: 'gemini-2.5-flash-image-preview',
     aspectRatio: '1:1',
     style: 'Modern',
@@ -142,64 +141,34 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }[] = [
     {
       value: '1:1',
-      viewValue: '1080x1080 \n Post',
+      viewValue: '1:1 \n Post',
       disabled: false,
       icon: 'crop_square',
     },
     {
       value: '16:9',
-      viewValue: '1200x628 \n Landscape',
+      viewValue: '16:9 \n Landscape',
       disabled: false,
       icon: 'crop_16_9',
     },
     {
       value: '9:16',
-      viewValue: '1080x1920 \n Story',
+      viewValue: '9:16 \n Story',
       disabled: false,
       icon: 'crop_portrait',
     },
     {
       value: '3:4',
-      viewValue: '1080x1350 \n Portrait',
+      viewValue: '3:4 \n Portrait',
       disabled: false,
       icon: 'crop_portrait',
     },
     {
       value: '4:3',
-      viewValue: '1000x1500 \n Pin',
+      viewValue: '4:3 \n Pin',
       disabled: false,
       icon: 'crop_landscape',
-    },
-    {
-      value: '',
-      viewValue: '300x250 \n Medium Banner',
-      disabled: true,
-      icon: 'web_asset',
-    },
-    {
-      value: '',
-      viewValue: '728x90 \n Leaderboard',
-      disabled: true,
-      icon: 'web_asset',
-    },
-    {
-      value: '',
-      viewValue: '160x600 \n Wide Skyscraper',
-      disabled: true,
-      icon: 'web_asset',
-    },
-    {
-      value: '1:2',
-      viewValue: '300x600 \n Half Page',
-      disabled: true,
-      icon: 'web_asset',
-    },
-    {
-      value: '',
-      viewValue: '970x90 \n L. Leaderboard',
-      disabled: true,
-      icon: 'web_asset',
-    },
+    }
   ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   imageStyles = [

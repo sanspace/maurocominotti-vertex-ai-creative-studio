@@ -72,8 +72,7 @@ export class VideoComponent implements AfterViewInit {
   // --- Search Request Object ---
   // This object holds the current state of all user selections.
   searchRequest: VeoRequest = {
-    prompt:
-      'Create an ad for Cymball consisting in the following: In a sunlit Scandinavian bedroom, a single, sealed Cymball box sits in the center of the otherwise empty room. From a fixed, wide-angle cinematic shot, the box trembles and opens. In a rapid, hyper-lapse sequence, furniture pieces assemble themselves precisely, quickly filling the space with a bed, wardrobe, shelves, and other decor! The action concludes as a yellow Cymball throw blanket lands perfectly on the bed, leaving a calm, fully furnished, and serene modern room. you can see the box placed in the front of the bed, with the Cymball logo at the end',
+    prompt: '',
     generationModel: 'veo-3.0-generate-preview',
     aspectRatio: '16:9',
     style: 'Modern',
@@ -105,8 +104,8 @@ export class VideoComponent implements AfterViewInit {
   selectedGenerationModel = this.generationModels[0].viewValue;
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
-      {value: '16:9', viewValue: '1200x628 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '1080x1920 \n Story', disabled: false},
+      {value: '16:9', viewValue: '16:9 \n Landscape', disabled: false},
+      {value: '9:16', viewValue: '9:16 \n Story', disabled: false},
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [
@@ -843,7 +842,11 @@ export class VideoComponent implements AfterViewInit {
     });
   }
 
-  private getMimeTypeForSelector(): 'image/*' | 'image/png' | 'video/mp4' | null {
+  private getMimeTypeForSelector():
+    | 'image/*'
+    | 'image/png'
+    | 'video/mp4'
+    | null {
     const anyInputIsPresent = !!this.image1Preview || !!this.image2Preview;
     const anyInputIsVideo = this._input1IsVideo || this._input2IsVideo;
 
