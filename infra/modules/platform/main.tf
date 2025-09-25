@@ -316,6 +316,7 @@ module "frontend_service" {
       # This block should ONLY contain non-secret, underscore-prefixed values
       _BACKEND_URL         = local.backend_url
       _FE_SERVICE_NAME     = var.frontend_service_name
+      _BACKEND_SERVICE_ID  = var.backend_service_name 
       _FIREBASE_PROJECT_ID = var.gcp_project_id
     }
   )
