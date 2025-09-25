@@ -33,11 +33,27 @@ resource "google_cloud_run_v2_service" "this" {
           memory = var.memory
         }
       }
+
+      # non secret env vars
       dynamic "env" {
         for_each = var.container_env_vars
         content {
           name  = env.key
           value = env.value
+        }
+      }
+
+      # secrets
+      dynamic "env" {
+        for_each = var.runtime_secrets
+        content {
+          name = env.key # The ENV_VAR_NAME
+          value_source {
+            secret_key_ref {
+              secret  = env.value # The SECRET_NAME
+              version = "latest"
+            }
+          }
         }
       }
     }

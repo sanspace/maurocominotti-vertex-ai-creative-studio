@@ -275,6 +275,7 @@ module "backend_service" {
   cloudbuild_yaml_path  = "backend/cloudbuild.yaml"
   included_files_glob   = ["backend/**"]
   container_env_vars    = local.backend_env_vars
+  runtime_secrets = var.backend_runtime_secrets
   custom_audiences      = var.backend_custom_audiences
   scaling_min_instances = 1
   source_repository_id = google_cloudbuildv2_repository.source_repo.id
@@ -318,4 +319,20 @@ module "frontend_service" {
       _FIREBASE_PROJECT_ID: var.gcp_project_id
     }
   )
+}
+
+module "frontend_secrets" {
+  source = "../secret-manager"
+
+  gcp_project_id    = var.gcp_project_id
+  secret_names      = var.frontend_secrets
+  accessor_sa_email = module.frontend_service.trigger_sa_email
+}
+
+module "backend_secrets" {
+  source = "../secret-manager"
+
+  gcp_project_id    = var.gcp_project_id
+  secret_names      = var.backend_secrets
+  accessor_sa_email = module.backend_service.trigger_sa_email
 }

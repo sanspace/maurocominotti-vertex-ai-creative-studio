@@ -33,6 +33,20 @@ fe_build_substitutions = {
   _ANGULAR_BUILD_COMMAND = "build-dev"
 }
 
+frontend_secrets = [
+  "FIREBASE_API_KEY",
+  "FIREBASE_AUTH_DOMAIN",
+  "GOOGLE_CLIENT_ID",
+]
+
+backend_secrets = [
+  "GOOGLE_TOKEN_AUDIENCE",
+]
+
+backend_runtime_secrets = {
+  "GOOGLE_TOKEN_AUDIENCE" = "GOOGLE_TOKEN_AUDIENCE"
+}
+
 apis_to_enable = [
   "serviceusage.googleapis.com",     # Required to enable other APIs
   "iam.googleapis.com",              # Required for IAM management
@@ -48,4 +62,5 @@ apis_to_enable = [
   "iamcredentials.googleapis.com",
   "aiplatform.googleapis.com",
   "firestore.googleapis.com",
+  "secretmanager.googleapis.com", # Required for Secrets
 ]

@@ -98,3 +98,8 @@ variable "memory" {
   default = "2048Mi"
 }
 
+variable "runtime_secrets" {
+  type        = map(string)
+  description = "A map of ENV_VAR_NAME = SECRET_NAME to mount at runtime."
+  default     = {}
+}

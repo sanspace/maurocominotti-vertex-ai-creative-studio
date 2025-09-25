@@ -76,6 +76,24 @@ variable "fe_build_substitutions" {
   default     = {}
 }
 
+variable "frontend_secrets" {
+  type        = list(string)
+  description = "A list of secret names required by the frontend build."
+  default = []
+}
+
+variable "backend_secrets" {
+  type        = list(string)
+  description = "A list of secret names required by the backend build."
+  default = []
+}
+
+variable "backend_runtime_secrets" {
+  type        = map(string)
+  description = "Secrets to mount in the backend container at runtime."
+}
+
+
 # --- List of APIs to enable ---
 variable "apis_to_enable" {
   type        = list(string)

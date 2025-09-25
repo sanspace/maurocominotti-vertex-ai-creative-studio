@@ -53,3 +53,21 @@ variable "fe_memory" {
   type = string
   default = "2048Mi"
 }
+
+variable "frontend_secrets" {
+  type        = list(string)
+  description = "A list of secret names required by the frontend build."
+  default     = []
+}
+
+variable "backend_secrets" {
+  type        = list(string)
+  description = "A list of secret names required by the backend build."
+  default     = []
+}
+
+variable "backend_runtime_secrets" {
+  type        = map(string)
+  description = "Secrets to mount in the backend container at runtime."
+  default     = {}
+}
