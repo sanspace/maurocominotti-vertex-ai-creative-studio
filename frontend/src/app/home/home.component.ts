@@ -68,7 +68,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   sourceMediaItems: (SourceMediaItemLink | null)[] = [];
   activeWorkspaceId$: Observable<string | null>;
 
-  @HostListener('window:keydown.control.enter', ['$event'])
+  @HostListener('window:keydown.control.enter', ['$event']) 
   handleCtrlEnter(event: KeyboardEvent) {
     if (!this.isLoading) {
       event.preventDefault();
@@ -89,6 +89,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     composition: null,
     addWatermark: false,
     negativePrompt: '',
+    useBrandGuidelines: false,
   };
 
   // --- Negative Prompt Chips ---
@@ -575,6 +576,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       composition: null,
       addWatermark: false,
       negativePrompt: '',
+      useBrandGuidelines: false,
     };
   }
 

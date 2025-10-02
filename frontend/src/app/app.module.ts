@@ -79,6 +79,7 @@ import {ImageSelectorComponent} from './common/components/image-selector/image-s
 import {MatDialogModule} from '@angular/material/dialog';
 import {SourceAssetGalleryComponent} from './common/components/source-asset-gallery/source-asset-gallery.component';
 import {SharedModule} from './common/shared.module';
+import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 
 @NgModule({
   declarations: [
@@ -128,6 +129,7 @@ import {SharedModule} from './common/shared.module';
     MatTabsModule,
     MatDialogModule,
     SharedModule,
+    MatSlideToggleModule,
   ],
   providers: [
     provideClientHydration(),

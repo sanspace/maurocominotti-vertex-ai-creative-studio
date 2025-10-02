@@ -31,13 +31,13 @@
     <ng-template #videoOrGallery>
 
       <ng-container *ngIf="activeVideoJob$ | async as job">
-        <div *ngIf="job.status === JobStatus.PROCESSING" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
+        <div *ngIf="job.status === JobStatus.PROCESSING" class="fixed inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
           <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
           <p class="mt-4 text-white text-lg">Your video is being generated...</p>
           <p class="text-gray-400 text-sm">This may take a few minutes. You can safely navigate away.</p>
         </div>
 
-        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
+        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="fixed inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
           <mat-icon class="text-red-500 !w-16 !h-16 !text-6xl">error_outline</mat-icon>
           <p class="mt-4 text-white text-lg">Video Generation Failed</p>
           <p class="text-gray-400 text-sm max-w-md">{{ job.errorMessage || job.error_message }}</p>
@@ -350,6 +350,19 @@
             </mat-form-field>
           </div>
         </mat-menu>
+      </div>
+      <div
+        matTooltip="Enable Brand Guidelines"
+        class="cursor-pointer w-32 inline-flex flex-col justify-start items-center"
+      >
+        <mat-slide-toggle
+          [(ngModel)]="searchRequest.useBrandGuidelines"
+          class="!w-16 !h-16 !shadow-none text-center !flex justify-center items-center text-stone-300"
+        >
+        </mat-slide-toggle>
+        <div class="text-center justify-center text-neutral-200 text-base mt-2">
+          Brand Guidelines
+        </div>
       </div>
 
       <!-- <div

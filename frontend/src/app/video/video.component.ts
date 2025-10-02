@@ -41,7 +41,7 @@ export class VideoComponent implements AfterViewInit {
   activeVideoJob$: Observable<MediaItem | null>;
   public readonly JobStatus = JobStatus; // Expose enum to the template
 
-  @HostListener('window:keydown.control.enter', ['$event'])
+  @HostListener('window:keydown.control.enter', ['$event']) 
   handleCtrlEnter(event: KeyboardEvent) {
     if (!this.isLoading) {
       event.preventDefault();
@@ -83,6 +83,7 @@ export class VideoComponent implements AfterViewInit {
     negativePrompt: '',
     generateAudio: true,
     durationSeconds: 8,
+    useBrandGuidelines: false,
   };
 
   // --- Negative Prompt Chips ---
@@ -498,6 +499,7 @@ export class VideoComponent implements AfterViewInit {
       negativePrompt: '',
       generateAudio: true,
       durationSeconds: 8,
+      useBrandGuidelines: false,
     };
   }
 

@@ -29,6 +29,7 @@ export type ImagenRequest = {
   sourceAssetIds?: string[];
   sourceMediaItems?: SourceMediaItemLink[];
   workspaceId?: string;
+  useBrandGuidelines: boolean;
 };
 
 export type SourceMediaItemLink = {
@@ -54,6 +55,7 @@ export type VeoRequest = {
   sourceVideoAssetId?: string;
   sourceMediaItems?: SourceMediaItemLink[];
   workspaceId?: string;
+  useBrandGuidelines: boolean;
 };
 
 export type SearchResponse = {

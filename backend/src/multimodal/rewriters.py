@@ -378,6 +378,44 @@ Example 3 of prompts if no styling properties ('style', 'color_and_tone', 'light
 }
 
 
+Example 4 of prompts if styling properties ('style', 'color_and_tone', 'lighting' and 'composition') are empty strings then 'visual_style' should return emtpy:
+{
+  "metadata": {
+    "prompt_name": "Simple Scene",
+    "version": 1.0,
+    "target_model": "Veo",
+    "core_concept": "A person walking in a park."
+  },
+  "scene_setup": {
+    "environment": "A sunny park with green grass and trees.",
+    "mood": "Peaceful, calm.",
+    "key_objects": [
+      "A person",
+      "Trees",
+      "Grass"
+    ]
+  },
+  "visual_style": null,
+  "camera_directives": null,
+  "timeline": [
+  {
+    "sequence_id": 1,
+    "timestamp": "00:00-00:05",
+    "action": "A person walks from left to right.",
+    "camera_instruction": "Follow the person.",
+    "audio_description": "Footsteps, birds chirping."
+  }
+  ],
+  "constraints": {
+    "negative_prompts": [
+      "no cars",
+      "no buildings"
+    ]
+  },
+  "final_summary_prompt": "A person walking in a sunny park."
+}
+
+
 Example of a General Prompt for you to replace with the information received:
 {
   "metadata": {

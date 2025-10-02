@@ -384,6 +384,20 @@
           </button>
         </mat-menu>
       </div>
+
+      <div
+        matTooltip="Enable Brand Guidelines"
+        class="cursor-pointer w-32 inline-flex flex-col justify-start items-center"
+      >
+        <mat-slide-toggle
+          [(ngModel)]="searchRequest.useBrandGuidelines"
+          class="!w-16 !h-16 !shadow-none text-center !flex justify-center items-center text-stone-300"
+        >
+        </mat-slide-toggle>
+        <div class="text-center justify-center text-neutral-200 text-base mt-2">
+          Brand Guidelines
+        </div>
+      </div>
       <!-- <div
         matTooltip="Replay Last Execution"
         class="cursor-pointer w-12 h-12 bg-black rounded-3xl flex justify-center items-center gap-2.5 overflow-hidden mt-4"
