@@ -106,6 +106,10 @@
   gap: 0.5rem;
 }
 
+.menu-item-selected {
+  background: linear-gradient(to right, #3b82f6, #8b5cf6, #f87171);
+}
+
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 375px) {
   .title-font {

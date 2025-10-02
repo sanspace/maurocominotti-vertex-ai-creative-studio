@@ -82,11 +82,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     prompt: '',
     generationModel: 'gemini-2.5-flash-image-preview',
     aspectRatio: '1:1',
-    style: 'Modern',
     numberOfMedia: 4,
-    lighting: 'Cinematic',
-    colorAndTone: 'Vibrant',
-    composition: 'Closeup',
+    style: null,
+    lighting: null,
+    colorAndTone: null,
+    composition: null,
     addWatermark: false,
     negativePrompt: '',
   };
@@ -168,7 +168,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       viewValue: '4:3 \n Pin',
       disabled: false,
       icon: 'crop_landscape',
-    }
+    },
   ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   imageStyles = [
@@ -410,23 +410,33 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   selectImageStyle(style: string): void {
-    this.searchRequest.style = style;
+    this.searchRequest.style === style
+      ? (this.searchRequest.style = null)
+      : (this.searchRequest.style = style);
   }
 
   selectLighting(lighting: string): void {
-    this.searchRequest.lighting = lighting;
+    this.searchRequest.lighting === lighting
+      ? (this.searchRequest.lighting = null)
+      : (this.searchRequest.lighting = lighting);
   }
 
   selectColor(color: string): void {
-    this.searchRequest.colorAndTone = color;
+    this.searchRequest.colorAndTone === color
+      ? (this.searchRequest.colorAndTone = null)
+      : (this.searchRequest.colorAndTone = color);
   }
 
   selectNumberOfImages(num: number): void {
-    this.searchRequest.numberOfMedia = num;
+    this.searchRequest.numberOfMedia === num
+      ? (this.searchRequest.numberOfMedia = 4)
+      : (this.searchRequest.numberOfMedia = num);
   }
 
   selectComposition(composition: string): void {
-    this.searchRequest.composition = composition;
+    this.searchRequest.composition === composition
+      ? (this.searchRequest.composition = null)
+      : (this.searchRequest.composition = composition);
   }
 
   selectWatermark(option: {value: boolean; viewValue: string}): void {
@@ -558,11 +568,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       prompt: '',
       generationModel: 'gemini-2.5-flash-image-preview',
       aspectRatio: '1:1',
-      style: 'Modern',
       numberOfMedia: 4,
-      lighting: 'Cinematic',
-      colorAndTone: 'Vibrant',
-      composition: 'Closeup',
+      style: null,
+      lighting: null,
+      colorAndTone: null,
+      composition: null,
       addWatermark: false,
       negativePrompt: '',
     };

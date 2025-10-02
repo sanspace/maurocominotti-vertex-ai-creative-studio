@@ -201,12 +201,13 @@
           <mat-icon>style</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.style }}
+          {{ searchRequest.style ? searchRequest.style : 'Style' }}
         </div>
         <mat-menu #imageStylingMenu="matMenu">
           <button
             *ngFor="let style of imageStyles"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.style === style}"
             (click)="selectImageStyle(style)"
           >
             <span>{{ style }}</span>
@@ -226,12 +227,13 @@
           <mat-icon>palette</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.colorAndTone }}
+          {{ searchRequest.colorAndTone ? searchRequest.colorAndTone : 'Color & Tone' }}
         </div>
         <mat-menu #colorMenu="matMenu">
           <button
             *ngFor="let color of colorsAndTones"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.colorAndTone === color}"
             (click)="selectColor(color)"
           >
             <span>{{ color }}</span>
@@ -251,12 +253,13 @@
           <mat-icon svgIcon="lighting-icon"></mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.lighting }}
+          {{ searchRequest.lighting ? searchRequest.lighting : 'Lighting' }}
         </div>
         <mat-menu #lightingMenu="matMenu">
           <button
             *ngFor="let light of lightings"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.lighting === light}"
             (click)="selectLighting(light)"
           >
             <span>{{ light }}</span>
@@ -302,12 +305,13 @@
           <mat-icon>movie_edit</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.composition }}
+          {{ searchRequest.composition ? searchRequest.composition : 'Composition' }}
         </div>
         <mat-menu #compositionMenu="matMenu">
           <button
             *ngFor="let comp of compositions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.composition === comp}"
             (click)="selectComposition(comp)"
           >
             <span>{{ comp }}</span>
@@ -468,4 +472,5 @@
       </div>
     </div>
   </div>
+
 </div>

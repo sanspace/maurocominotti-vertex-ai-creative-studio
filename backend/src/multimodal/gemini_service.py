@@ -28,15 +28,11 @@ from tenacity import (
     wait_exponential,
 )
 
-from src.brand_guidelines.dto.brand_guideline_search_dto import (
-    BrandGuidelineSearchDto,
-)
+from src.brand_guidelines.dto.brand_guideline_search_dto import BrandGuidelineSearchDto
 from src.brand_guidelines.repository.brand_guideline_repository import (
     BrandGuidelineRepository,
 )
-from src.brand_guidelines.schema.brand_guideline_model import (
-    BrandGuidelineModel,
-)
+from src.brand_guidelines.schema.brand_guideline_model import BrandGuidelineModel
 from src.common.base_dto import GenerationModelEnum
 from src.config.config_service import config_service
 from src.images.dto.create_imagen_dto import CreateImagenDto
@@ -187,6 +183,11 @@ class GeminiService:
         json_string = dto.model_dump_json(exclude_unset=True)
         fields = json.loads(json_string)
 
+        # Ensure style parameters are included as empty strings if not provided
+        for param in ["style", "color_and_tone", "lighting", "composition"]:
+            if param not in fields:
+                fields[param] = ""
+
         # The main 'prompt' field is the base, others are attributes
         prompt_base = fields.pop("prompt", "")
 
@@ -264,7 +265,7 @@ class GeminiService:
             return dto.prompt
 
         # --- Prepend Brand Guidelines if available ---
-        if dto.workspace_id and not is_gemini_i2i:
+        if dto.use_brand_guidelines and dto.workspace_id and not is_gemini_i2i:
             search_dto = BrandGuidelineSearchDto(
                 workspace_id=dto.workspace_id, limit=1
             )

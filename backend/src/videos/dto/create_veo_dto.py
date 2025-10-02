@@ -45,8 +45,8 @@ class CreateVeoDto(BaseDto):
         le=4,
         description="Number of videos to generate (between 1 and 4).",
     )
-    style: StyleEnum = Field(
-        default=StyleEnum.MODERN, description="Style of the image."
+    style: Optional[StyleEnum] = Field(
+        default=None, description="Style of the image."
     )
     negative_prompt: str = Field(
         default="", description="Negative prompt for the image."
@@ -86,6 +86,10 @@ class CreateVeoDto(BaseDto):
     source_media_items: Optional[list[SourceMediaItemLink]] = Field(
         default=None,
         description="A list of previously generated media items (from the gallery) to be used as inputs (e.g., start/end frames).",
+    )
+    use_brand_guidelines: bool = Field(
+        default=False,
+        description="Whether to prepend brand guidelines to the prompt.",
     )
 
     @field_validator("prompt")

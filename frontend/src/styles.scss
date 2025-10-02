@@ -49,6 +49,7 @@ $creative-studio-theme: mat.define-theme((
   @include mat.all-component-themes($creative-studio-theme);
 
   --color-bg1: #2e3031;
+  --color-primary-value: #{mat.get-theme-color($creative-studio-theme, primary)};
   --color-bg2: #2e3031;
   --color1: 238, 77, 93; // #EE4D5D red
   --color2: 45, 124, 239; // #2D7CEF dark blue

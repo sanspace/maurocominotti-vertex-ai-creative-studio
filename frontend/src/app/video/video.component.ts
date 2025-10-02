@@ -75,11 +75,11 @@ export class VideoComponent implements AfterViewInit {
     prompt: '',
     generationModel: 'veo-3.0-generate-preview',
     aspectRatio: '16:9',
-    style: 'Modern',
     numberOfMedia: 4,
-    lighting: 'Cinematic',
-    colorAndTone: 'Vibrant',
-    composition: 'Closeup',
+    style: null,
+    lighting: null,
+    colorAndTone: null,
+    composition: null,
     negativePrompt: '',
     generateAudio: true,
     durationSeconds: 8,
@@ -260,15 +260,21 @@ export class VideoComponent implements AfterViewInit {
   }
 
   selectVideoStyle(style: string): void {
-    this.searchRequest.style = style;
+    this.searchRequest.style === style
+      ? (this.searchRequest.style = null)
+      : (this.searchRequest.style = style);
   }
 
   selectLighting(lighting: string): void {
-    this.searchRequest.lighting = lighting;
+    this.searchRequest.lighting === lighting
+      ? (this.searchRequest.lighting = null)
+      : (this.searchRequest.lighting = lighting);
   }
 
   selectColor(color: string): void {
-    this.searchRequest.colorAndTone = color;
+    this.searchRequest.colorAndTone === color
+      ? (this.searchRequest.colorAndTone = null)
+      : (this.searchRequest.colorAndTone = color);
   }
 
   selectNumberOfVideos(num: number): void {
@@ -280,7 +286,9 @@ export class VideoComponent implements AfterViewInit {
   }
 
   selectComposition(composition: string): void {
-    this.searchRequest.composition = composition;
+    this.searchRequest.composition === composition
+      ? (this.searchRequest.composition = null)
+      : (this.searchRequest.composition = composition);
   }
 
   toggleAudio(): void {
@@ -482,11 +490,11 @@ export class VideoComponent implements AfterViewInit {
       prompt: '',
       generationModel: 'veo-3.0-generate-preview',
       aspectRatio: '16:9',
-      style: 'Modern',
       numberOfMedia: 4,
-      lighting: 'Cinematic',
-      colorAndTone: 'Vibrant',
-      composition: 'Closeup',
+      style: null,
+      lighting: null,
+      colorAndTone: null,
+      composition: null,
       negativePrompt: '',
       generateAudio: true,
       durationSeconds: 8,
@@ -557,7 +565,7 @@ export class VideoComponent implements AfterViewInit {
     }
   }
 
-  openImageSelector(imageNumber: 1 | 2) {
+  openImageSelector(imageNumber: 1 | 2): void {
     const dialogRef = this.dialog.open(ImageSelectorComponent, {
       width: '90vw',
       height: '80vh',
