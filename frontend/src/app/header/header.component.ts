@@ -23,6 +23,9 @@ import {AuthService} from '../common/services/auth.service';
 import {environment} from '../../environments/environment';
 import {UserModel} from '../common/models/user.model';
 import {animate, style, transition, trigger} from '@angular/animations';
+import {BreakpointObserver, Breakpoints} from '@angular/cdk/layout';
+import {Subject} from 'rxjs';
+import {takeUntil} from 'rxjs/operators';
 
 @Component({
   selector: 'app-header',
@@ -46,10 +49,13 @@ import {animate, style, transition, trigger} from '@angular/animations';
     ]),
   ],
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnDestroy {
   currentUser: UserModel | null;
   menuFixed = false;
   menuIsHovered = false;
+
+  isDesktop = false;
+  private readonly destroy$ = new Subject<void>();
 
   constructor(
     private sanitizer: DomSanitizer,
@@ -57,6 +63,7 @@ export class HeaderComponent {
     public router: Router,
     public userService: UserService,
     public authService: AuthService,
+    private breakpointObserver: BreakpointObserver,
   ) {
     this.matIconRegistry
       .addSvgIcon(
@@ -69,6 +76,18 @@ export class HeaderComponent {
       );
 
     this.currentUser = this.userService.getUserDetails();
+
+    this.breakpointObserver
+      .observe([Breakpoints.Medium, Breakpoints.Large, Breakpoints.XLarge])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        this.isDesktop = result.matches;
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private path = '../../assets/images';
@@ -91,7 +110,7 @@ export class HeaderComponent {
 
   getTooltipText() {
     return this.menuFixed
-      ? `Hey there ${this.currentUser?.name?.split(' ')?.[0] || ''}!! Click to make the menu dynamic`
+      ? `Hey there ${this.currentUser?.name?.split(' ')?.[0] || ''}! Click to make the menu dynamic`
       : 'Click to make the menu fixed';
   }
 }

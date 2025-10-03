@@ -7,15 +7,29 @@
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
+ * Unless required by a`p`plicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
 
+// --- Start: Mobile Fix ---
+:host {
+  // This positions the workspace switcher at the top on mobile
+  app-workspace-switcher {
+    position: fixed;
+    bottom: 10vh;
+    left: 20vw;
+    transform: translateX(-10%);
+    z-index: 100;
+    width: 80vw;
+  }
+}
+// --- End: Mobile Fix ---
+
 .mat-menu-floating {
-  // Mobile styles remain the same
+  // Mobile styles
   bottom: 2.5vh;
   left: 2.5vw;
   width: 95vw;
@@ -23,9 +37,10 @@
   justify-content: center;
   align-items: center;
   flex-direction: row;
-  padding: 16px 0 18px 0;
+  padding: 16px;
   gap: 0.5rem;
   transition: height 0.3s ease-in-out;
+  overflow: hidden; // --- Start: Mobile Fix --- This clips the scrolling content
 
   .menu-items {
     display: flex;
@@ -52,6 +67,16 @@
 
 // Medium devices (tablets, 768px and up)
 @media (min-width: 768px) {
+  // --- Start: Mobile Fix ---
+  :host {
+    // This resets the switcher's position on larger screens
+    app-workspace-switcher {
+      position: static;
+      transform: none;
+    }
+  }
+  // --- End: Mobile Fix ---
+
   .mat-menu-floating {
     bottom: auto;
     top: 10vh;
@@ -62,12 +87,8 @@
     align-items: center;
     flex-direction: column;
     padding: 7px 0 8px 0;
-
-    // --- Start: The Fix ---
-    max-height: 4.5rem; // 1. Use max-height instead of height
-    overflow: hidden; // 2. Add overflow to clip the content as it animates
-    transition: max-height 0.4s ease-in-out; // 3. Transition max-height
-    // --- End: The Fix ---
+    max-height: 4.5rem;
+    transition: max-height 0.4s ease-in-out;
 
     .user-profile-button {
       flex-shrink: 0;
@@ -82,7 +103,6 @@
     &:hover,
     &.fixed-menu {
       max-height: 50rem;
-      // 2. No need to change justify-content on hover anymore
     }
   }
 }
@@ -105,12 +125,8 @@
     justify-content: flex-start;
     align-items: center;
     flex-direction: column;
-
-    // --- Start: The Fix ---
-    max-height: 4.5rem; // 1. Use max-height instead of height
-    overflow: hidden; // 2. Add overflow to clip the content as it animates
-    transition: max-height 0.4s ease-in-out; // 3. Transition max-height
-    // --- End: The Fix ---
+    max-height: 4.5rem;
+    transition: max-height 0.4s ease-in-out;
 
     .user-profile-button {
       flex-shrink: 0;
