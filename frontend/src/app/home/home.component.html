@@ -133,6 +133,7 @@
             *ngFor="let ratio of aspectRatioOptions"
             [disabled]="ratio.disabled"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.aspectRatio=== ratio.value}"
             (click)="selectAspectRatio(ratio)"
           >
             <mat-icon>{{ ratio.icon }}</mat-icon>
@@ -169,6 +170,7 @@
           <button
             *ngFor="let model of generationModels"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.generationModel === model.value}"
             (click)="selectModel(model)"
           >
             <img
@@ -286,6 +288,7 @@
           <button
             *ngFor="let num of numberOfImagesOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.numberOfMedia === num}"
             (click)="selectNumberOfImages(num)"
           >
             <span>{{ num }}</span>
@@ -378,6 +381,7 @@
           <button
             *ngFor="let option of watermarkOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.addWatermark === option.value}"
             (click)="selectWatermark(option)"
           >
             <span>{{ option.viewValue }}</span>
@@ -488,3 +492,4 @@
   </div>
 
 </div>
+>

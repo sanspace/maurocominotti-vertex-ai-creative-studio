@@ -105,6 +105,7 @@
             *ngFor="let ratio of aspectRatioOptions"
             [disabled]="ratio.disabled"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.aspectRatio=== ratio.value}"
             (click)="selectAspectRatio(ratio)"
           >
             <span>{{ ratio.viewValue }}</span>
@@ -129,6 +130,7 @@
           <button
             *ngFor="let model of generationModels"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.generationModel === model.value}"
             (click)="selectModel(model)"
           >
             <span>{{ model.viewValue }}</span>
@@ -232,6 +234,7 @@
           <button
             *ngFor="let num of numberOfVideosOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.numberOfMedia === num}"
             (click)="selectNumberOfVideos(num)"
           >
             <span>{{ num }}</span>
@@ -256,6 +259,7 @@
           <button
             *ngFor="let duration of durationOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.durationSeconds === duration}"
             (click)="selectDuration(duration)"
           >
             <span>{{ duration }}s</span>
