@@ -30,6 +30,7 @@ import {UserModel} from '../common/models/user.model';
 })
 export class HeaderComponent {
   currentUser: UserModel | null;
+  menuFixed = false;
 
   constructor(
     private sanitizer: DomSanitizer,
@@ -63,5 +64,9 @@ export class HeaderComponent {
 
   navigate() {
     void this.router.navigateByUrl('/');
+  }
+
+  toggleMenu() {
+    this.menuFixed = !this.menuFixed;
   }
 }

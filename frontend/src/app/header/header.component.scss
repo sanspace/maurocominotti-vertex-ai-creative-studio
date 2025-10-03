@@ -24,6 +24,7 @@
   flex-direction: row;
   padding: 16px 0 18px 0;
   gap: .5rem;
+  transition: height 0.3s ease-in-out;
 }
 
 // Small devices (landscape phones, 576px and up)
@@ -37,11 +38,32 @@
     top: 10vh;
     left: 5vw;
     width: 4.5rem;
+    height: 4.5rem;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    padding: 10px 0
+    padding: 10px 0;
+
+    .menu-items {
+      display: none;
+    }
+
+    &:hover {
+      height: auto;
+      .menu-items {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    &.fixed-menu {
+      height: auto;
+      .menu-items {
+        display: flex;
+        flex-direction: column;
+      }
+    }
   }
 }
 
@@ -59,10 +81,30 @@
     top: 11vh;
     left: 3vw;
     width: 4.5rem;
+    height: 4.5rem;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     padding: 16px 0 18px 0;
+
+    .menu-items {
+      display: none;
+    }
+
+    &:hover {
+      height: auto;
+      .menu-items {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    &.fixed-menu {
+      height: auto;
+      .menu-items {
+        display: flex;
+        flex-direction: column;
+      }
+    }
   }
 }
