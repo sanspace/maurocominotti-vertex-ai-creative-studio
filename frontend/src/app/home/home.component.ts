@@ -406,8 +406,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedGenerationModelObject = model;
   }
 
-  selectAspectRatio(ratio: string): void {
-    this.searchRequest.aspectRatio = ratio;
+  selectAspectRatio(ratio: {value: string; viewValue: string}): void {
+    this.searchRequest.aspectRatio = ratio.value;
+    this.selectedAspectRatio = ratio.viewValue;
   }
 
   selectImageStyle(style: string): void {
@@ -631,7 +632,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
               role: 'input',
             };
             this[targetPreview] =
-              selection.mediaItem.presignedUrls?.[selection.selectedIndex || 0] || null;
+              selection.mediaItem.presignedUrls?.[
+                selection.selectedIndex || 0
+              ] || null;
             this[targetAssetId] = null;
           }
         }

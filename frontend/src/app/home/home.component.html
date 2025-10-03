@@ -133,7 +133,7 @@
             *ngFor="let ratio of aspectRatioOptions"
             [disabled]="ratio.disabled"
             mat-menu-item
-            (click)="selectAspectRatio(ratio.value)"
+            (click)="selectAspectRatio(ratio)"
           >
             <mat-icon>{{ ratio.icon }}</mat-icon>
             <span>{{ ratio.viewValue }}</span>

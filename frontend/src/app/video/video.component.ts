@@ -250,14 +250,9 @@ export class VideoComponent implements AfterViewInit {
     }
   }
 
-  selectAspectRatio(ratio: string): void {
-    this.searchRequest.aspectRatio = ratio;
-    const selectedOption = this.aspectRatioOptions.find(
-      opt => opt.value === ratio,
-    );
-    if (selectedOption) {
-      this.selectedAspectRatio = selectedOption.viewValue;
-    }
+  selectAspectRatio(ratio: {value: string; viewValue: string}): void {
+    this.searchRequest.aspectRatio = ratio.value;
+    this.selectedAspectRatio = ratio.viewValue;
   }
 
   selectVideoStyle(style: string): void {
