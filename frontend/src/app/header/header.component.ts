@@ -22,15 +22,34 @@ import {UserService} from '../common/services/user.service';
 import {AuthService} from '../common/services/auth.service';
 import {environment} from '../../environments/environment';
 import {UserModel} from '../common/models/user.model';
+import {animate, style, transition, trigger} from '@angular/animations';
 
 @Component({
   selector: 'app-header',
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.scss'],
+  animations: [
+    trigger('fadeSlideInOut', [
+      transition(':enter', [
+        style({opacity: 0, transform: 'translateY(-10px)'}),
+        animate(
+          '300ms ease-in-out',
+          style({opacity: 1, transform: 'translateY(0)'}),
+        ),
+      ]),
+      transition(':leave', [
+        animate(
+          '300ms ease-in-out',
+          style({opacity: 0, transform: 'translateY(-10px)'}),
+        ),
+      ]),
+    ]),
+  ],
 })
 export class HeaderComponent {
   currentUser: UserModel | null;
   menuFixed = false;
+  menuIsHovered = false;
 
   constructor(
     private sanitizer: DomSanitizer,

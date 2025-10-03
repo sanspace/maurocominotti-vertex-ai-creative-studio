@@ -16,7 +16,11 @@
 
 <app-workspace-switcher></app-workspace-switcher>
 
-<div class="mat-menu-floating p-3 fixed bg-gradient-to-b from-zinc-500/50 to-neutral-700/20 rounded-[48px] shadow-[2px_2px_12px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-stone-300/80 backdrop-blur-[10px] z-[100]" [class.fixed-menu]="menuFixed">
+<div
+    [class.fixed-menu]="menuFixed"
+    (mouseenter)="menuIsHovered = true"
+    (mouseleave)="menuIsHovered = false"
+    class="mat-menu-floating p-3 fixed bg-gradient-to-b from-zinc-500/50 to-neutral-700/20 rounded-[48px] shadow-[2px_2px_12px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-stone-300/80 backdrop-blur-[10px] z-[100]" [class.fixed-menu]="menuFixed">
 
     <div
       (click)="toggleMenu()"
@@ -33,7 +37,8 @@
         <mat-icon class="m-auto">account_circle</mat-icon>
       </ng-template>
     </div>
-    <div class="menu-items">
+
+    <div *ngIf="menuIsHovered || menuFixed" class="menu-items" [@fadeSlideInOut]>
     <div matTooltip="Creative Studio" matTooltipPosition="right" class="md:mb-[10px] cursor-pointer w-14 h-14 bg-blend-soft-light bg-white/40 rounded-[48px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] outline outline-1 outline-offset-[-1px] outline-stone-300/80 backdrop-blur-2xl inline-flex justify-start items-start gap-2.5">
       <div *ngIf="router.isActive('/', true)" class="flex-1 h-14 bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 rounded-full blur-[3px] backdrop-blur-md"></div>
       <div class="w-6 h-6 left-[16px] top-[16px] absolute overflow-hidden">
