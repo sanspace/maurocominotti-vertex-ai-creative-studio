@@ -495,7 +495,45 @@ resource "google_firestore_index" "source_assets_user_crtd_mime_name" {
   }
 }
 
+# Index for: source_assets by scope, created_at, __name__
+resource "google_firestore_index" "source_assets_scope_crtd_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
 
+  fields {
+    field_path = "scope"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: source_assets by asset_type, created_at, __name__
+resource "google_firestore_index" "source_assets_assettype_crtd_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "asset_type"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
 
 # --- END OF NEW source_assets INDEXES ---
 

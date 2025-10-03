@@ -41,7 +41,7 @@ export class VideoComponent implements AfterViewInit {
   activeVideoJob$: Observable<MediaItem | null>;
   public readonly JobStatus = JobStatus; // Expose enum to the template
 
-  @HostListener('window:keydown.control.enter', ['$event']) 
+  @HostListener('window:keydown.control.enter', ['$event'])
   handleCtrlEnter(event: KeyboardEvent) {
     if (!this.isLoading) {
       event.preventDefault();
@@ -110,39 +110,39 @@ export class VideoComponent implements AfterViewInit {
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [
-    'Photorealistic',
     'Cinematic',
-    'Modern',
-    'Realistic',
-    'Vintage',
-    'Monochrome',
     'Fantasy',
+    'Modern',
+    'Monochrome',
+    'Photorealistic',
+    'Realistic',
     'Sketch',
+    'Vintage',
   ];
   lightings = [
-    'Cinematic',
-    'Studio',
-    'Natural',
-    'Dramatic',
     'Ambient',
     'Backlighting',
+    'Cinematic',
+    'Dramatic',
     'Dramatic Light',
-    'Golden Hour',
     'Exposure',
+    'Golden Hour',
     'Low Lighting',
     'Multiexposure',
+    'Natural',
+    'Studio',
     'Studio Light',
   ];
   colorsAndTones = [
-    'Vibrant',
-    'Muted',
-    'Warm',
-    'Cool',
-    'Monochrome',
     'Black & White',
+    'Cool',
     'Golden',
+    'Monochrome',
+    'Muted',
     'Pastel',
     'Toned',
+    'Vibrant',
+    'Warm',
   ];
   numberOfVideosOptions = [1, 2, 3, 4];
   durationOptions = [8];

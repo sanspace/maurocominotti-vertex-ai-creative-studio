@@ -173,39 +173,39 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   imageStyles = [
-    'Photorealistic',
     'Cinematic',
-    'Modern',
-    'Realistic',
-    'Vintage',
-    'Monochrome',
     'Fantasy',
+    'Modern',
+    'Monochrome',
+    'Photorealistic',
+    'Realistic',
     'Sketch',
+    'Vintage',
   ];
   lightings = [
-    'Cinematic',
-    'Studio',
-    'Natural',
-    'Dramatic',
     'Ambient',
     'Backlighting',
+    'Cinematic',
+    'Dramatic',
     'Dramatic Light',
-    'Golden Hour',
     'Exposure',
+    'Golden Hour',
     'Low Lighting',
     'Multiexposure',
+    'Natural',
+    'Studio',
     'Studio Light',
   ];
   colorsAndTones = [
-    'Vibrant',
-    'Muted',
-    'Warm',
-    'Cool',
-    'Monochrome',
     'Black & White',
+    'Cool',
     'Golden',
+    'Monochrome',
+    'Muted',
     'Pastel',
     'Toned',
+    'Vibrant',
+    'Warm',
   ];
   numberOfImagesOptions = [1, 2, 3, 4];
   compositions = [
