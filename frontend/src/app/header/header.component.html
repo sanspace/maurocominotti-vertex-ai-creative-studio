@@ -24,7 +24,8 @@
 
     <div
       (click)="toggleMenu()"
-      [matTooltip]="menuFixed ? 'Hey there ' + (currentUser?.name?.split(' ')?.[0] || '') + '!' : 'Click to make the menu fixed'"
+      [matTooltip]="getTooltipText()"
+      matTooltipClass="multiline-tooltip"
       matTooltipPosition="right"
       class="user-profile-button cursor-pointer w-14 h-14 bg-blend-soft-light bg-white/40 rounded-[48px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] backdrop-blur-2xl inline-flex justify-center items-center gap-2.5 overflow-hidden"
       >

@@ -15,6 +15,7 @@
  */
 
 .mat-menu-floating {
+  // Mobile styles remain the same
   bottom: 2.5vh;
   left: 2.5vw;
   width: 95vw;
@@ -57,16 +58,16 @@
     left: 5vw;
     width: 4.5rem;
     display: flex;
-    // --- Start: The Fix ---
-    justify-content: center; // 1. Center the icon vertically by default
-    // --- End: The Fix ---
+    justify-content: flex-start;
     align-items: center;
     flex-direction: column;
-    padding: 10px 0;
+    padding: 7px 0 8px 0;
 
-    max-height: 4.5rem;
-    overflow: hidden;
-    transition: max-height 0.4s ease-in-out;
+    // --- Start: The Fix ---
+    max-height: 4.5rem; // 1. Use max-height instead of height
+    overflow: hidden; // 2. Add overflow to clip the content as it animates
+    transition: max-height 0.4s ease-in-out; // 3. Transition max-height
+    // --- End: The Fix ---
 
     .user-profile-button {
       flex-shrink: 0;
@@ -76,27 +77,12 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-15px);
-      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0.3s;
     }
 
     &:hover,
     &.fixed-menu {
       max-height: 50rem;
-      // --- Start: The Fix ---
-      justify-content: flex-start; // 2. Align to top ONLY when expanded
-      // --- End: The Fix ---
-
-      .menu-items {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-        transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s,
-          visibility 0s 0.1s;
-      }
+      // 2. No need to change justify-content on hover anymore
     }
   }
 }
@@ -116,16 +102,15 @@
     left: 3vw;
     width: 4.5rem;
     display: flex;
-    // --- Start: The Fix ---
-    justify-content: center; // 1. Center the icon vertically by default
-    // --- End: The Fix ---
+    justify-content: flex-start;
     align-items: center;
     flex-direction: column;
-    padding: 16px 0 18px 0;
 
-    max-height: 4.5rem;
-    overflow: hidden;
-    transition: max-height 0.4s ease-in-out;
+    // --- Start: The Fix ---
+    max-height: 4.5rem; // 1. Use max-height instead of height
+    overflow: hidden; // 2. Add overflow to clip the content as it animates
+    transition: max-height 0.4s ease-in-out; // 3. Transition max-height
+    // --- End: The Fix ---
 
     .user-profile-button {
       flex-shrink: 0;
@@ -135,27 +120,11 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-15px);
-      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s 0.3s;
     }
 
     &:hover,
     &.fixed-menu {
       max-height: 50rem;
-      // --- Start: The Fix ---
-      justify-content: flex-start; // 2. Align to top ONLY when expanded
-      // --- End: The Fix ---
-
-      .menu-items {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-        transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s,
-          visibility 0s 0.1s;
-      }
     }
   }
 }

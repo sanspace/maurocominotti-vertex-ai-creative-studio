@@ -88,4 +88,10 @@ export class HeaderComponent {
   toggleMenu() {
     this.menuFixed = !this.menuFixed;
   }
+
+  getTooltipText() {
+    return this.menuFixed
+      ? `Hey there ${this.currentUser?.name?.split(' ')?.[0] || ''}!! Click to make the menu dynamic`
+      : 'Click to make the menu fixed';
+  }
 }
