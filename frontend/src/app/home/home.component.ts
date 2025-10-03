@@ -68,7 +68,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   sourceMediaItems: (SourceMediaItemLink | null)[] = [];
   activeWorkspaceId$: Observable<string | null>;
 
-  @HostListener('window:keydown.control.enter', ['$event']) 
+  @HostListener('window:keydown.control.enter', ['$event'])
   handleCtrlEnter(event: KeyboardEvent) {
     if (!this.isLoading) {
       event.preventDefault();
@@ -631,7 +631,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
               role: 'input',
             };
             this[targetPreview] =
-              selection.mediaItem.presignedUrls?.[0] || null;
+              selection.mediaItem.presignedUrls?.[selection.selectedIndex || 0] || null;
             this[targetAssetId] = null;
           }
         }
