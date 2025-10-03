@@ -53,10 +53,6 @@ export class AuthInterceptor implements HttpInterceptor {
             error,
           );
           this.authService.logout();
-          // Return a new error indicating a session failure.
-          return throwError(
-            () => new Error('Session expired. Please log in again.'),
-          );
         }
 
         // Otherwise, it's a backend API error (e.g., 404, 500). We should NOT log out.
