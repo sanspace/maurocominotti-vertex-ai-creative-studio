@@ -49,6 +49,7 @@ import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
+import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
 
 @Component({
   selector: 'app-home',
@@ -641,39 +642,35 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
+  openCropperDialog(file: File, imageNumber: 1 | 2) {
+    const dialogRef = this.dialog.open(ImageCropperDialogComponent, {
+      data: {
+        imageFile: file,
+        assetType: AssetTypeEnum.GENERIC_IMAGE,
+      },
+      width: '600px',
+    });
+
+    dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
+      if (result && result.id) {
+        const targetAssetId =
+          imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
+        const targetPreview =
+          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+
+        this[targetAssetId] = result.id;
+        this[targetPreview] = result.presignedUrl || null;
+        this.clearSourceMediaItem(imageNumber);
+      }
+    });
   }
 
   onDrop(event: DragEvent, imageNumber: 1 | 2) {
     event.preventDefault();
     const file = event.dataTransfer?.files[0];
     if (file) {
-      this.isLoading = true;
-      this.uploadAsset(file)
-        .pipe(finalize(() => (this.isLoading = false)))
-        .subscribe({
-          next: asset => {
-            const targetAssetId =
-              imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
-            const targetPreview =
-              imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-            this[targetAssetId] = asset.id;
-            this[targetPreview] = asset.presignedUrl || null;
-          },
-          error: error => {
-            handleErrorSnackbar(this._snackBar, error, 'Image upload');
-          },
-        });
+      // Instead of uploading directly, just open the cropper dialog
+      this.openCropperDialog(file, imageNumber);
     }
   }
 

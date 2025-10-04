@@ -30,19 +30,46 @@ export class ImageSelectorComponent {
     },
   ) {}
 
+  // This method is called by the file input or drop event inside this component
+  handleFileSelect(file: File): void {
+    if (!file.type.startsWith('image/')) {
+      console.log('File is not an image.');
+      // Optionally, show a snackbar error here
+      return;
+    }
+
+    // 1. Open the cropper dialog
+    const cropperDialogRef = this.dialog.open(ImageCropperDialogComponent, {
+      data: {
+        imageFile: file,
+        assetType: this.data.assetType,
+      },
+      width: '600px',
+    });
+
+    // 2. Subscribe to the result of the cropper
+    cropperDialogRef.afterClosed().subscribe((asset: SourceAssetResponseDto) => {
+      if (asset) {
+        // 3. If the cropper returned an asset, close THIS dialog and pass the result up
+        this.dialogRef.close(asset);
+      }
+    });
+  }
+
+  // Update onFileSelected and onDrop to use the new handler
   onFileSelected(event: Event): void {
     const element = event.currentTarget as HTMLInputElement;
     const fileList: FileList | null = element.files;
     if (fileList && fileList[0]) {
-      this.openCropperDialog(fileList[0]);
+      this.handleFileSelect(fileList[0]);
     }
   }
 
-  onDrop(event: DragEvent) {
+  onDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
     if (event.dataTransfer?.files[0]) {
-      this.openCropperDialog(event.dataTransfer.files[0]);
+      this.handleFileSelect(event.dataTransfer.files[0]);
     }
   }
 

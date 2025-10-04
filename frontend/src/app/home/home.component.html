@@ -472,8 +472,8 @@
         </div>
         <div
           class="drop-zone"
-          (dragover)="$event.preventDefault()"
           (click)="openImageSelector(2)"
+          (dragover)="$event.preventDefault()"
           (drop)="onDrop($event, 2)"
         >
           <div *ngIf="!image2Preview" class="drop-zone-placeholder">
