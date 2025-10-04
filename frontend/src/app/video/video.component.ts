@@ -105,8 +105,8 @@ export class VideoComponent implements AfterViewInit {
   selectedGenerationModel = this.generationModels[0].viewValue;
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
-      {value: '16:9', viewValue: '16:9 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '9:16 \n Story', disabled: false},
+      {value: '16:9', viewValue: '16:9 \n Horizontal', disabled: false},
+      {value: '9:16', viewValue: '9:16 \n Vertical', disabled: false},
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [

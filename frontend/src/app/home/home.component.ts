@@ -142,19 +142,19 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }[] = [
     {
       value: '1:1',
-      viewValue: '1:1 \n Post',
+      viewValue: '1:1 \n Square',
       disabled: false,
       icon: 'crop_square',
     },
     {
       value: '16:9',
-      viewValue: '16:9 \n Landscape',
+      viewValue: '16:9 \n Horizontal',
       disabled: false,
       icon: 'crop_16_9',
     },
     {
       value: '9:16',
-      viewValue: '9:16 \n Story',
+      viewValue: '9:16 \n Vertical',
       disabled: false,
       icon: 'crop_portrait',
     },

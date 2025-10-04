@@ -45,6 +45,19 @@
   }
 }
 
+.cropper-container {
+  max-height: 400px;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.cropper-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 1rem;
+}
+
 ::ng-deep .image-selector-dialog .mat-mdc-tab-body-content {
   padding-top: 20px;
   height: 100%;

@@ -1,0 +1,55 @@
+.cropper-container {
+  height: 400px;
+  width: 100%;
+}
+
+.controls-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 1rem;
+
+  .control-group {
+    display: flex;
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 4px;
+  }
+}
+
+.flip-vertical {
+  transform: rotate(90deg);
+}
+
+.aspect-ratio-dropdown {
+  width: 150px;
+}
+
+mat-dialog-actions {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+
+  .footer-controls {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .color-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .flex-spacer {
+    flex: 1 1 auto;
+  }
+}
+
+.crop-upload-btn {
+  background: linear-gradient(to right, #3b82f6, #8b5cf6, #f87171);
+  font-weight: bold;
+  margin-top: 1rem;
+}
