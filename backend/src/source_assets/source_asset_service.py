@@ -276,6 +276,37 @@ class SourceAssetService:
 
         return await self._create_asset_response(new_asset)
 
+    async def convert_to_png(self, file: UploadFile) -> bytes:
+        """
+        Converts an uploaded image file to PNG format in memory.
+        """
+        try:
+            contents = await file.read()
+            if not contents:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST, "Cannot convert an empty file."
+                )
+
+            pil_image = PILImage.open(io.BytesIO(contents))
+
+            # Convert to a standard color mode to handle various formats
+            # (e.g., GIFs with palettes, CMYK) gracefully, preserving transparency.
+            if pil_image.mode not in ["RGB", "RGBA"]:
+                pil_image = pil_image.convert(
+                    "RGBA" if "A" in pil_image.getbands() else "RGB"
+                )
+
+            # Save the converted image to an in-memory buffer
+            with io.BytesIO() as output:
+                pil_image.save(output, format="PNG")
+                return output.getvalue()
+        except Exception as e:
+            logger.error(f"Failed to convert image to PNG: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process image: {e}",
+            )
+
     async def delete_asset(self, asset_id: str) -> bool:
         """
         Deletes an asset from Firestore and its corresponding file from GCS.

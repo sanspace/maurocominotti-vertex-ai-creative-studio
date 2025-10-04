@@ -21,6 +21,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Response,
     UploadFile,
     status,
 )
@@ -84,6 +85,21 @@ async def upload_source_asset(
         workspace_id=workspaceId,
         asset_type=assetType,
     )
+
+
+@router.post("/convert-to-png", response_class=Response)
+async def convert_image_to_png(
+    file: UploadFile = File(),
+    # Keep auth dependencies to protect the endpoint
+    current_user: UserModel = Depends(get_current_user),
+    service: SourceAssetService = Depends(),
+):
+    """
+    Accepts any image file, converts it to PNG, and returns the binary data.
+    Used for pre-processing unsupported formats before cropping on the frontend.
+    """
+    png_contents = await service.convert_to_png(file=file)
+    return Response(content=png_contents, media_type="image/png")
 
 
 @router.post(

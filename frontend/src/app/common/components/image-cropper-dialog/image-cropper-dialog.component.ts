@@ -1,6 +1,10 @@
 import {Component, Inject} from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
-import {ImageCroppedEvent, ImageTransform, CropperOptions} from 'ngx-image-cropper';
+import {
+  ImageCroppedEvent,
+  ImageTransform,
+  CropperOptions,
+} from 'ngx-image-cropper';
 import {HttpClient} from '@angular/common/http';
 import {Observable, finalize} from 'rxjs';
 import {
@@ -23,7 +27,9 @@ interface AspectRatio {
 })
 export class ImageCropperDialogComponent {
   isUploading = false;
-  imageFile: File;
+  isConverting = false; // New state for the conversion step
+  imageFile: File | null = null; // Initialize as null
+
   croppedImageBlob: Blob | null = null;
   aspectRatios: AspectRatio[] = [];
   currentAspectRatio: number;
@@ -52,7 +58,6 @@ export class ImageCropperDialogComponent {
       aspectRatios?: AspectRatio[];
     },
   ) {
-    this.imageFile = data.imageFile;
     this.aspectRatios = data.aspectRatios || [
       {label: '1:1 Square', value: 1 / 1},
       {label: '16:9 Horizontal', value: 16 / 9},
@@ -70,6 +75,47 @@ export class ImageCropperDialogComponent {
       backgroundColor: this.backgroundColor,
       autoCrop: true,
     };
+    this.handleFile(this.data.imageFile); // Handle the file on init
+  }
+
+  // --- Start: New file handling logic ---
+  handleFile(file: File): void {
+    const supportedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/gif',
+      'image/png',
+      'image/webp',
+    ];
+    if (supportedTypes.includes(file.type)) {
+      // If the format is supported, load it directly into the cropper
+      this.imageFile = file;
+    } else {
+      // If the format is unsupported (like AVIF), convert it via the backend
+      this.isConverting = true;
+      this.convertImageOnBackend(file)
+        .pipe(finalize(() => (this.isConverting = false)))
+        .subscribe({
+          next: pngBlob => {
+            // Create a new File from the returned PNG blob and load it
+            this.imageFile = new File([pngBlob], 'converted-image.png', {
+              type: 'image/png',
+            });
+          },
+          error: err => {
+            console.error('Image conversion failed:', err);
+            this.dialogRef.close(); // Close dialog on conversion failure
+          },
+        });
+    }
+  }
+
+  private convertImageOnBackend(file: File): Observable<Blob> {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Assumes you create a new backend endpoint for this
+    const convertUrl = `${environment.backendURL}/source_assets/convert-to-png`;
+    return this.http.post(convertUrl, formData, {responseType: 'blob'});
   }
 
   // --- Start: Add Event Handlers ---
@@ -153,7 +199,7 @@ export class ImageCropperDialogComponent {
     if (this.croppedImageBlob) {
       const croppedFile = new File(
         [this.croppedImageBlob],
-        this.imageFile.name,
+        this.imageFile?.name || 'untitled',
         {
           type: 'image/png',
         },
@@ -184,8 +230,7 @@ export class ImageCropperDialogComponent {
     }
 
     return this.http.post<SourceAssetResponseDto>(
-      // `${environment.backendURL}/source_assets/upload`,
-      `${environment.backendURL}/`,
+      `${environment.backendURL}/source_assets/upload`,
       formData,
     );
   }
