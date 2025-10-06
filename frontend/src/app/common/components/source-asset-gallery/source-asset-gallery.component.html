@@ -15,7 +15,20 @@
     *ngFor="let asset of assets; trackBy: trackByAsset"
     class="asset-item"
     (click)="selectAsset(asset)"
+    [class.deleting]="deletingAssetId === asset.id"
   >
+    <div *ngIf="deletingAssetId === asset.id" class="delete-loading-overlay">
+      <mat-progress-spinner mode="indeterminate" [diameter]="40"></mat-progress-spinner>
+    </div>
+    <button
+      mat-icon-button
+      class="delete-button"
+      (click)="confirmDelete(asset, $event)"
+      matTooltip="Delete Asset"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+
     <img
       [src]="asset.presignedThumbnailUrl || asset.presignedUrl"
       [alt]="asset.originalFilename"

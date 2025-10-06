@@ -10,7 +10,7 @@ import {
   Output,
   ViewChild,
 } from '@angular/core';
-import {Subscription} from 'rxjs';
+import {finalize, Subscription} from 'rxjs';
 import {
   SourceAssetService,
   SourceAssetResponseDto,
@@ -18,6 +18,9 @@ import {
 } from '../../services/source-asset.service';
 import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
 import {UserService} from '../../services/user.service';
+import {MatDialog} from '@angular/material/dialog';
+import {MatSnackBar} from '@angular/material/snack-bar';
+import {ConfirmationDialogComponent} from '../confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-source-asset-gallery',
@@ -29,8 +32,12 @@ export class SourceAssetGalleryComponent
 {
   @Output() assetSelected = new EventEmitter<SourceAssetResponseDto>();
   @Input() filterByType: AssetTypeEnum | null = null;
-  @Input() filterByMimeType: 'image/*' | 'image/png' | 'video/mp4' | 'audio/mpeg' | null =
-    null;
+  @Input() filterByMimeType:
+    | 'image/*'
+    | 'image/png'
+    | 'video/mp4'
+    | 'audio/mpeg'
+    | null = null;
   @ViewChild('sentinel') private sentinel!: ElementRef<HTMLElement>;
 
   public assets: SourceAssetResponseDto[] = [];
@@ -40,12 +47,15 @@ export class SourceAssetGalleryComponent
   private loadingSubscription: Subscription | undefined;
   private allAssetsLoadedSubscription: Subscription | undefined;
   private scrollObserver!: IntersectionObserver;
+  public deletingAssetId: string | null = null;
 
   constructor(
     private sourceAssetService: SourceAssetService,
     private userService: UserService,
     private elementRef: ElementRef,
     private ngZone: NgZone,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar,
   ) {}
 
   ngOnInit(): void {
@@ -130,5 +140,43 @@ export class SourceAssetGalleryComponent
 
   trackByAsset(index: number, asset: SourceAssetResponseDto): string {
     return asset.id;
+  }
+
+  confirmDelete(asset: SourceAssetResponseDto, event: MouseEvent): void {
+    event.stopPropagation();
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      data: {
+        title: 'Confirm Deletion',
+        message: `Are you sure you want to delete "${asset.originalFilename}"? This action cannot be undone.`,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        // 3. Set the ID of the asset we are deleting
+        this.deletingAssetId = asset.id;
+
+        this.sourceAssetService
+          .deleteAsset(asset.id)
+          .pipe(
+            // 4. Use finalize to clear the ID when the request is complete
+            finalize(() => (this.deletingAssetId = null)),
+          )
+          .subscribe({
+            next: () => {
+              this.snackBar.open('Asset deleted successfully.', 'OK', {
+                duration: 3000,
+              });
+            },
+            error: err => {
+              this.snackBar.open('Failed to delete asset.', 'OK', {
+                duration: 3000,
+              });
+              console.error(err);
+            },
+          });
+      }
+    });
   }
 }

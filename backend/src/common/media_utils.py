@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
 import subprocess
-from typing import List
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -122,3 +123,23 @@ def concatenate_videos(video_paths: List[str], output_path: str) -> str | None:
         if os.path.exists(list_file_path):
             os.remove(list_file_path)
 
+
+def get_video_dimensions(video_path: str) -> Tuple[int, int]:
+    """Uses ffprobe to get the width and height of a video file."""
+    command = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "json",
+        video_path,
+    ]
+    result = subprocess.run(command, capture_output=True, text=True, check=True)
+    data = json.loads(result.stdout)
+    width = data["streams"][0]["width"]
+    height = data["streams"][0]["height"]
+    return width, height

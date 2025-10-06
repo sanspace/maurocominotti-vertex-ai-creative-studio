@@ -30,6 +30,7 @@ import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
+import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
 
 @Component({
   selector: 'app-video',
@@ -677,38 +678,87 @@ export class VideoComponent implements AfterViewInit {
     }
   }
 
-  onDrop(event: DragEvent, imageNumber: 1 | 2) {
-    event.preventDefault();
-    const file = event.dataTransfer?.files[0];
-    if (file) {
-      const reader = new FileReader();
-      this.isLoading = true;
-      this.uploadAsset(file)
-        .pipe(finalize(() => (this.isLoading = false)))
-        .subscribe({
-          next: (asset: SourceAssetResponseDto) => {
-            this.processInput(asset, imageNumber);
-            this.updateModeAndNotify();
-            this.clearOtherImage(imageNumber);
-          },
-          error: error => {
-            handleErrorSnackbar(this._snackBar, error, 'Image upload');
-          },
-        });
+  // This method is called by both click and drop events
+  handleFileUpload(file: File, imageNumber: 1 | 2): void {
+    if (file.type.startsWith('image/')) {
+      // If it's an image, open the cropper
+      this.openCropperDialog(file, imageNumber);
+    } else if (file.type.startsWith('video/')) {
+      // If it's a video, upload directly
+      this.uploadVideoDirectly(file, imageNumber);
+    } else {
+      handleErrorSnackbar(
+        this._snackBar,
+        {message: 'Unsupported file type.'},
+        'File Upload',
+      );
     }
   }
 
-  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
+  openCropperDialog(file: File, imageNumber: 1 | 2) {
+    const dialogRef = this.dialog.open(ImageCropperDialogComponent, {
+      data: {
+        imageFile: file,
+        assetType: AssetTypeEnum.GENERIC_IMAGE,
+      },
+      width: '600px',
+    });
+
+    dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
+      if (result && result.id) {
+        this.processInput(result, imageNumber);
+        this.updateModeAndNotify();
+        this.clearOtherImage(imageNumber);
+      }
+    });
+  }
+
+  uploadVideoDirectly(file: File, imageNumber: 1 | 2) {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('file', file);
     const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
     if (activeWorkspaceId) {
       formData.append('workspaceId', activeWorkspaceId);
     }
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
+    // Note: We DO NOT send the aspectRatio for videos
+
+    this.http
+      .post<SourceAssetResponseDto>(
+        `${environment.backendURL}/source_assets/upload`,
+        formData,
+      )
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: asset => {
+          this.processInput(asset, imageNumber);
+          this.updateModeAndNotify();
+          this.clearOtherImage(imageNumber);
+        },
+        error: error => {
+          handleErrorSnackbar(this._snackBar, error, 'File upload');
+        },
+      });
+  }
+
+  onDrop(event: DragEvent, imageNumber: 1 | 2) {
+    event.preventDefault();
+    const file = event.dataTransfer?.files[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        // If it's an IMAGE, open the cropper dialog
+        this.openCropperDialog(file, imageNumber);
+      } else if (file.type.startsWith('video/')) {
+        // If it's a VIDEO, upload it directly
+        this.uploadVideoDirectly(file, imageNumber);
+      } else {
+        handleErrorSnackbar(
+          this._snackBar,
+          {message: 'Unsupported file type.'},
+          'File Upload',
+        );
+      }
+    }
   }
 
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {

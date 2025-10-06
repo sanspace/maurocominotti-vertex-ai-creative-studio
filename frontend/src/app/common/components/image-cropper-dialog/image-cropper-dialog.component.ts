@@ -18,6 +18,7 @@ import {environment} from '../../../../environments/environment';
 interface AspectRatio {
   label: string;
   value: number;
+  stringValue: string;
 }
 
 @Component({
@@ -59,11 +60,11 @@ export class ImageCropperDialogComponent {
     },
   ) {
     this.aspectRatios = data.aspectRatios || [
-      {label: '1:1 Square', value: 1 / 1},
-      {label: '16:9 Horizontal', value: 16 / 9},
-      {label: '9:16 Vertical', value: 9 / 16},
-      {label: '3:4 Portrait', value: 3 / 4},
-      {label: '4:3 Pin', value: 4 / 3},
+      {label: '1:1 Square', value: 1 / 1, stringValue: '1:1'},
+      {label: '16:9 Horizontal', value: 16 / 9, stringValue: '16:9'},
+      {label: '9:16 Vertical', value: 9 / 16, stringValue: '9:16'},
+      {label: '3:4 Portrait', value: 3 / 4, stringValue: '3:4'},
+      {label: '4:3 Pin', value: 4 / 3, stringValue: '4:3'},
     ];
     this.currentAspectRatio = this.aspectRatios[0].value;
 
@@ -205,8 +206,12 @@ export class ImageCropperDialogComponent {
         },
       );
 
+      // 3. Find the string value of the current aspect ratio
+      const selectedRatio = this.aspectRatios.find(r => r.value === this.currentAspectRatio);
+      const aspectRatioString = selectedRatio ? selectedRatio.stringValue : '1:1';
+
       this.isUploading = true;
-      this.uploadAsset(croppedFile)
+      this.uploadAsset(croppedFile, aspectRatioString)
         .pipe(finalize(() => (this.isUploading = false)))
         .subscribe(asset => {
           this.sourceAssetService.addAsset(asset);
@@ -215,7 +220,7 @@ export class ImageCropperDialogComponent {
     }
   }
 
-  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
+  private uploadAsset(file: File, aspectRatio: string): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
 
@@ -225,6 +230,8 @@ export class ImageCropperDialogComponent {
       'assetType',
       this.data.assetType || AssetTypeEnum.GENERIC_IMAGE,
     );
+    formData.append('aspectRatio', aspectRatio);
+
     if (activeWorkspaceId) {
       formData.append('workspaceId', activeWorkspaceId);
     }

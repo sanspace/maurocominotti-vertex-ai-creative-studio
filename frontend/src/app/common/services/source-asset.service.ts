@@ -145,4 +145,19 @@ export class SourceAssetService {
     this.allFetchedAssets.unshift(asset);
     this.assets$.next(this.allFetchedAssets);
   }
+
+  deleteAsset(assetId: string) {
+    return this.http
+      .delete(`${environment.backendURL}/source_assets/${assetId}`)
+      .pipe(
+        tap(() => {
+          // Remove the asset from the local BehaviorSubject to update the UI instantly
+          const currentAssets = this.assets$.getValue();
+          const updatedAssets = currentAssets.filter(
+            asset => asset.id !== assetId,
+          );
+          this.assets$.next(updatedAssets);
+        }),
+      );
+  }
 }

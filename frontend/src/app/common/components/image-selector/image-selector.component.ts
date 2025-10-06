@@ -8,6 +8,10 @@ import {MediaItem} from '../../models/media-item.model';
 import {SourceAssetResponseDto} from '../../services/source-asset.service';
 import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../image-cropper-dialog/image-cropper-dialog.component';
+import {finalize, Observable} from 'rxjs';
+import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
+import {HttpClient} from '@angular/common/http';
+import {environment} from '../../../../environments/environment';
 
 export interface MediaItemSelection {
   mediaItem: MediaItem;
@@ -20,8 +24,12 @@ export interface MediaItemSelection {
   styleUrls: ['./image-selector.component.scss'],
 })
 export class ImageSelectorComponent {
+  isUploading = false;
+
   constructor(
     public dialogRef: MatDialogRef<ImageSelectorComponent>,
+    private workspaceStateService: WorkspaceStateService,
+    private http: HttpClient,
     private dialog: MatDialog, // Inject MatDialog to open the new dialog
     @Inject(MAT_DIALOG_DATA)
     public data: {
@@ -32,28 +40,48 @@ export class ImageSelectorComponent {
 
   // This method is called by the file input or drop event inside this component
   handleFileSelect(file: File): void {
-    if (!file.type.startsWith('image/')) {
-      console.log('File is not an image.');
-      // Optionally, show a snackbar error here
-      return;
+    if (file.type.startsWith('image/')) {
+      // If it's an image, open the cropper dialog
+      const cropperDialogRef = this.dialog.open(ImageCropperDialogComponent, {
+        data: {
+          imageFile: file,
+          assetType: this.data.assetType,
+        },
+        width: '600px',
+      });
+
+      cropperDialogRef
+        .afterClosed()
+        .subscribe((asset: SourceAssetResponseDto) => {
+          if (asset) {
+            this.dialogRef.close(asset);
+          }
+        });
+    } else if (file.type.startsWith('video/')) {
+      // If it's a video, upload it directly from here
+      this.isUploading = true;
+      this.uploadVideoDirectly(file)
+        .pipe(finalize(() => (this.isUploading = false)))
+        .subscribe(asset => {
+          this.dialogRef.close(asset);
+        });
+    } else {
+      console.error('Unsupported file type selected.');
     }
+  }
 
-    // 1. Open the cropper dialog
-    const cropperDialogRef = this.dialog.open(ImageCropperDialogComponent, {
-      data: {
-        imageFile: file,
-        assetType: this.data.assetType,
-      },
-      width: '600px',
-    });
-
-    // 2. Subscribe to the result of the cropper
-    cropperDialogRef.afterClosed().subscribe((asset: SourceAssetResponseDto) => {
-      if (asset) {
-        // 3. If the cropper returned an asset, close THIS dialog and pass the result up
-        this.dialogRef.close(asset);
-      }
-    });
+  private uploadVideoDirectly(file: File): Observable<SourceAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
+    }
+    // We don't send aspect ratio for videos, backend will deduce it
+    return this.http.post<SourceAssetResponseDto>(
+      `${environment.backendURL}/source_assets/upload`,
+      formData,
+    );
   }
 
   // Update onFileSelected and onDrop to use the new handler
