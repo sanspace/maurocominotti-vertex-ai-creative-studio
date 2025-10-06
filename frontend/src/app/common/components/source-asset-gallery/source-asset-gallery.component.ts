@@ -10,7 +10,7 @@ import {
   Output,
   ViewChild,
 } from '@angular/core';
-import {finalize, Subscription} from 'rxjs';
+import {debounceTime, finalize, fromEvent, Subscription} from 'rxjs';
 import {
   SourceAssetService,
   SourceAssetResponseDto,
@@ -43,11 +43,16 @@ export class SourceAssetGalleryComponent
   public assets: SourceAssetResponseDto[] = [];
   public isLoading = true;
   public allAssetsLoaded = false;
+  public deletingAssetId: string | null = null;
+  // --- Column Management Properties ---
+  public columns: SourceAssetResponseDto[][] = [];
+  private numColumns = 4;
+  private resizeSubscription: Subscription | undefined;
+
   private assetsSubscription: Subscription | undefined;
   private loadingSubscription: Subscription | undefined;
   private allAssetsLoadedSubscription: Subscription | undefined;
   private scrollObserver!: IntersectionObserver;
-  public deletingAssetId: string | null = null;
 
   constructor(
     private sourceAssetService: SourceAssetService,
@@ -73,10 +78,10 @@ export class SourceAssetGalleryComponent
     this.assetsSubscription = this.sourceAssetService.assets.subscribe(
       assets => {
         this.assets = assets;
+        this.updateColumns(); // Trigger column update when assets change
       },
     );
 
-    // Load assets for the current user
     const userDetails = this.userService.getUserDetails();
     const filters: SourceAssetSearchDto = {};
     if (userDetails?.email) {
@@ -88,8 +93,14 @@ export class SourceAssetGalleryComponent
     if (this.filterByMimeType) {
       filters.mimeType = this.filterByMimeType;
     }
-
     this.sourceAssetService.setFilters(filters);
+
+    // --- Start: Add Resize Handling ---
+    this.handleResize();
+    this.resizeSubscription = fromEvent(window, 'resize')
+      .pipe(debounceTime(200))
+      .subscribe(() => this.handleResize());
+    // --- End: Add Resize Handling ---
   }
 
   ngAfterViewInit(): void {
@@ -101,6 +112,7 @@ export class SourceAssetGalleryComponent
     this.loadingSubscription?.unsubscribe();
     this.allAssetsLoadedSubscription?.unsubscribe();
     this.scrollObserver?.disconnect();
+    this.resizeSubscription?.unsubscribe();
   }
 
   private getScrollableContainer(): HTMLElement | null {
@@ -140,6 +152,32 @@ export class SourceAssetGalleryComponent
 
   trackByAsset(index: number, asset: SourceAssetResponseDto): string {
     return asset.id;
+  }
+
+  private handleResize(): void {
+    const width = window.innerWidth;
+    let newNumColumns;
+    if (width < 768) {
+      // md breakpoint
+      newNumColumns = 2;
+    } else if (width < 1024) {
+      // lg breakpoint
+      newNumColumns = 3;
+    } else {
+      newNumColumns = 4;
+    }
+
+    if (newNumColumns !== this.numColumns) {
+      this.numColumns = newNumColumns;
+      this.updateColumns();
+    }
+  }
+
+  private updateColumns(): void {
+    this.columns = Array.from({length: this.numColumns}, () => []);
+    this.assets.forEach((asset, index) => {
+      this.columns[index % this.numColumns].push(asset);
+    });
   }
 
   confirmDelete(asset: SourceAssetResponseDto, event: MouseEvent): void {

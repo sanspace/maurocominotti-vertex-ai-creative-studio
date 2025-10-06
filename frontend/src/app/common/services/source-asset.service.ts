@@ -10,6 +10,7 @@ export interface SourceAssetResponseDto {
   gcsUri: string;
   originalFilename: string;
   mimeType: string;
+  aspectRatio: string;
   fileHash: string;
   createdAt: string;
   updatedAt: string;
