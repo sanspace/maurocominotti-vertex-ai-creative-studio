@@ -11,7 +11,10 @@ import {
   SourceAssetResponseDto,
   SourceAssetService,
 } from '../../services/source-asset.service';
-import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
+import {
+  AssetScopeEnum,
+  AssetTypeEnum,
+} from '../../../admin/source-assets-management/source-asset.model';
 import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
 import {environment} from '../../../../environments/environment';
 
@@ -51,7 +54,6 @@ export class ImageCropperDialogComponent {
     public dialogRef: MatDialogRef<ImageCropperDialogComponent>,
     private http: HttpClient,
     private sourceAssetService: SourceAssetService,
-    private workspaceStateService: WorkspaceStateService,
     @Inject(MAT_DIALOG_DATA)
     public data: {
       imageFile: File;
@@ -207,8 +209,12 @@ export class ImageCropperDialogComponent {
       );
 
       // 3. Find the string value of the current aspect ratio
-      const selectedRatio = this.aspectRatios.find(r => r.value === this.currentAspectRatio);
-      const aspectRatioString = selectedRatio ? selectedRatio.stringValue : '1:1';
+      const selectedRatio = this.aspectRatios.find(
+        r => r.value === this.currentAspectRatio,
+      );
+      const aspectRatioString = selectedRatio
+        ? selectedRatio.stringValue
+        : '1:1';
 
       this.isUploading = true;
       this.uploadAsset(croppedFile, aspectRatioString)
@@ -220,25 +226,14 @@ export class ImageCropperDialogComponent {
     }
   }
 
-  private uploadAsset(file: File, aspectRatio: string): Observable<SourceAssetResponseDto> {
-    const formData = new FormData();
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-
-    formData.append('file', file);
-    formData.append('scope', 'private');
-    formData.append(
-      'assetType',
-      this.data.assetType || AssetTypeEnum.GENERIC_IMAGE,
-    );
-    formData.append('aspectRatio', aspectRatio);
-
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
+  private uploadAsset(
+    file: File,
+    aspectRatio: string,
+  ): Observable<SourceAssetResponseDto> {
+    return this.sourceAssetService.uploadAsset(file, {
+      aspectRatio: aspectRatio,
+      scope: AssetScopeEnum.PRIVATE,
+      assetType: this.data.assetType || AssetTypeEnum.GENERIC_IMAGE,
+    });
   }
 }

@@ -3,6 +3,8 @@ import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {tap, catchError, finalize, shareReplay} from 'rxjs/operators';
 import {environment} from '../../../environments/environment';
+import {WorkspaceStateService} from '../../services/workspace/workspace-state.service';
+import {AssetScopeEnum, AssetTypeEnum} from '../../admin/source-assets-management/source-asset.model';
 
 export interface SourceAssetResponseDto {
   id: string;
@@ -48,7 +50,7 @@ export class SourceAssetService {
     PaginationResponseDto<SourceAssetResponseDto>
   > | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private workspaceStateService: WorkspaceStateService,) {}
 
   get assets(): Observable<SourceAssetResponseDto[]> {
     return this.assets$.asObservable();
@@ -73,6 +75,48 @@ export class SourceAssetService {
     // When filters change, clear the cache and reset.
     this.assetsRequest$ = null;
     this.loadAssets(true);
+  }
+
+  uploadAsset(
+    file: File,
+    options: {
+      aspectRatio?: string;
+      assetType?: AssetTypeEnum;
+      scope?: AssetScopeEnum; // 1. Add scope to the options
+    } = {}
+  ): Observable<SourceAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
+    }
+
+    if (options.aspectRatio) {
+      formData.append('aspectRatio', options.aspectRatio);
+    }
+    if (options.assetType) {
+      formData.append('assetType', options.assetType);
+    }
+    // 2. Add scope to the form data if it exists
+    if (options.scope) {
+      formData.append('scope', options.scope);
+    }
+
+    return this.http
+      .post<SourceAssetResponseDto>(
+        `${environment.backendURL}/source_assets/upload`,
+        formData
+      )
+      .pipe(tap(() => this.refreshAssets()));
+  }
+
+  refreshAssets(): void {
+    this.nextPageCursor = null;
+    this.allAssetsLoaded$.next(false);
+    this.assets$.next([]);
+    this.loadAssets();
   }
 
   loadAssets(reset = false): void {

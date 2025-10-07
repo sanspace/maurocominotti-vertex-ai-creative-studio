@@ -16,7 +16,10 @@ import {
   ImageSelectorComponent,
   MediaItemSelection,
 } from '../common/components/image-selector/image-selector.component';
-import {SourceAssetResponseDto} from '../common/services/source-asset.service';
+import {
+  SourceAssetResponseDto,
+  SourceAssetService,
+} from '../common/services/source-asset.service';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {finalize, Observable} from 'rxjs';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
@@ -26,7 +29,10 @@ import {ToastMessageComponent} from '../common/components/toast-message/toast-me
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
-import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
+import {
+  AssetScopeEnum,
+  AssetTypeEnum,
+} from '../admin/source-assets-management/source-asset.model';
 
 interface Garment {
   id: string;
@@ -113,6 +119,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
     private workspaceStateService: WorkspaceStateService,
+    private sourceAssetService: SourceAssetService,
   ) {
     this.matIconRegistry.addSvgIcon(
       'mobile-white-gemini-spark-icon',
@@ -331,21 +338,12 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   private uploadAsset(
     file: File,
-    assetType?: string,
+    assetType?: AssetTypeEnum,
   ): Observable<SourceAssetResponseDto> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('scope', 'private');
-    if (assetType) formData.append('assetType', assetType);
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
+    return this.sourceAssetService.uploadAsset(file, {
+      assetType: assetType,
+      scope: AssetScopeEnum.PRIVATE,
+    });
   }
 
   onDrop(event: DragEvent) {

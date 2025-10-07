@@ -5,7 +5,7 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import {MediaItem} from '../../models/media-item.model';
-import {SourceAssetResponseDto} from '../../services/source-asset.service';
+import {SourceAssetResponseDto, SourceAssetService} from '../../services/source-asset.service';
 import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../image-cropper-dialog/image-cropper-dialog.component';
 import {finalize, Observable} from 'rxjs';
@@ -28,8 +28,7 @@ export class ImageSelectorComponent {
 
   constructor(
     public dialogRef: MatDialogRef<ImageSelectorComponent>,
-    private workspaceStateService: WorkspaceStateService,
-    private http: HttpClient,
+    private sourceAssetService: SourceAssetService,
     private dialog: MatDialog, // Inject MatDialog to open the new dialog
     @Inject(MAT_DIALOG_DATA)
     public data: {
@@ -71,17 +70,8 @@ export class ImageSelectorComponent {
   }
 
   private uploadVideoDirectly(file: File): Observable<SourceAssetResponseDto> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-    // We don't send aspect ratio for videos, backend will deduce it
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
+    // No options needed; backend handles video aspect ratio
+    return this.sourceAssetService.uploadAsset(file);
   }
 
   // Update onFileSelected and onDrop to use the new handler

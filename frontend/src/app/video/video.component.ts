@@ -24,7 +24,10 @@ import {
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
-import {SourceAssetResponseDto} from '../common/services/source-asset.service';
+import {
+  SourceAssetResponseDto,
+  SourceAssetService,
+} from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
@@ -168,6 +171,7 @@ export class VideoComponent implements AfterViewInit {
     public dialog: MatDialog,
     private http: HttpClient,
     private workspaceStateService: WorkspaceStateService,
+    private sourceAssetService: SourceAssetService,
   ) {
     this.activeVideoJob$ = this.service.activeVideoJob$;
 
@@ -715,19 +719,9 @@ export class VideoComponent implements AfterViewInit {
 
   uploadVideoDirectly(file: File, imageNumber: 1 | 2) {
     this.isLoading = true;
-    const formData = new FormData();
-    formData.append('file', file);
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-    // Note: We DO NOT send the aspectRatio for videos
-
-    this.http
-      .post<SourceAssetResponseDto>(
-        `${environment.backendURL}/source_assets/upload`,
-        formData,
-      )
+    // No aspectRatio is sent for videos, so we don't pass the second argument
+    this.sourceAssetService
+      .uploadAsset(file)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
         next: asset => {
