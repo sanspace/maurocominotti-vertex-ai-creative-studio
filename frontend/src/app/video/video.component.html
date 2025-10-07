@@ -385,7 +385,7 @@
     <!-- Prompt Generator -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-8">
       <!-- Prompt Section -->
-      <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
+      <div class="lg:col-span-2 flex flex-col justify-start items-start gap-4">
         <div
           class="justify-center text-neutral-200 text-base font-bold leading-7"
         >
@@ -426,7 +426,7 @@
         </div>
       </div>
 
-      <div class="lg:col-span-1 grid grid-cols-2 gap-4 text-center">
+      <div class="lg:col-span-2 grid grid-cols-3 gap-4 text-center">
         <div
           class="drop-zone"
           (click)="openImageSelector(1)"
@@ -460,6 +460,34 @@
                 <mat-icon>close</mat-icon>
             </button>
           </div>
+        </div>
+
+        <div
+          class="drop-zone"
+          [class.disabled]="referenceImagePreviews.length >= 3"
+          (click)="referenceImagePreviews.length < 3 && openImageSelectorForReference()"
+          (dragover)="$event.preventDefault()"
+          (drop)="referenceImagePreviews.length < 3 && onReferenceImageDrop($event)"
+        >
+          <div *ngIf="referenceImagePreviews.length === 0" class="drop-zone-placeholder">
+            <mat-icon>collections</mat-icon>
+            <span>Add Reference Images</span>
+            <span>(Max 3)</span>
+          </div>
+
+          <div *ngIf="referenceImagePreviews.length > 0" class="reference-previews-container">
+            <div *ngFor="let previewUrl of referenceImagePreviews; let i = index" class="image-preview-container small">
+              <img [src]="previewUrl" alt="Reference Image {{i + 1}}" />
+              <button (click)="clearReferenceImage(i, $event)" class="clear-button small" mat-icon-button>
+                  <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="referenceImagePreviews.length >= 3" class="drop-zone-limit-reached">
+            <p>Maximum of 3 reference images reached.</p>
+          </div>
+
         </div>
 
       </div>

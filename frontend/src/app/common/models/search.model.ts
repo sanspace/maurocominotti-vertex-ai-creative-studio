@@ -56,6 +56,7 @@ export type VeoRequest = {
   sourceMediaItems?: SourceMediaItemLink[];
   workspaceId?: string;
   useBrandGuidelines: boolean;
+  referenceImageAssetIds?: string[];
 };
 
 export type SearchResponse = {

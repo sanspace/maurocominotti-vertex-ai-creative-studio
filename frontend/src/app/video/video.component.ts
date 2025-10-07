@@ -68,6 +68,8 @@ export class VideoComponent implements AfterViewInit {
   showErrorOverlay = true;
   isConcatenateMode = false;
   isExtensionMode = false;
+  referenceImageAssetIds: string[] = [];
+  referenceImagePreviews: string[] = [];
 
   // Internal state to track input types
   private _input1IsVideo = false;
@@ -88,6 +90,7 @@ export class VideoComponent implements AfterViewInit {
     generateAudio: true,
     durationSeconds: 8,
     useBrandGuidelines: false,
+    referenceImageAssetIds: [],
   };
 
   // --- Negative Prompt Chips ---
@@ -417,6 +420,10 @@ export class VideoComponent implements AfterViewInit {
       sourceMediaItems: validSourceMediaItems.length
         ? validSourceMediaItems
         : undefined,
+      referenceImageAssetIds:
+        this.referenceImageAssetIds.length > 0
+          ? this.referenceImageAssetIds
+          : undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -1016,5 +1023,70 @@ export class VideoComponent implements AfterViewInit {
     setTimeout(() => {
       this.openImageSelector(2);
     }, 1500);
+  }
+
+  openImageSelectorForReference(): void {
+    const dialogRef = this.dialog.open(ImageSelectorComponent, {
+      width: '90vw',
+      height: '80vh',
+      maxWidth: '90vw',
+      data: {
+        mimeType: 'image/*', // Only allow images for references
+      },
+      panelClass: 'image-selector-dialog',
+    });
+
+    dialogRef
+      .afterClosed()
+      .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
+        if (result) {
+          if ('gcsUri' in result) {
+            // It's a newly uploaded SourceAsset
+            this.referenceImageAssetIds.push(result.id);
+            if (result.presignedUrl)
+              this.referenceImagePreviews.push(result.presignedUrl);
+          } else {
+            // It's a selected MediaItem from the gallery
+            const previewUrl =
+              result.mediaItem.presignedUrls?.[result.selectedIndex];
+            if (previewUrl) {
+              // Here we would need to create a SourceMediaItemLink, but the backend only accepts SourceAsset IDs for references for now.
+              // For now, we'll assume only new uploads or existing source assets can be references.
+              // This can be expanded later if needed.
+              console.log('Selected a gallery item as a reference.', result);
+            }
+          }
+        }
+      });
+  }
+
+  // Called when DROPPING a file on the new drop zone
+  onReferenceImageDrop(event: DragEvent) {
+    event.preventDefault();
+    const file = event.dataTransfer?.files[0];
+    if (file && file.type.startsWith('image/')) {
+      // For a direct drop, go straight to the cropper
+      const dialogRef = this.dialog.open(ImageCropperDialogComponent, {
+        data: {
+          imageFile: file,
+          assetType: AssetTypeEnum.GENERIC_IMAGE,
+        },
+        width: '600px',
+      });
+
+      dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
+        if (result && result.id) {
+          this.referenceImageAssetIds.push(result.id);
+          if (result.presignedUrl)
+            this.referenceImagePreviews.push(result.presignedUrl);
+        }
+      });
+    }
+  }
+
+  clearReferenceImage(index: number, event: MouseEvent) {
+    event.stopPropagation();
+    this.referenceImageAssetIds.splice(index, 1);
+    this.referenceImagePreviews.splice(index, 1);
   }
 }

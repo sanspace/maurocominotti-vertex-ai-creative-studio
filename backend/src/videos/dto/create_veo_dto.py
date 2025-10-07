@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import Query
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from typing_extensions import Annotated
 
 from src.common.base_dto import (
@@ -91,30 +91,76 @@ class CreateVeoDto(BaseDto):
         default=False,
         description="Whether to prepend brand guidelines to the prompt.",
     )
-
-    @field_validator("prompt")
-    def prompt_must_not_be_empty(cls, value: str) -> str:
-        if not value.strip():
-            raise ValueError("Prompt cannot be empty or whitespace only")
-        return value
+    reference_image_asset_ids: Optional[list[str]] = Field(
+        default=None,
+        max_length=3,
+        description="A list of SourceAsset IDs to be used as style/content references for the generation.",
+    )
 
     @field_validator("source_media_items")
-    def validate_source_media_item_roles(
-        cls, value: Optional[list[SourceMediaItemLink]]
+    def validate_source_media_items(
+        cls, value: Optional[list[SourceMediaItemLink]], info: ValidationInfo
     ) -> Optional[list[SourceMediaItemLink]]:
-        """Ensures that source_media_items for video have a valid role."""
+        """
+        Performs several validations:
+        1. Ensures that source_media_items have a valid role.
+        2. Ensures the total number of reference images does not exceed 3.
+        3. Ensures reference images are not used with start/end frames or source videos.
+        """
+        reference_media_items_count = 0
+        conflicting_roles_present = False
+
         if value:
             valid_roles = {
                 AssetRoleEnum.START_FRAME,
                 AssetRoleEnum.END_FRAME,
                 AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
+                AssetRoleEnum.IMAGE_REFERENCE,
             }
+            conflicting_roles = {
+                AssetRoleEnum.START_FRAME,
+                AssetRoleEnum.END_FRAME,
+                AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
+            }
+
             for item in value:
                 if item.role not in valid_roles:
                     raise ValueError(
-                        f"Invalid role '{item.role}' for source_media_item in video generation. "
-                        f"Allowed roles are: {', '.join(r.value for r in valid_roles)}"
+                        f"Invalid role '{item.role}' for source_media_item."
                     )
+                if item.role == AssetRoleEnum.IMAGE_REFERENCE:
+                    reference_media_items_count += 1
+                if item.role in conflicting_roles:
+                    conflicting_roles_present = True
+
+        # Check total reference image count
+        reference_assets_count = len(
+            info.data.get("reference_image_asset_ids") or []
+        )
+        total_references = reference_assets_count + reference_media_items_count
+
+        if total_references > 3:
+            raise ValueError(
+                "A maximum of 3 total reference images can be provided."
+            )
+
+        # --- Check for conflicting parameters ---
+        if total_references > 0:
+            # Check for other conflicting fields from the main DTO
+            start_image_present = bool(info.data.get("start_image_asset_id"))
+            end_image_present = bool(info.data.get("end_image_asset_id"))
+            source_video_present = bool(info.data.get("source_video_asset_id"))
+
+            if (
+                start_image_present
+                or end_image_present
+                or source_video_present
+                or conflicting_roles_present
+            ):
+                raise ValueError(
+                    "Reference images cannot be used at the same time as a start frame, end frame, or source video."
+                )
+
         return value
 
     @field_validator("aspect_ratio")
