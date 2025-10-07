@@ -29,7 +29,11 @@ from google.cloud.logging.handlers import CloudLoggingHandler
 from google.genai import types
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.base_dto import (
+    GenerationModelEnum,
+    MimeTypeEnum,
+    ReferenceImageTypeEnum,
+)
 from src.common.media_utils import concatenate_videos, generate_thumbnail
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import (
@@ -147,19 +151,40 @@ def _process_video_in_background(
                         gcs_uri=end_asset.gcs_uri, mime_type=end_asset.mime_type
                     )
 
-            if request_dto.reference_image_asset_ids:
-                for asset_id in request_dto.reference_image_asset_ids:
-                    asset = source_asset_repo.get_by_id(asset_id)
-                    if asset:
-                        reference_images_for_api.append(
-                            types.VideoGenerationReferenceImage(
-                                image=types.Image(
-                                    gcs_uri=asset.gcs_uri,
-                                    mime_type=asset.mime_type,
-                                ),
-                                reference_type="asset",
-                            )
+            if request_dto.reference_images:
+                worker_logger.info(
+                    f"Loading {len(request_dto.reference_images)} reference images."
+                )
+                for ref_dto in request_dto.reference_images:
+                    asset = source_asset_repo.get_by_id(ref_dto.asset_id)
+                    if asset and asset.gcs_uri:
+                        image = types.Image(
+                            gcs_uri=asset.gcs_uri, mime_type=asset.mime_type
                         )
+
+                        # Map our DTO enum to the Google SDK's enum
+                        sdk_ref_type = None
+                        if (
+                            ref_dto.reference_type
+                            == ReferenceImageTypeEnum.ASSET
+                        ):
+                            sdk_ref_type = (
+                                types.VideoGenerationReferenceType.ASSET
+                            )
+                        elif (
+                            ref_dto.reference_type
+                            == ReferenceImageTypeEnum.STYLE
+                        ):
+                            sdk_ref_type = (
+                                types.VideoGenerationReferenceType.STYLE
+                            )
+
+                        if sdk_ref_type:
+                            reference_images_for_api.append(
+                                types.VideoGenerationReferenceImage(
+                                    image=image, reference_type=sdk_ref_type
+                                )
+                            )
 
             # --- Handle Generated Inputs for Media Items (start/end frames, source video, and references) ---
             if request_dto.source_media_items:
@@ -184,14 +209,30 @@ def _process_video_in_background(
                             == AssetRoleEnum.VIDEO_EXTENSION_SOURCE
                         ):
                             source_video_for_api = types.Video(uri=gcs_uri)
-                        elif gen_input.role == AssetRoleEnum.IMAGE_REFERENCE:
+                        elif (
+                            gen_input.role
+                            == AssetRoleEnum.IMAGE_REFERENCE_ASSET
+                        ):
+                            image_for_api = types.Image(
+                                gcs_uri=gcs_uri, mime_type=parent_item.mime_type
+                            )
                             reference_images_for_api.append(
                                 types.VideoGenerationReferenceImage(
-                                    image=types.Image(
-                                        gcs_uri=gcs_uri,
-                                        mime_type=parent_item.mime_type,
-                                    ),
-                                    reference_type="asset",
+                                    image=image_for_api,
+                                    reference_type=types.VideoGenerationReferenceType.ASSET,
+                                )
+                            )
+                        elif (
+                            gen_input.role
+                            == AssetRoleEnum.IMAGE_REFERENCE_STYLE
+                        ):
+                            image_for_api = types.Image(
+                                gcs_uri=gcs_uri, mime_type=parent_item.mime_type
+                            )
+                            reference_images_for_api.append(
+                                types.VideoGenerationReferenceImage(
+                                    image=image_for_api,
+                                    reference_type=types.VideoGenerationReferenceType.STYLE,
                                 )
                             )
                     else:
@@ -213,7 +254,11 @@ def _process_video_in_background(
 
             operation: types.GenerateVideosOperation = (
                 client.models.generate_videos(
-                    model=request_dto.generation_model,
+                    model=(
+                        "veo-2.0-generate-exp"
+                        if reference_images_for_api
+                        else request_dto.generation_model
+                    ),
                     prompt=request_dto.prompt,
                     image=start_image_for_api,
                     video=source_video_for_api,
@@ -222,7 +267,11 @@ def _process_video_in_background(
                         output_gcs_uri=gcs_output_directory,
                         aspect_ratio=request_dto.aspect_ratio,
                         negative_prompt=request_dto.negative_prompt,
-                        generate_audio=request_dto.generate_audio,
+                        generate_audio=(
+                            False
+                            if reference_images_for_api
+                            else request_dto.generate_audio
+                        ),
                         # TODO: Pass from dto the secs if extending video (4, 5, 6, 7)
                         duration_seconds=(
                             request_dto.duration_seconds

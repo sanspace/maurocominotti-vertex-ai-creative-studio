@@ -31,13 +31,13 @@
     <ng-template #videoOrGallery>
 
       <ng-container *ngIf="activeVideoJob$ | async as job">
-        <div *ngIf="job.status === JobStatus.PROCESSING" class="fixed inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
+        <div *ngIf="job.status === JobStatus.PROCESSING" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
           <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
           <p class="mt-4 text-white text-lg">Your video is being generated...</p>
           <p class="text-gray-400 text-sm">This may take a few minutes. You can safely navigate away.</p>
         </div>
 
-        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="fixed inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
+        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
           <mat-icon class="text-red-500 !w-16 !h-16 !text-6xl">error_outline</mat-icon>
           <p class="mt-4 text-white text-lg">Video Generation Failed</p>
           <p class="text-gray-400 text-sm max-w-md">{{ job.errorMessage || job.error_message }}</p>
@@ -383,7 +383,7 @@
     </div>
 
     <!-- Prompt Generator -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-8">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 my-8">
       <!-- Prompt Section -->
       <div class="lg:col-span-2 flex flex-col justify-start items-start gap-4">
         <div
@@ -464,30 +464,35 @@
 
         <div
           class="drop-zone"
-          [class.disabled]="referenceImagePreviews.length >= 3"
-          (click)="referenceImagePreviews.length < 3 && openImageSelectorForReference()"
+          [class.disabled]="referenceImages.length >= 3"
+          (click)="referenceImages.length < 3 && openImageSelectorForReference()"
           (dragover)="$event.preventDefault()"
-          (drop)="referenceImagePreviews.length < 3 && onReferenceImageDrop($event)"
+          (drop)="referenceImages.length < 3 && onReferenceImageDrop($event)"
         >
-          <div *ngIf="referenceImagePreviews.length === 0" class="drop-zone-placeholder">
+          <div *ngIf="referenceImages.length === 0" class="drop-zone-placeholder">
             <mat-icon>collections</mat-icon>
             <span>Add Reference Images</span>
             <span>(Max 3)</span>
           </div>
 
-          <div *ngIf="referenceImagePreviews.length > 0" class="reference-previews-container">
-            <div *ngFor="let previewUrl of referenceImagePreviews; let i = index" class="image-preview-container small">
-              <img [src]="previewUrl" alt="Reference Image {{i + 1}}" />
+          <div *ngIf="referenceImages.length > 0" class="reference-previews-container">
+            <div *ngFor="let refImage of referenceImages; let i = index" class="image-preview-container small">
+              <img [src]="refImage.previewUrl" [alt]="'Reference Image ' + (i + 1)" />
               <button (click)="clearReferenceImage(i, $event)" class="clear-button small" mat-icon-button>
                   <mat-icon>close</mat-icon>
               </button>
+              <div class="reference-type-toggle">
+                  <mat-slide-toggle
+                    [checked]="refImage.type === 'STYLE'"
+                    (change)="toggleReferenceType(refImage)"
+                    (click)="$event.stopPropagation()">STYLE</mat-slide-toggle>
+              </div>
             </div>
           </div>
 
-          <div *ngIf="referenceImagePreviews.length >= 3" class="drop-zone-limit-reached">
+          <div *ngIf="referenceImages.length >= 3" class="drop-zone-limit-reached">
             <p>Maximum of 3 reference images reached.</p>
           </div>
-
         </div>
 
       </div>

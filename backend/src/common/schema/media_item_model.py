@@ -2,6 +2,7 @@ import datetime
 from enum import Enum
 from typing import Annotated, Dict, List, Optional
 
+from google.genai import types
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from pydantic.alias_generators import to_camel
 
@@ -12,6 +13,7 @@ from src.common.base_dto import (
     GenerationModelEnum,
     LightingEnum,
     MimeTypeEnum,
+    ReferenceImageTypeEnum,
     StyleEnum,
 )
 from src.common.base_repository import BaseDocument
@@ -49,7 +51,12 @@ class AssetRoleEnum(str, Enum):
     CONCATENATION_SOURCE = (
         "concatenation_source"  # An input video in a concatenation job
     )
-    IMAGE_REFERENCE = "image_reference"  # An input image for video generation in a concatenation job
+    IMAGE_REFERENCE_STYLE = (
+        "image_reference_style"  # An input for R2V with style type
+    )
+    IMAGE_REFERENCE_ASSET = (
+        "image_reference_asset"  # An input for R2V with asset type
+    )
 
 
 class SourceAssetLink(BaseModel):

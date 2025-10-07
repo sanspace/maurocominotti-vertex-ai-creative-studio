@@ -38,6 +38,19 @@ export type SourceMediaItemLink = {
   role: string;
 };
 
+export interface ReferenceImage {
+  previewUrl: string;
+  type: 'ASSET' | 'STYLE';
+  // It can be one of these two sources
+  sourceAssetId?: string;
+  sourceMediaItem?: SourceMediaItemLink;
+}
+
+export interface ReferenceImageDto {
+  assetId: string;
+  referenceType: 'ASSET' | 'STYLE';
+}
+
 export type VeoRequest = {
   prompt: string;
   generationModel: string;
@@ -56,7 +69,7 @@ export type VeoRequest = {
   sourceMediaItems?: SourceMediaItemLink[];
   workspaceId?: string;
   useBrandGuidelines: boolean;
-  referenceImageAssetIds?: string[];
+  referenceImages?: ReferenceImageDto[];
 };
 
 export type SearchResponse = {

@@ -1,6 +1,8 @@
+from enum import Enum
 from typing import Optional
 
 from fastapi import Query
+from google.genai import types
 from pydantic import Field, ValidationInfo, field_validator
 from typing_extensions import Annotated
 
@@ -11,12 +13,22 @@ from src.common.base_dto import (
     CompositionEnum,
     GenerationModelEnum,
     LightingEnum,
+    ReferenceImageTypeEnum,
     StyleEnum,
 )
 from src.common.schema.media_item_model import (
     AssetRoleEnum,
     SourceMediaItemLink,
 )
+
+
+class ReferenceImageDto(BaseDto):
+    asset_id: str = Field(
+        description="The ID of the SourceAsset to use as a reference."
+    )
+    reference_type: ReferenceImageTypeEnum = Field(
+        default=ReferenceImageTypeEnum.ASSET
+    )
 
 
 class CreateVeoDto(BaseDto):
@@ -91,10 +103,10 @@ class CreateVeoDto(BaseDto):
         default=False,
         description="Whether to prepend brand guidelines to the prompt.",
     )
-    reference_image_asset_ids: Optional[list[str]] = Field(
+    reference_images: Optional[list[ReferenceImageDto]] = Field(
         default=None,
         max_length=3,
-        description="A list of SourceAsset IDs to be used as style/content references for the generation.",
+        description="A list of reference images, each with an ID and a type (ASSET or STYLE).",
     )
 
     @field_validator("source_media_items")
@@ -107,7 +119,6 @@ class CreateVeoDto(BaseDto):
         2. Ensures the total number of reference images does not exceed 3.
         3. Ensures reference images are not used with start/end frames or source videos.
         """
-        reference_media_items_count = 0
         conflicting_roles_present = False
 
         if value:
@@ -115,37 +126,22 @@ class CreateVeoDto(BaseDto):
                 AssetRoleEnum.START_FRAME,
                 AssetRoleEnum.END_FRAME,
                 AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
-                AssetRoleEnum.IMAGE_REFERENCE,
             }
-            conflicting_roles = {
-                AssetRoleEnum.START_FRAME,
-                AssetRoleEnum.END_FRAME,
-                AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
-            }
+            # Note: IMAGE_REFERENCE is no longer needed here as it's handled by the `reference_images` field
+            conflicting_roles = valid_roles
 
             for item in value:
                 if item.role not in valid_roles:
                     raise ValueError(
                         f"Invalid role '{item.role}' for source_media_item."
                     )
-                if item.role == AssetRoleEnum.IMAGE_REFERENCE:
-                    reference_media_items_count += 1
                 if item.role in conflicting_roles:
                     conflicting_roles_present = True
 
-        # Check total reference image count
-        reference_assets_count = len(
-            info.data.get("reference_image_asset_ids") or []
-        )
-        total_references = reference_assets_count + reference_media_items_count
+        # The validator now correctly checks the new `reference_images` field
+        has_references = bool(info.data.get("reference_images"))
 
-        if total_references > 3:
-            raise ValueError(
-                "A maximum of 3 total reference images can be provided."
-            )
-
-        # --- Check for conflicting parameters ---
-        if total_references > 0:
+        if has_references:
             # Check for other conflicting fields from the main DTO
             start_image_present = bool(info.data.get("start_image_asset_id"))
             end_image_present = bool(info.data.get("end_image_asset_id"))

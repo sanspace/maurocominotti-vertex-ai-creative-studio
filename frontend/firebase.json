@@ -1,6 +1,5 @@
 {
   "hosting": {
-    "site": "SITE_ID_PLACEHOLDER",
     "public": "dist/creative-studio/browser",
     "ignore": [
       "firebase.json",
@@ -11,7 +10,7 @@
       {
         "source": "/api/**",
         "run": {
-          "serviceId": "BACKEND_SERVICE_ID_PLACEHOLDER",
+          "serviceId": "creative-studio-backend",
           "region": "us-central1"
         }
       },

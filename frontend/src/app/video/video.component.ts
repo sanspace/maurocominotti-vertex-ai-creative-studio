@@ -13,7 +13,11 @@ import {
   SearchService,
 } from '../services/search/search.service';
 import {Router} from '@angular/router';
-import {SourceMediaItemLink, VeoRequest} from '../common/models/search.model';
+import {
+  ReferenceImage,
+  SourceMediaItemLink,
+  VeoRequest,
+} from '../common/models/search.model';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatDialog} from '@angular/material/dialog';
@@ -68,8 +72,7 @@ export class VideoComponent implements AfterViewInit {
   showErrorOverlay = true;
   isConcatenateMode = false;
   isExtensionMode = false;
-  referenceImageAssetIds: string[] = [];
-  referenceImagePreviews: string[] = [];
+  referenceImages: ReferenceImage[] = [];
 
   // Internal state to track input types
   private _input1IsVideo = false;
@@ -79,7 +82,7 @@ export class VideoComponent implements AfterViewInit {
   // This object holds the current state of all user selections.
   searchRequest: VeoRequest = {
     prompt: '',
-    generationModel: 'veo-3.0-generate-preview',
+    generationModel: 'veo-3.0-generate-001',
     aspectRatio: '16:9',
     numberOfMedia: 4,
     style: null,
@@ -90,7 +93,7 @@ export class VideoComponent implements AfterViewInit {
     generateAudio: true,
     durationSeconds: 8,
     useBrandGuidelines: false,
-    referenceImageAssetIds: [],
+    referenceImages: [],
   };
 
   // --- Negative Prompt Chips ---
@@ -99,11 +102,11 @@ export class VideoComponent implements AfterViewInit {
   // --- Dropdown Options ---
   generationModels = [
     {
-      value: 'veo-3.0-generate-preview',
+      value: 'veo-3.0-generate-001',
       viewValue: 'Veo 3 Quality \n (Beta Audio)',
     },
     {
-      value: 'veo-3.0-fast-generate-preview',
+      value: 'veo-3.0-fast-generate-001',
       viewValue: 'Veo 3 Fast \n (Beta Audio)',
     },
     {value: 'veo-2.0-generate-001', viewValue: 'Veo 2 Quality \n (No Audio)'},
@@ -374,8 +377,8 @@ export class VideoComponent implements AfterViewInit {
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
     const hasSourceMediaItems = this.sourceMediaItems.some(i => !!i);
     const isVeo3 = [
-      'veo-3.0-fast-generate-preview',
-      'veo-3.0-generate-preview',
+      'veo-3.0-fast-generate-001',
+      'veo-3.0-generate-001',
     ].includes(this.searchRequest.generationModel);
 
     if (
@@ -408,6 +411,32 @@ export class VideoComponent implements AfterViewInit {
       (i): i is SourceMediaItemLink => !!i,
     );
 
+    // --- Build the two separate R2V reference payloads ---
+    const referenceImagesPayload: {
+      assetId: string;
+      referenceType: 'ASSET' | 'STYLE';
+    }[] = [];
+    const sourceMediaItemsForReference: SourceMediaItemLink[] = [];
+
+    for (const refImage of this.referenceImages) {
+      if (refImage.sourceAssetId) {
+        // This is a SourceAsset, add it to the `referenceImages` list for the DTO
+        referenceImagesPayload.push({
+          assetId: refImage.sourceAssetId,
+          referenceType: refImage.type,
+        });
+      } else if (refImage.sourceMediaItem) {
+        // This is a MediaItem, add it to the `sourceMediaItems` list for the DTO
+        sourceMediaItemsForReference.push({
+          ...refImage.sourceMediaItem,
+          role:
+            refImage.type === 'STYLE'
+              ? 'image_reference_style'
+              : 'image_reference_asset',
+        });
+      }
+    }
+
     const payload: VeoRequest = {
       ...this.searchRequest,
       startImageAssetId: !this._input1IsVideo
@@ -417,13 +446,12 @@ export class VideoComponent implements AfterViewInit {
         ? (this.startImageAssetId ?? undefined)
         : undefined,
       endImageAssetId: this.endImageAssetId ?? undefined,
-      sourceMediaItems: validSourceMediaItems.length
-        ? validSourceMediaItems
-        : undefined,
-      referenceImageAssetIds:
-        this.referenceImageAssetIds.length > 0
-          ? this.referenceImageAssetIds
-          : undefined,
+      sourceMediaItems: [
+        ...validSourceMediaItems,
+        ...sourceMediaItemsForReference,
+      ],
+      referenceImages:
+        referenceImagesPayload.length > 0 ? referenceImagesPayload : undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -496,7 +524,7 @@ export class VideoComponent implements AfterViewInit {
   resetAllFilters() {
     this.searchRequest = {
       prompt: '',
-      generationModel: 'veo-3.0-generate-preview',
+      generationModel: 'veo-3.0-generate-001',
       aspectRatio: '16:9',
       numberOfMedia: 4,
       style: null,
@@ -611,8 +639,8 @@ export class VideoComponent implements AfterViewInit {
 
     if (isVideo) {
       const isVeo3 = [
-        'veo-3.0-fast-generate-preview',
-        'veo-3.0-generate-preview',
+        'veo-3.0-fast-generate-001',
+        'veo-3.0-generate-001',
       ].includes(this.searchRequest.generationModel);
 
       if (isVeo3) {
@@ -806,8 +834,8 @@ export class VideoComponent implements AfterViewInit {
 
   private clearOtherImage(imageNumberJustSet: 1 | 2) {
     const isVeo3 = [
-      'veo-3.0-fast-generate-preview',
-      'veo-3.0-generate-preview',
+      'veo-3.0-fast-generate-001',
+      'veo-3.0-generate-001',
     ].includes(this.searchRequest.generationModel);
 
     const image1Set = !!this.startImageAssetId || !!this.sourceMediaItems[0];
@@ -1026,6 +1054,7 @@ export class VideoComponent implements AfterViewInit {
   }
 
   openImageSelectorForReference(): void {
+    if (this.referenceImages.length >= 3) return;
     const dialogRef = this.dialog.open(ImageSelectorComponent, {
       width: '90vw',
       height: '80vh',
@@ -1039,22 +1068,29 @@ export class VideoComponent implements AfterViewInit {
     dialogRef
       .afterClosed()
       .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
-        if (result) {
-          if ('gcsUri' in result) {
-            // It's a newly uploaded SourceAsset
-            this.referenceImageAssetIds.push(result.id);
-            if (result.presignedUrl)
-              this.referenceImagePreviews.push(result.presignedUrl);
-          } else {
-            // It's a selected MediaItem from the gallery
-            const previewUrl =
-              result.mediaItem.presignedUrls?.[result.selectedIndex];
-            if (previewUrl) {
-              // Here we would need to create a SourceMediaItemLink, but the backend only accepts SourceAsset IDs for references for now.
-              // For now, we'll assume only new uploads or existing source assets can be references.
-              // This can be expanded later if needed.
-              console.log('Selected a gallery item as a reference.', result);
-            }
+        if (!result) return;
+
+        if ('gcsUri' in result) {
+          // It's a newly uploaded SourceAsset
+          this.referenceImages.push({
+            sourceAssetId: result.id,
+            previewUrl: result.presignedUrl || '',
+            type: 'ASSET', // Default to ASSET
+          });
+        } else {
+          // It's a selected MediaItem from the gallery
+          const previewUrl =
+            result.mediaItem.presignedUrls?.[result.selectedIndex];
+          if (previewUrl) {
+            this.referenceImages.push({
+              previewUrl: previewUrl,
+              type: 'ASSET',
+              sourceMediaItem: {
+                mediaItemId: result.mediaItem.id,
+                mediaIndex: result.selectedIndex,
+                role: 'image_reference_asset', // Default role
+              },
+            });
           }
         }
       });
@@ -1063,6 +1099,7 @@ export class VideoComponent implements AfterViewInit {
   // Called when DROPPING a file on the new drop zone
   onReferenceImageDrop(event: DragEvent) {
     event.preventDefault();
+    if (this.referenceImages.length >= 3) return;
     const file = event.dataTransfer?.files[0];
     if (file && file.type.startsWith('image/')) {
       // For a direct drop, go straight to the cropper
@@ -1076,9 +1113,11 @@ export class VideoComponent implements AfterViewInit {
 
       dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
         if (result && result.id) {
-          this.referenceImageAssetIds.push(result.id);
-          if (result.presignedUrl)
-            this.referenceImagePreviews.push(result.presignedUrl);
+          this.referenceImages.push({
+            sourceAssetId: result.id,
+            previewUrl: result.presignedUrl || '',
+            type: 'ASSET',
+          });
         }
       });
     }
@@ -1086,7 +1125,16 @@ export class VideoComponent implements AfterViewInit {
 
   clearReferenceImage(index: number, event: MouseEvent) {
     event.stopPropagation();
-    this.referenceImageAssetIds.splice(index, 1);
-    this.referenceImagePreviews.splice(index, 1);
+    this.referenceImages.splice(index, 1);
+  }
+
+  toggleReferenceType(refImage: ReferenceImage) {
+    refImage.type = refImage.type === 'ASSET' ? 'STYLE' : 'ASSET';
+    if (refImage.sourceMediaItem) {
+      refImage.sourceMediaItem.role =
+        refImage.type === 'STYLE'
+          ? 'image_reference_style'
+          : 'image_reference_asset';
+    }
   }
 }
