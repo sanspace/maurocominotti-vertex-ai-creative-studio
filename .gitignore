@@ -5,3 +5,7 @@ local/
 .DS_Store
 
 .aider*
+.vscode
+
+# Terraform
+**/.terraform**
