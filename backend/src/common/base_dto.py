@@ -53,7 +53,7 @@ class GenerationModelEnum(str, Enum):
     VEO_3_QUALITY_PREVIEW = "veo-3.0-generate-preview"
     VEO_2_FAST = "veo-2.0-generate-001"
     VEO_2_QUALITY = "veo-2.0-fast-generate-001"
-
+    VEO_2_GENERATE_EXP = "veo-2.0-generate-exp"
 
 class AspectRatioEnum(str, Enum):
     """Enum representing the supported aspect ratios."""

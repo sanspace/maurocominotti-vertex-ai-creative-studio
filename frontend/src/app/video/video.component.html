@@ -463,35 +463,50 @@
         </div>
 
         <div
-          class="drop-zone"
+          class="drop-zone relative flex flex-col p-2"
           [class.disabled]="referenceImages.length >= 3"
           (click)="referenceImages.length < 3 && openImageSelectorForReference()"
           (dragover)="$event.preventDefault()"
           (drop)="referenceImages.length < 3 && onReferenceImageDrop($event)"
         >
-          <div *ngIf="referenceImages.length === 0" class="drop-zone-placeholder">
+          <div *ngIf="referenceImages.length === 0" class="drop-zone-placeholder m-auto">
             <mat-icon>collections</mat-icon>
-            <span>Add Reference Images</span>
-            <span>(Max 3)</span>
+            <span>Add Reference Images (Max 3)</span>
           </div>
 
-          <div *ngIf="referenceImages.length > 0" class="reference-previews-container">
-            <div *ngFor="let refImage of referenceImages; let i = index" class="image-preview-container small">
-              <img [src]="refImage.previewUrl" [alt]="'Reference Image ' + (i + 1)" />
-              <button (click)="clearReferenceImage(i, $event)" class="clear-button small" mat-icon-button>
+          <div *ngIf="referenceImages.length > 0" class="w-full h-full flex flex-col gap-2">
+            <div class="global-reference-toggle">
+              <mat-slide-toggle
+                [checked]="referenceImagesType === 'STYLE'"
+                (change)="referenceImagesType = $event.checked ? 'STYLE' : 'ASSET'"
+                (click)="$event.stopPropagation()"
+              >
+                <span class="text-white text-sm font-medium">Use all as STYLE</span>
+              </mat-slide-toggle>
+            </div>
+
+            <div class="reference-previews-container">
+              <div
+                *ngFor="let refImage of referenceImages; let i = index"
+                class="image-preview-container small"
+              >
+                <img [src]="refImage.previewUrl" [alt]="'Reference Image ' + (i + 1)" />
+                <button
+                  (click)="clearReferenceImage(i, $event)"
+                  class="clear-button small"
+                  mat-icon-button
+                >
                   <mat-icon>close</mat-icon>
-              </button>
-              <div class="reference-type-toggle">
-                  <mat-slide-toggle
-                    [checked]="refImage.type === 'STYLE'"
-                    (change)="toggleReferenceType(refImage)"
-                    (click)="$event.stopPropagation()">STYLE</mat-slide-toggle>
+                </button>
               </div>
             </div>
-          </div>
 
-          <div *ngIf="referenceImages.length >= 3" class="drop-zone-limit-reached">
-            <p>Maximum of 3 reference images reached.</p>
+            <div
+              *ngIf="referenceImages.length >= 3"
+              class="drop-zone-limit-reached"
+            >
+              <p>Maximum of 3 reference images reached.</p>
+            </div>
           </div>
         </div>
 

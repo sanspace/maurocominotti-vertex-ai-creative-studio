@@ -1,6 +1,6 @@
 <div *ngIf="isLoading" class="loading-container">
   <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
-  <p>Loading your assets...</p>
+  <p class="!mt-5">Loading your assets...</p>
 </div>
 
 <div *ngIf="!isLoading && assets.length === 0" class="no-assets-container">

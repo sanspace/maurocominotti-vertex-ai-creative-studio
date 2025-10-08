@@ -182,8 +182,11 @@ class CreateVeoDto(BaseDto):
         valid_video_ratios = [
             GenerationModelEnum.VEO_3_FAST,
             GenerationModelEnum.VEO_3_QUALITY,
+            GenerationModelEnum.VEO_3_FAST_PREVIEW,
+            GenerationModelEnum.VEO_3_QUALITY_PREVIEW,
             GenerationModelEnum.VEO_2_FAST,
             GenerationModelEnum.VEO_2_QUALITY,
+            GenerationModelEnum.VEO_2_GENERATE_EXP,
         ]
         if value not in valid_video_ratios:
             raise ValueError("Invalid generation model for video.")

@@ -73,6 +73,7 @@ export class VideoComponent implements AfterViewInit {
   isConcatenateMode = false;
   isExtensionMode = false;
   referenceImages: ReferenceImage[] = [];
+  referenceImagesType: 'ASSET' | 'STYLE' = 'ASSET';
 
   // Internal state to track input types
   private _input1IsVideo = false;
@@ -420,17 +421,16 @@ export class VideoComponent implements AfterViewInit {
 
     for (const refImage of this.referenceImages) {
       if (refImage.sourceAssetId) {
-        // This is a SourceAsset, add it to the `referenceImages` list for the DTO
         referenceImagesPayload.push({
           assetId: refImage.sourceAssetId,
-          referenceType: refImage.type,
+          referenceType: this.referenceImagesType, // Use the global type
         });
       } else if (refImage.sourceMediaItem) {
-        // This is a MediaItem, add it to the `sourceMediaItems` list for the DTO
         sourceMediaItemsForReference.push({
           ...refImage.sourceMediaItem,
+          // Use the global type to determine the role
           role:
-            refImage.type === 'STYLE'
+            this.referenceImagesType === 'STYLE'
               ? 'image_reference_style'
               : 'image_reference_asset',
         });
@@ -446,12 +446,12 @@ export class VideoComponent implements AfterViewInit {
         ? (this.startImageAssetId ?? undefined)
         : undefined,
       endImageAssetId: this.endImageAssetId ?? undefined,
+      referenceImages:
+        referenceImagesPayload.length > 0 ? referenceImagesPayload : undefined,
       sourceMediaItems: [
         ...validSourceMediaItems,
         ...sourceMediaItemsForReference,
       ],
-      referenceImages:
-        referenceImagesPayload.length > 0 ? referenceImagesPayload : undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -1068,29 +1068,25 @@ export class VideoComponent implements AfterViewInit {
     dialogRef
       .afterClosed()
       .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
-        if (!result) return;
-
-        if ('gcsUri' in result) {
-          // It's a newly uploaded SourceAsset
-          this.referenceImages.push({
-            sourceAssetId: result.id,
-            previewUrl: result.presignedUrl || '',
-            type: 'ASSET', // Default to ASSET
-          });
-        } else {
-          // It's a selected MediaItem from the gallery
-          const previewUrl =
-            result.mediaItem.presignedUrls?.[result.selectedIndex];
-          if (previewUrl) {
+        if (result && this.referenceImages.length < 3) {
+          if ('gcsUri' in result) {
             this.referenceImages.push({
-              previewUrl: previewUrl,
-              type: 'ASSET',
-              sourceMediaItem: {
-                mediaItemId: result.mediaItem.id,
-                mediaIndex: result.selectedIndex,
-                role: 'image_reference_asset', // Default role
-              },
+              sourceAssetId: result.id,
+              previewUrl: result.presignedUrl || '',
             });
+          } else {
+            const previewUrl =
+              result.mediaItem.presignedUrls?.[result.selectedIndex];
+            if (previewUrl) {
+              this.referenceImages.push({
+                previewUrl: previewUrl,
+                sourceMediaItem: {
+                  mediaItemId: result.mediaItem.id,
+                  mediaIndex: result.selectedIndex,
+                  role: 'image_reference_asset', // Role is now set dynamically in searchTerm
+                },
+              });
+            }
           }
         }
       });
@@ -1116,7 +1112,6 @@ export class VideoComponent implements AfterViewInit {
           this.referenceImages.push({
             sourceAssetId: result.id,
             previewUrl: result.presignedUrl || '',
-            type: 'ASSET',
           });
         }
       });
@@ -1126,15 +1121,5 @@ export class VideoComponent implements AfterViewInit {
   clearReferenceImage(index: number, event: MouseEvent) {
     event.stopPropagation();
     this.referenceImages.splice(index, 1);
-  }
-
-  toggleReferenceType(refImage: ReferenceImage) {
-    refImage.type = refImage.type === 'ASSET' ? 'STYLE' : 'ASSET';
-    if (refImage.sourceMediaItem) {
-      refImage.sourceMediaItem.role =
-        refImage.type === 'STYLE'
-          ? 'image_reference_style'
-          : 'image_reference_asset';
-    }
   }
 }

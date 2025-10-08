@@ -141,6 +141,16 @@
   }
 }
 
+.global-reference-toggle {
+  // Remove positioning to place it in the normal layout flow
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 // Small devices (landscape phones, 576px and up)
 @media (min-width: 576px) {
 }

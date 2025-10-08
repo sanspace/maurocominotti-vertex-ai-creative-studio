@@ -40,8 +40,6 @@ export type SourceMediaItemLink = {
 
 export interface ReferenceImage {
   previewUrl: string;
-  type: 'ASSET' | 'STYLE';
-  // It can be one of these two sources
   sourceAssetId?: string;
   sourceMediaItem?: SourceMediaItemLink;
 }
