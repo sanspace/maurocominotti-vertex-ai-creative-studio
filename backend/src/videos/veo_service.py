@@ -254,11 +254,7 @@ def _process_video_in_background(
 
             operation: types.GenerateVideosOperation = (
                 client.models.generate_videos(
-                    model=(
-                        "veo-2.0-generate-exp"
-                        if reference_images_for_api
-                        else request_dto.generation_model
-                    ),
+                    model=request_dto.generation_model,
                     prompt=request_dto.prompt,
                     image=start_image_for_api,
                     video=source_video_for_api,
@@ -267,11 +263,7 @@ def _process_video_in_background(
                         output_gcs_uri=gcs_output_directory,
                         aspect_ratio=request_dto.aspect_ratio,
                         negative_prompt=request_dto.negative_prompt,
-                        generate_audio=(
-                            False
-                            if reference_images_for_api
-                            else request_dto.generate_audio
-                        ),
+                        generate_audio=request_dto.generate_audio,
                         # TODO: Pass from dto the secs if extending video (4, 5, 6, 7)
                         duration_seconds=(
                             request_dto.duration_seconds
@@ -616,6 +608,20 @@ class VeoService:
                     role=AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
                 )
             )
+
+        if request_dto.reference_images:
+            for ref_image in request_dto.reference_images:
+                role = (
+                    AssetRoleEnum.IMAGE_REFERENCE_STYLE
+                    if ref_image.reference_type == ReferenceImageTypeEnum.STYLE
+                    else AssetRoleEnum.IMAGE_REFERENCE_ASSET
+                )
+                source_assets.append(
+                    SourceAssetLink(
+                        asset_id=ref_image.asset_id,
+                        role=role,
+                    )
+                )
 
         # 2. Create a placeholder document
         placeholder_item = MediaItemModel(

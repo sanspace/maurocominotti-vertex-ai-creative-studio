@@ -117,31 +117,50 @@ class CreateVeoDto(BaseDto):
         Performs several validations:
         1. Ensures that source_media_items have a valid role.
         2. Ensures the total number of reference images does not exceed 3.
-        3. Ensures reference images are not used with start/end frames or source videos.
+        3. Ensures reference images (from any source) are not used with start/end frames or source videos.
+        4. Ensures reference image roles are only used with the correct model.
         """
+        # The `validate_source_media_items` validator handles all reference sources
+        # (source assets and media items) in one place.
+        # This validator is kept to ensure the field is processed, but the core logic is moved.
         conflicting_roles_present = False
+        reference_roles_present = False
+        model = info.data.get("generation_model")
 
         if value:
-            valid_roles = {
+            non_reference_roles = {
                 AssetRoleEnum.START_FRAME,
                 AssetRoleEnum.END_FRAME,
                 AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
             }
-            # Note: IMAGE_REFERENCE is no longer needed here as it's handled by the `reference_images` field
-            conflicting_roles = valid_roles
+            reference_roles = {
+                AssetRoleEnum.IMAGE_REFERENCE_ASSET,
+                AssetRoleEnum.IMAGE_REFERENCE_STYLE,
+            }
+            valid_roles = non_reference_roles.union(reference_roles)
 
             for item in value:
                 if item.role not in valid_roles:
                     raise ValueError(
                         f"Invalid role '{item.role}' for source_media_item."
                     )
-                if item.role in conflicting_roles:
+                if item.role in non_reference_roles:
                     conflicting_roles_present = True
+                if item.role in reference_roles:
+                    reference_roles_present = True
 
-        # The validator now correctly checks the new `reference_images` field
-        has_references = bool(info.data.get("reference_images"))
+        # The validator now correctly checks both `reference_images` and reference roles in `source_media_items`
+        has_asset_references = bool(info.data.get("reference_images"))
+        has_any_references = has_asset_references or reference_roles_present
 
-        if has_references:
+        if has_any_references:
+            # Enforce model compatibility for any reference image usage
+            if model != GenerationModelEnum.VEO_2_GENERATE_EXP:
+                raise ValueError(
+                    "Reference images are only supported by the "
+                    f"'{GenerationModelEnum.VEO_2_GENERATE_EXP.value}' model."
+                )
+
             # Check for other conflicting fields from the main DTO
             start_image_present = bool(info.data.get("start_image_asset_id"))
             end_image_present = bool(info.data.get("end_image_asset_id"))

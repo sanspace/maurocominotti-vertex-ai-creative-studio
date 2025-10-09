@@ -112,6 +112,10 @@ export class VideoComponent implements AfterViewInit {
     },
     {value: 'veo-2.0-generate-001', viewValue: 'Veo 2 Quality \n (No Audio)'},
     {value: 'veo-2.0-fast-generate-001', viewValue: 'Veo 2 Fast \n (No Audio)'},
+    {
+      value: 'veo-2.0-generate-exp',
+      viewValue: 'Veo 2 Exp \n (Reference Image)',
+    },
   ];
   selectedGenerationModel = this.generationModels[0].viewValue;
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
@@ -231,7 +235,10 @@ export class VideoComponent implements AfterViewInit {
     this.searchRequest.generationModel = model.value;
     this.selectedGenerationModel = model.viewValue;
 
-    const isVeo2 = model.value.includes('veo-2.0');
+    const isVeo2 =
+      model.value.includes('veo-2.0') &&
+      model.value !== 'veo-2.0-generate-exp';
+    const isVeo2Exp = model.value === 'veo-2.0-generate-exp';
 
     if (isVeo2) {
       // Veo 2 models do not support audio.
@@ -239,6 +246,11 @@ export class VideoComponent implements AfterViewInit {
       this.searchRequest.generateAudio = false;
 
       // Re-enable all aspect ratios for Veo 2.
+      this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
+    } else if (isVeo2Exp) {
+      // Veo 2 Exp model does not support audio.
+      this.isAudioGenerationDisabled = true;
+      this.searchRequest.generateAudio = false;
       this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
     } else {
       this.clearOtherImage(1);
@@ -1088,6 +1100,7 @@ export class VideoComponent implements AfterViewInit {
               });
             }
           }
+          this.handleReferenceImageAdded();
         }
       });
   }
@@ -1113,8 +1126,45 @@ export class VideoComponent implements AfterViewInit {
             sourceAssetId: result.id,
             previewUrl: result.presignedUrl || '',
           });
+          this.handleReferenceImageAdded();
         }
       });
+    }
+  }
+
+  private handleReferenceImageAdded(): void {
+    if (this.referenceImages.length === 1) {
+      // If there's a start/end frame or a video for extension/concatenation, clear them.
+      const hadInputs = this.image1Preview || this.image2Preview;
+      const snackbarMessage =
+        'Start/end frames and extension videos have been cleared to use reference images.';
+      if (this.image1Preview || this.image2Preview) {
+        this.startImageAssetId = null;
+        this.image1Preview = null;
+        this._input1IsVideo = false;
+        this.sourceMediaItems[0] = null;
+        this.endImageAssetId = null;
+        this.image2Preview = null;
+        this._input2IsVideo = false;
+        this.sourceMediaItems[1] = null;
+        this.updateModeAndNotify();
+        this._snackBar.open(snackbarMessage, 'OK', {duration: 5000});
+      }
+
+      const expModel = this.generationModels.find(
+        m => m.value === 'veo-2.0-generate-exp',
+      );
+      if (expModel) {
+        this.selectModel(expModel);
+        this._snackBar.openFromComponent(ToastMessageComponent, {
+          panelClass: ['green-toast'],
+          duration: 8000,
+          data: {
+            text: "We've switched to the Veo 2 Exp model for you, as it's the only one that supports reference images.",
+            matIcon: 'info_outline',
+          },
+        });
+      }
     }
   }
 
