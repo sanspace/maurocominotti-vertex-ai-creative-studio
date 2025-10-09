@@ -232,19 +232,27 @@ configure_environment() {
     prefix = \"$BUCKET_PREFIX\"
   }
 }" > "$ENV_DIR/backend.tf"
-        info "Updating $TFVARS_FILE...";
-        mv "$ENV_DIR/dev.tfvars" "$ENV_DIR/$TFVARS_FILE"
+        info "Updating $TFVARS_FILE_PATH..."; mv "$ENV_DIR/dev.tfvars" "$ENV_DIR/$TFVARS_FILE"
 
         # Define the full path for sed operations
         TFVARS_FILE_PATH="$ENV_DIR/$TFVARS_FILE"
 
-        sed -i.bak "s/gcp_project_id = \".*\"/gcp_project_id = \"$GCP_PROJECT_ID\"/g" "$ENV_DIR/$TFVARS_FILE_PATH"
-        sed -i.bak "s/github_repo_owner = \".*\"/github_repo_owner = \"$GITHUB_REPO_OWNER\"/g" "$ENV_DIR/$TFVARS_FILE_PATH"
-        sed -i.bak "s/github_repo_name = \".*\"/github_repo_name = \"$GITHUB_REPO_NAME\"/g" "$ENV_DIR/$TFVARS_FILE_PATH"
-        prompt "Please provide the following values:"
-        prompt_and_update_tfvar "Backend Service Name" "$(printf "$DEFAULT_BE_SERVICE_NAME_FORMAT" "$ENV_NAME")" "backend_service_name" "BE_SERVICE_NAME"
-        prompt_and_update_tfvar "Frontend Service Name" "$(printf "$DEFAULT_FE_SERVICE_NAME_FORMAT" "$ENV_NAME")" "frontend_service_name" "FE_SERVICE_NAME"
+        sed -i.bak "s/gcp_project_id = \".*\"/gcp_project_id = \"$GCP_PROJECT_ID\"/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s/github_repo_owner = \".*\"/github_repo_owner = \"$GITHUB_REPO_OWNER\"/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s/github_repo_name = \".*\"/github_repo_name = \"$GITHUB_REPO_NAME\"/g" "$TFVARS_FILE_PATH"
+        
+        # Set service names automatically
+        BE_SERVICE_NAME=$(printf "$DEFAULT_BE_SERVICE_NAME_FORMAT" "$ENV_NAME")
+        FE_SERVICE_NAME=$(printf "$DEFAULT_FE_SERVICE_NAME_FORMAT" "$ENV_NAME")
+        info "Default service names will be '$BE_SERVICE_NAME' and '$FE_SERVICE_NAME'."
+        sed -i.bak "s/backend_service_name = \".*\"/backend_service_name = \"$BE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s/frontend_service_name = \".*\"/frontend_service_name = \"$FE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
+
+        # Prompt only for the branch name
+        TFVARS_FILE=$TFVARS_FILE_PATH # Set context for helper function
+        prompt "Please provide the following value:"
         prompt_and_update_tfvar "GitHub Branch to deploy from" "$DEFAULT_BRANCH_NAME" "github_branch_name" "GITHUB_BRANCH"
+        
         write_state "ENV_NAME" "$ENV_NAME"; write_state "BE_SERVICE_NAME" "$BE_SERVICE_NAME"; write_state "FE_SERVICE_NAME" "$FE_SERVICE_NAME"; write_state "GITHUB_BRANCH" "$GITHUB_BRANCH"
     else info "Environment directory '$ENV_DIR' already configured."; fi
     success "Configuration files for '$ENV_NAME' environment are ready."
