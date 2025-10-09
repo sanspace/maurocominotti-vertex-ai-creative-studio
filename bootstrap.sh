@@ -18,8 +18,8 @@ DEFAULT_ENV_NAME="dev-infra"
 DEFAULT_BRANCH_NAME="main"
 GCS_BUCKET_SUFFIX_FORMAT="cstudio-%s-tfstate"
 GCS_BUCKET_PREFIX_FORMAT="infra/%s/state"
-DEFAULT_BE_SERVICE_NAME_FORMAT="cstudio-be-%s"
-DEFAULT_FE_SERVICE_NAME_FORMAT="cstudio-fe-%s"
+BE_SERVICE_NAME="cstudio-be"
+FE_SERVICE_NAME="cstudio-fe"
 
 # --- Color Definitions ---
 C_RESET='\033[0m'; C_RED='\033[0;31m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_BLUE='\033[0;34m'; C_CYAN='\033[0;36m'
@@ -242,8 +242,6 @@ configure_environment() {
         sed -i.bak "s/github_repo_name = \".*\"/github_repo_name = \"$GITHUB_REPO_NAME\"/g" "$TFVARS_FILE_PATH"
         
         # Set service names automatically
-        BE_SERVICE_NAME=$(printf "$DEFAULT_BE_SERVICE_NAME_FORMAT" "$ENV_NAME")
-        FE_SERVICE_NAME=$(printf "$DEFAULT_FE_SERVICE_NAME_FORMAT" "$ENV_NAME")
         info "Default service names will be '$BE_SERVICE_NAME' and '$FE_SERVICE_NAME'."
         sed -i.bak "s/backend_service_name = \".*\"/backend_service_name = \"$BE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
         sed -i.bak "s/frontend_service_name = \".*\"/frontend_service_name = \"$FE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
