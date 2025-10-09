@@ -21,6 +21,11 @@ GCS_BUCKET_PREFIX_FORMAT="infra/%s/state"
 BE_SERVICE_NAME="cstudio-be"
 FE_SERVICE_NAME="cstudio-fe"
 
+# script will automatically set these
+AUTO_FIREBASE_API_KEY=""
+AUTO_FIREBASE_AUTH_DOMAIN=""
+AUTO_OAUTH_CLIENT_ID=""
+
 # --- Color Definitions ---
 C_RESET='\033[0m'; C_RED='\033[0;31m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_BLUE='\033[0;34m'; C_CYAN='\033[0;36m'
 
@@ -85,7 +90,17 @@ check_prerequisites() {
         else fail "Please install jq and run this script again."
         fi
     fi
-    success "Prerequisites met."
+    if ! command -v firebase &> /dev/null; then
+        warn "Firebase CLI ('firebase-tools') is not installed. It is required for automation."
+        prompt "Would you like to try and install it now via npm? (y/n)"; read -r REPLY < /dev/tty
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            if ! command -v npm &> /dev/null; then fail "npm is required to install firebase-tools. Please install Node.js and npm first."; fi
+            info "Installing firebase-tools globally..."; sudo npm install -g firebase-tools
+        else
+            fail "Please install firebase-tools (npm install -g firebase-tools) and run this script again."
+        fi
+    fi
+    success "Prerequisites met. gcloud, git, jq and firebase"
 }
 
 get_platform_arch() {
@@ -281,8 +296,40 @@ handle_manual_steps() {
     rm -f "$ENV_DIR"/*.bak
 }
 
+setup_firebase_app() {
+    step 7 "Automating Firebase Web App Configuration"
+    cd "$REPO_ROOT"
+    
+    info "Enabling Identity Platform API (required for OAuth client lookup)..."
+    gcloud services enable identitytoolkit.googleapis.com --project="$GCP_PROJECT_ID"
+
+    info "Logging into Firebase CLI using your gcloud credentials..."
+    firebase login --reauth --no-localhost
+
+    info "Checking for existing Firebase web app named '$FE_SERVICE_NAME'..."
+    if ! firebase apps:list --project="$GCP_PROJECT_ID" | grep -q "$FE_SERVICE_NAME"; then
+        info "No existing app found. Creating a new Firebase web app..."
+        firebase apps:create WEB "$FE_SERVICE_NAME" --project="$GCP_PROJECT_ID"
+    else
+        info "Firebase web app '$FE_SERVICE_NAME' already exists."
+    fi
+
+    info "Fetching Firebase SDK configuration to store in memory..."
+    local APP_ID=$(firebase apps:list --project="$GCP_PROJECT_ID" --json | jq -r --arg name "$FE_SERVICE_NAME" '.result[] | select(.displayName == $name) | .appId')
+    local SDK_CONFIG_JSON=$(firebase apps:sdkconfig WEB "$APP_ID" --project="$GCP_PROJECT_ID" --json)
+
+    AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey')
+    AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
+
+    if [ -z "$AUTO_FIREBASE_API_KEY" ]; then
+        fail "Could not automatically fetch Firebase API Key. Please check your Firebase setup."
+    fi
+    success "Firebase secrets have been fetched and will be populated after Terraform runs."
+}
+
+
 run_terraform() {
-    step 7 "Deploying Infrastructure with Terraform"; info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."; cd "$REPO_ROOT/infra/$ENV_DIR"
+    step 8 "Deploying Infrastructure with Terraform"; info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."; cd "$REPO_ROOT/infra/$ENV_DIR"
     info "Initializing Terraform..."; terraform init -reconfigure
     info "Planning Terraform changes..."; terraform plan -var-file="$TFVARS_FILE" -parallelism=30
     prompt "\nTerraform is ready to apply the changes. This will create all the required infrastructure and may take several minutes."; prompt "Do you want to proceed with 'terraform apply'? (y/n)"; read -r REPLY < /dev/tty
@@ -290,14 +337,68 @@ run_terraform() {
     terraform apply -auto-approve -var-file="$TFVARS_FILE" -parallelism=30
 }
 
+populate_oauth_secrets() {
+    step 9 "Automating OAuth Secret Population"
+    cd "$REPO_ROOT"
+    info "Looking for the auto-created OAuth 2.0 Web Client ID..."
+    
+    # This command finds the client created by "Google Service" and extracts its ID
+    AUTO_OAUTH_CLIENT_ID=$(gcloud iap oauth-clients list "$GCP_PROJECT_ID" --format="json" | jq -r '.[] | select(.displayName == "Web client (auto created by Google Service)") | .name' | sed 's/projects\/'"$GCP_PROJECT_ID"'\/brands\/'"$GCP_PROJECT_ID"'\/identityAwareProxyClients\///')
+
+    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
+        warn "Could not automatically find the OAuth Client ID. You may need to enter it manually in the next step."
+    else
+        info "Found OAuth Client ID. Populating secrets automatically..."
+        echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_CLIENT_ID --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+        echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_TOKEN_AUDIENCE --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+        success "OAuth secrets (Client ID, Token Audience) have been populated."
+    fi
+}
+
 update_secrets() {
-    step 8 "Updating Secrets"; info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."; cd "$REPO_ROOT/infra/$ENV_DIR"
-    info "Terraform has created the secret 'shells'. You will now be prompted to provide the actual secret values."
-    chmod +x ./update_secrets.sh; ./update_secrets.sh
+    step 10 "Updating Secrets"
+    info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."
+    cd "$REPO_ROOT/infra/$ENV_DIR"
+    info "Populating values in Secret Manager..."
+    
+    local TERRAFORM_OUTPUTS=$(terraform output -json)
+    local FRONTEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .frontend_secrets.value[])
+    local BACKEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .backend_secrets.value[])
+    local ALL_SECRETS=$(echo "${FRONTEND_SECRETS} ${BACKEND_SECRETS}" | tr ' ' '\n' | sort -u | grep .)
+
+    if [ -z "$ALL_SECRETS" ]; then success "No secrets defined in Terraform outputs. Nothing to do."; return; fi
+    
+    for SECRET_NAME in $ALL_SECRETS; do
+        info "Processing secret: ${C_YELLOW}${SECRET_NAME}${C_RESET}"
+        
+        # Check if this is one of the auto-populated secrets
+        if [[ "$SECRET_NAME" == "FIREBASE_API_KEY" && -n "$AUTO_FIREBASE_API_KEY" ]]; then
+            info "  Value was auto-detected from Firebase. Populating automatically."
+            echo -n "$AUTO_FIREBASE_API_KEY" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+            success "  Successfully added new version for ${SECRET_NAME}."
+        elif [[ "$SECRET_NAME" == "FIREBASE_AUTH_DOMAIN" && -n "$AUTO_FIREBASE_AUTH_DOMAIN" ]]; then
+            info "  Value was auto-detected from Firebase. Populating automatically."
+            echo -n "$AUTO_FIREBASE_AUTH_DOMAIN" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+            success "  Successfully added new version for ${SECRET_NAME}."
+        else
+            # Fallback to the interactive prompt for all other secrets
+            warn "  This secret requires manual input."
+            echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in history.${C_RESET}"
+            read -s -p "  Enter new value: " SECRET_VALUE < /dev/tty
+            echo
+            if [ -z "$SECRET_VALUE" ]; then
+                warn "  No value provided. Skipping ${SECRET_NAME}."
+                continue
+            fi
+            echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+            success "  Successfully added new version for ${SECRET_NAME}."
+        fi
+    done
+    success "All secrets have been populated."
 }
 
 trigger_builds() {
-    step 9 "Triggering Initial Builds"; cd "$REPO_ROOT"
+    step 11 "Triggering Initial Builds"; cd "$REPO_ROOT"
     prompt "Would you like to trigger the initial builds for the frontend and backend now? (y/n)"; read -r REPLY < /dev/tty
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then info "You can trigger the builds manually later by pushing a commit or via the Cloud Build UI."; return; fi
     info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID"
@@ -331,7 +432,9 @@ main() {
         "setup_repo" 
         "configure_environment" 
         "handle_manual_steps" 
+        "setup_firebase_app" 
         "run_terraform" 
+        "populate_oauth_secrets" 
         "update_secrets" 
         "trigger_builds"
     )
@@ -345,7 +448,7 @@ main() {
         fi
     done
 
-    step 10 "🎉 Deployment Complete! 🎉"
+    step 12 "🎉 Deployment Complete! 🎉"
     info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
     FRONTEND_URL=$(terraform output -raw frontend_service_url)
     BACKEND_URL=$(terraform output -raw backend_service_url)
