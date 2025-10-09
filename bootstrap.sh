@@ -262,7 +262,7 @@ configure_environment() {
         sed -i.bak "s/frontend_service_name = \".*\"/frontend_service_name = \"$FE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
 
         # Prompt only for the branch name
-        TFVARS_FILE=$TFVARS_FILE_PATH # Set context for helper function
+        export TFVARS_FILE=$TFVARS_FILE_PATH # Set context for helper function
         prompt "Please provide the following value:"
         prompt_and_update_tfvar "GitHub Branch to deploy from" "$DEFAULT_BRANCH_NAME" "github_branch_name" "GITHUB_BRANCH"
         
@@ -286,7 +286,7 @@ handle_manual_steps() {
             echo "5. After creating the connection, copy its name (e.g., 'gh-yourname-con')."
             prompt "Paste the new Cloud Build Connection Name here:"; read -p "   Connection Name: " GITHUB_CONN_NAME < /dev/tty
         fi
-        sed -i.bak "s/github_conn_name = \".*\"/github_conn_name = \"$GITHUB_CONN_NAME\"/g" "$ENV_DIR/$TFVARS_FILE"
+        sed -i.bak "s/github_conn_name = \".*\"/github_conn_name = \"$GITHUB_CONN_NAME\"/g" "$TFVARS_FILE"
         write_state "GITHUB_CONN_NAME" "$GITHUB_CONN_NAME"
     fi
     warn "\nTerraform cannot accept legal terms on your behalf."; info "Please perform this one-time manual step for Firebase:"
