@@ -58,6 +58,7 @@ STATE_FILE=""
 REPO_ROOT=""
 write_state() {
     if [ -z "$STATE_FILE" ]; then return; fi
+    echo "DEBUG: PWD is: `pwd`"
     touch "$STATE_FILE"
     TMP_STATE_FILE=$(mktemp)
     grep -v "^$1=" "$STATE_FILE" > "$TMP_STATE_FILE" || true
