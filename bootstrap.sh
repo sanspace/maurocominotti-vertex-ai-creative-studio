@@ -212,7 +212,10 @@ configure_environment() {
         prompt "What would you like to call this deployment environment?"; read -p "   Environment Name [default value: $DEFAULT_ENV_NAME]: " ENV_NAME < /dev/tty
         ENV_NAME=${ENV_NAME:-$DEFAULT_ENV_NAME}
     else info "Using previously configured environment: $ENV_NAME"; fi
-    ENV_DIR="environments/$ENV_NAME"; TFVARS_FILE="$ENV_DIR/$ENV_NAME.tfvars"; STATE_FILE="$ENV_DIR/.bootstrap_state"; read_state
+    ENV_DIR="environments/$ENV_NAME";
+    TFVARS_FILE="$ENV_NAME.tfvars";
+    STATE_FILE="$ENV_DIR/.bootstrap_state";
+    read_state
     if [ ! -d "$ENV_DIR" ]; then
         info "Creating new environment directory from template: $TEMPLATE_ENV_DIR"; cp -r "$TEMPLATE_ENV_DIR" "$ENV_DIR"
         prompt "Do you have an existing GCS bucket for Terraform state? (y/n)"; read -r REPLY < /dev/tty
@@ -229,10 +232,15 @@ configure_environment() {
     prefix = \"$BUCKET_PREFIX\"
   }
 }" > "$ENV_DIR/backend.tf"
-        info "Updating $TFVARS_FILE..."; mv "$ENV_DIR/dev.tfvars" "$ENV_DIR/$TFVARS_FILE"
-        sed -i.bak "s/gcp_project_id = \".*\"/gcp_project_id = \"$GCP_PROJECT_ID\"/g" "$ENV_DIR/$TFVARS_FILE"
-        sed -i.bak "s/github_repo_owner = \".*\"/github_repo_owner = \"$GITHUB_REPO_OWNER\"/g" "$ENV_DIR/$TFVARS_FILE"
-        sed -i.bak "s/github_repo_name = \".*\"/github_repo_name = \"$GITHUB_REPO_NAME\"/g" "$ENV_DIR/$TFVARS_FILE"
+        info "Updating $TFVARS_FILE...";
+        mv "$ENV_DIR/dev.tfvars" "$ENV_DIR/$TFVARS_FILE"
+
+        # Define the full path for sed operations
+        TFVARS_FILE_PATH="$ENV_DIR/$TFVARS_FILE"
+
+        sed -i.bak "s/gcp_project_id = \".*\"/gcp_project_id = \"$GCP_PROJECT_ID\"/g" "$ENV_DIR/$TFVARS_FILE_PATH"
+        sed -i.bak "s/github_repo_owner = \".*\"/github_repo_owner = \"$GITHUB_REPO_OWNER\"/g" "$ENV_DIR/$TFVARS_FILE_PATH"
+        sed -i.bak "s/github_repo_name = \".*\"/github_repo_name = \"$GITHUB_REPO_NAME\"/g" "$ENV_DIR/$TFVARS_FILE_PATH"
         prompt "Please provide the following values:"
         prompt_and_update_tfvar "Backend Service Name" "$(printf "$DEFAULT_BE_SERVICE_NAME_FORMAT" "$ENV_NAME")" "backend_service_name" "BE_SERVICE_NAME"
         prompt_and_update_tfvar "Frontend Service Name" "$(printf "$DEFAULT_FE_SERVICE_NAME_FORMAT" "$ENV_NAME")" "frontend_service_name" "FE_SERVICE_NAME"
