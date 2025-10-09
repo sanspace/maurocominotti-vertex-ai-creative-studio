@@ -140,9 +140,23 @@ install_terraform() {
 
 setup_project() {
     step 3 "Configuring Google Cloud Project"
+
+    # try detecting current project on the current terminal
+    CURRENT_GCLOUD_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "")
+
     if [ -n "$GCP_PROJECT_ID" ]; then
         prompt "Found project '$GCP_PROJECT_ID' from a previous run. Use this project? (y/n)"; read -r REPLY < /dev/tty
         if [[ $REPLY =~ ^[Yy]$ ]]; then
+            gcloud config set project "$GCP_PROJECT_ID"
+            success "Project '$GCP_PROJECT_ID' is configured."
+            return
+        fi
+    elif [ -n "$CURRENT_GCLOUD_PROJECT" ]; then
+        prompt "Detected active gcloud project '$CURRENT_GCLOUD_PROJECT'. Use this project? (y/n)"
+        read -r REPLY < /dev/tty
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            GCP_PROJECT_ID=$CURRENT_GCLOUD_PROJECT
+            info "Using existing project '$GCP_PROJECT_ID'."
             gcloud config set project "$GCP_PROJECT_ID"
             success "Project '$GCP_PROJECT_ID' is configured."
             return
