@@ -206,37 +206,24 @@ setup_repo() {
 }
 
 configure_environment() {
-    step 5 "Configuring Terraform Environment"
+    step 5 "Configuring Terraform Environment";
     cd "$REPO_ROOT/infra"
     if [ -z "$ENV_NAME" ]; then
-        prompt "What would you like to call this deployment environment?";
-        read -p "   Environment Name [default value: $DEFAULT_ENV_NAME]: " ENV_NAME < /dev/tty
+        prompt "What would you like to call this deployment environment?"; read -p "   Environment Name [default value: $DEFAULT_ENV_NAME]: " ENV_NAME < /dev/tty
         ENV_NAME=${ENV_NAME:-$DEFAULT_ENV_NAME}
-    else
-        info "Using previously configured environment: $ENV_NAME"
-    fi
-    ENV_DIR="environments/$ENV_NAME"; 
-    TFVARS_FILE="$ENV_DIR/$ENV_NAME.tfvars"; 
-    STATE_FILE="$ENV_DIR/.bootstrap_state";
-    read_state
+    else info "Using previously configured environment: $ENV_NAME"; fi
+    ENV_DIR="environments/$ENV_NAME"; TFVARS_FILE="$ENV_DIR/$ENV_NAME.tfvars"; STATE_FILE="$ENV_DIR/.bootstrap_state"; read_state
     if [ ! -d "$ENV_DIR" ]; then
-        info "Creating new environment directory from template: $TEMPLATE_ENV_DIR";
-        cp -r "$TEMPLATE_ENV_DIR" "$ENV_DIR"
-        prompt "Do you have an existing GCS bucket for Terraform state? (y/n)";
-        read -r REPLY < /dev/tty
+        info "Creating new environment directory from template: $TEMPLATE_ENV_DIR"; cp -r "$TEMPLATE_ENV_DIR" "$ENV_DIR"
+        prompt "Do you have an existing GCS bucket for Terraform state? (y/n)"; read -r REPLY < /dev/tty
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             prompt "Please enter the name of your GCS bucket:"; read -p "   Bucket Name: " BUCKET_NAME < /dev/tty
         else
-            BUCKET_SUFFIX=$(printf "$GCS_BUCKET_SUFFIX_FORMAT" "$ENV_NAME");
-            BUCKET_NAME="${GCP_PROJECT_ID}-${BUCKET_SUFFIX}"
-            info "Creating GCS bucket '$BUCKET_NAME' for Terraform state...";
-            gsutil mb -p "$GCP_PROJECT_ID" "gs://${BUCKET_NAME}" || warn "Bucket 'gs://${BUCKET_NAME}' may already exist. Continuing..."
+            BUCKET_SUFFIX=$(printf "$GCS_BUCKET_SUFFIX_FORMAT" "$ENV_NAME"); BUCKET_NAME="${GCP_PROJECT_ID}-${BUCKET_SUFFIX}"
+            info "Creating GCS bucket '$BUCKET_NAME' for Terraform state..."; gsutil mb -p "$GCP_PROJECT_ID" "gs://${BUCKET_NAME}" || warn "Bucket 'gs://${BUCKET_NAME}' may already exist. Continuing..."
         fi
         BUCKET_PREFIX=$(printf "$GCS_BUCKET_PREFIX_FORMAT" "$ENV_NAME")
-        prompt "What prefix should be used inside the bucket?";
-        read -p "   Prefix [default value: $BUCKET_PREFIX]: " BUCKET_PREFIX_INPUT < /dev/tty;
-        BUCKET_PREFIX=${BUCKET_PREFIX_INPUT:-$BUCKET_PREFIX}
-        info "Updating backend.tf..."; echo "terraform {
+        info "Updating backend.tf with default prefix: $BUCKET_PREFIX"; echo "terraform {
   backend \"gcs\" {
     bucket = \"$BUCKET_NAME\"
     prefix = \"$BUCKET_PREFIX\"
@@ -251,9 +238,7 @@ configure_environment() {
         prompt_and_update_tfvar "Frontend Service Name" "$(printf "$DEFAULT_FE_SERVICE_NAME_FORMAT" "$ENV_NAME")" "frontend_service_name" "FE_SERVICE_NAME"
         prompt_and_update_tfvar "GitHub Branch to deploy from" "$DEFAULT_BRANCH_NAME" "github_branch_name" "GITHUB_BRANCH"
         write_state "ENV_NAME" "$ENV_NAME"; write_state "BE_SERVICE_NAME" "$BE_SERVICE_NAME"; write_state "FE_SERVICE_NAME" "$FE_SERVICE_NAME"; write_state "GITHUB_BRANCH" "$GITHUB_BRANCH"
-    else
-        info "Environment directory '$ENV_DIR' already configured."
-    fi
+    else info "Environment directory '$ENV_DIR' already configured."; fi
     success "Configuration files for '$ENV_NAME' environment are ready."
 }
 
