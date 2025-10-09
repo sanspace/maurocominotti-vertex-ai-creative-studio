@@ -299,7 +299,7 @@ handle_manual_steps() {
 
 setup_firebase_app() {
     step 7 "Automating Firebase Web App Configuration"
-    cd "$REPO_ROOT"
+    cd "$REPO_ROOT/infra"
     
     info "Enabling Identity Platform API (required for OAuth client lookup)..."
     gcloud services enable identitytoolkit.googleapis.com --project="$GCP_PROJECT_ID"
