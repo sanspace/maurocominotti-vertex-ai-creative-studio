@@ -9,12 +9,6 @@
 
   <!-- Filter Inputs -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-center">
-    <mat-form-field appearance="outline" class="md:col-span-2">
-      <mat-label>Filter by Name</mat-label>
-      <input matInput [(ngModel)]="filterName" (keyup.enter)="fetchAssets()" placeholder="Ex. VTO Model" #input>
-      <mat-icon matSuffix>search</mat-icon>
-    </mat-form-field>
-
     <mat-form-field appearance="outline">
       <mat-label>Filter by Scope</mat-label>
       <mat-select [(ngModel)]="filterScope">
@@ -108,7 +102,7 @@
       <!-- Row shown when there is no matching data. -->
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell text-center py-4" [attr.colspan]="displayedColumns.length">
-          No data matching the filter "{{input.value}}" or no assets found
+          No data matching the filter or no assets found
         </td>
       </tr>
     </table>

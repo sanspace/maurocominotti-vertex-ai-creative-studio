@@ -13,7 +13,11 @@ import {
   SearchService,
 } from '../services/search/search.service';
 import {Router} from '@angular/router';
-import {SourceMediaItemLink, VeoRequest} from '../common/models/search.model';
+import {
+  ReferenceImage,
+  SourceMediaItemLink,
+  VeoRequest,
+} from '../common/models/search.model';
 import {MatChipInputEvent} from '@angular/material/chips';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {MatDialog} from '@angular/material/dialog';
@@ -24,12 +28,16 @@ import {
 import {GenerationParameters} from '../fun-templates/media-template.model';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
-import {SourceAssetResponseDto} from '../common/services/source-asset.service';
+import {
+  SourceAssetResponseDto,
+  SourceAssetService,
+} from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
 import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
+import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
 
 @Component({
   selector: 'app-video',
@@ -64,6 +72,8 @@ export class VideoComponent implements AfterViewInit {
   showErrorOverlay = true;
   isConcatenateMode = false;
   isExtensionMode = false;
+  referenceImages: ReferenceImage[] = [];
+  referenceImagesType: 'ASSET' | 'STYLE' = 'ASSET';
 
   // Internal state to track input types
   private _input1IsVideo = false;
@@ -73,16 +83,18 @@ export class VideoComponent implements AfterViewInit {
   // This object holds the current state of all user selections.
   searchRequest: VeoRequest = {
     prompt: '',
-    generationModel: 'veo-3.0-generate-preview',
+    generationModel: 'veo-3.0-generate-001',
     aspectRatio: '16:9',
-    style: 'Modern',
     numberOfMedia: 4,
-    lighting: 'Cinematic',
-    colorAndTone: 'Vibrant',
-    composition: 'Closeup',
+    style: null,
+    lighting: null,
+    colorAndTone: null,
+    composition: null,
     negativePrompt: '',
     generateAudio: true,
     durationSeconds: 8,
+    useBrandGuidelines: false,
+    referenceImages: [],
   };
 
   // --- Negative Prompt Chips ---
@@ -91,57 +103,61 @@ export class VideoComponent implements AfterViewInit {
   // --- Dropdown Options ---
   generationModels = [
     {
-      value: 'veo-3.0-generate-preview',
+      value: 'veo-3.0-generate-001',
       viewValue: 'Veo 3 Quality \n (Beta Audio)',
     },
     {
-      value: 'veo-3.0-fast-generate-preview',
+      value: 'veo-3.0-fast-generate-001',
       viewValue: 'Veo 3 Fast \n (Beta Audio)',
     },
     {value: 'veo-2.0-generate-001', viewValue: 'Veo 2 Quality \n (No Audio)'},
     {value: 'veo-2.0-fast-generate-001', viewValue: 'Veo 2 Fast \n (No Audio)'},
+    {
+      value: 'veo-2.0-generate-exp',
+      viewValue: 'Veo 2 Exp \n (Reference Image)',
+    },
   ];
   selectedGenerationModel = this.generationModels[0].viewValue;
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
-      {value: '16:9', viewValue: '16:9 \n Landscape', disabled: false},
-      {value: '9:16', viewValue: '9:16 \n Story', disabled: false},
+      {value: '16:9', viewValue: '16:9 \n Horizontal', disabled: false},
+      {value: '9:16', viewValue: '9:16 \n Vertical', disabled: false},
     ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   videoStyles = [
-    'Photorealistic',
     'Cinematic',
-    'Modern',
-    'Realistic',
-    'Vintage',
-    'Monochrome',
     'Fantasy',
+    'Modern',
+    'Monochrome',
+    'Photorealistic',
+    'Realistic',
     'Sketch',
+    'Vintage',
   ];
   lightings = [
-    'Cinematic',
-    'Studio',
-    'Natural',
-    'Dramatic',
     'Ambient',
     'Backlighting',
+    'Cinematic',
+    'Dramatic',
     'Dramatic Light',
-    'Golden Hour',
     'Exposure',
+    'Golden Hour',
     'Low Lighting',
     'Multiexposure',
+    'Natural',
+    'Studio',
     'Studio Light',
   ];
   colorsAndTones = [
-    'Vibrant',
-    'Muted',
-    'Warm',
-    'Cool',
-    'Monochrome',
     'Black & White',
+    'Cool',
     'Golden',
+    'Monochrome',
+    'Muted',
     'Pastel',
     'Toned',
+    'Vibrant',
+    'Warm',
   ];
   numberOfVideosOptions = [1, 2, 3, 4];
   durationOptions = [8];
@@ -166,6 +182,7 @@ export class VideoComponent implements AfterViewInit {
     public dialog: MatDialog,
     private http: HttpClient,
     private workspaceStateService: WorkspaceStateService,
+    private sourceAssetService: SourceAssetService,
   ) {
     this.activeVideoJob$ = this.service.activeVideoJob$;
 
@@ -218,7 +235,10 @@ export class VideoComponent implements AfterViewInit {
     this.searchRequest.generationModel = model.value;
     this.selectedGenerationModel = model.viewValue;
 
-    const isVeo2 = model.value.includes('veo-2.0');
+    const isVeo2 =
+      model.value.includes('veo-2.0') &&
+      model.value !== 'veo-2.0-generate-exp';
+    const isVeo2Exp = model.value === 'veo-2.0-generate-exp';
 
     if (isVeo2) {
       // Veo 2 models do not support audio.
@@ -226,6 +246,11 @@ export class VideoComponent implements AfterViewInit {
       this.searchRequest.generateAudio = false;
 
       // Re-enable all aspect ratios for Veo 2.
+      this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
+    } else if (isVeo2Exp) {
+      // Veo 2 Exp model does not support audio.
+      this.isAudioGenerationDisabled = true;
+      this.searchRequest.generateAudio = false;
       this.aspectRatioOptions.forEach(opt => (opt.disabled = false));
     } else {
       this.clearOtherImage(1);
@@ -249,26 +274,27 @@ export class VideoComponent implements AfterViewInit {
     }
   }
 
-  selectAspectRatio(ratio: string): void {
-    this.searchRequest.aspectRatio = ratio;
-    const selectedOption = this.aspectRatioOptions.find(
-      opt => opt.value === ratio,
-    );
-    if (selectedOption) {
-      this.selectedAspectRatio = selectedOption.viewValue;
-    }
+  selectAspectRatio(ratio: {value: string; viewValue: string}): void {
+    this.searchRequest.aspectRatio = ratio.value;
+    this.selectedAspectRatio = ratio.viewValue;
   }
 
   selectVideoStyle(style: string): void {
-    this.searchRequest.style = style;
+    this.searchRequest.style === style
+      ? (this.searchRequest.style = null)
+      : (this.searchRequest.style = style);
   }
 
   selectLighting(lighting: string): void {
-    this.searchRequest.lighting = lighting;
+    this.searchRequest.lighting === lighting
+      ? (this.searchRequest.lighting = null)
+      : (this.searchRequest.lighting = lighting);
   }
 
   selectColor(color: string): void {
-    this.searchRequest.colorAndTone = color;
+    this.searchRequest.colorAndTone === color
+      ? (this.searchRequest.colorAndTone = null)
+      : (this.searchRequest.colorAndTone = color);
   }
 
   selectNumberOfVideos(num: number): void {
@@ -280,7 +306,9 @@ export class VideoComponent implements AfterViewInit {
   }
 
   selectComposition(composition: string): void {
-    this.searchRequest.composition = composition;
+    this.searchRequest.composition === composition
+      ? (this.searchRequest.composition = null)
+      : (this.searchRequest.composition = composition);
   }
 
   toggleAudio(): void {
@@ -362,8 +390,8 @@ export class VideoComponent implements AfterViewInit {
     const hasSourceAssets = this.startImageAssetId || this.endImageAssetId;
     const hasSourceMediaItems = this.sourceMediaItems.some(i => !!i);
     const isVeo3 = [
-      'veo-3.0-fast-generate-preview',
-      'veo-3.0-generate-preview',
+      'veo-3.0-fast-generate-001',
+      'veo-3.0-generate-001',
     ].includes(this.searchRequest.generationModel);
 
     if (
@@ -373,7 +401,7 @@ export class VideoComponent implements AfterViewInit {
       !this.isConcatenateMode
     ) {
       const veo2Model = this.generationModels.find(
-        m => m.value === 'veo-2.0-generate-001',
+        m => m.value === 'veo-2.0-fast-generate-001',
       );
       if (veo2Model) {
         this.selectModel(veo2Model);
@@ -381,7 +409,7 @@ export class VideoComponent implements AfterViewInit {
           panelClass: ['green-toast'],
           duration: 8000,
           data: {
-            text: "Veo 3 Fast doesn't support images as input, so we've switched to Veo 2 for you.",
+            text: "Veo 3 Fast doesn't support images as input, so we've switched to Veo 2 Fast for you.",
             matIcon: 'info_outline',
           },
         });
@@ -396,6 +424,31 @@ export class VideoComponent implements AfterViewInit {
       (i): i is SourceMediaItemLink => !!i,
     );
 
+    // --- Build the two separate R2V reference payloads ---
+    const referenceImagesPayload: {
+      assetId: string;
+      referenceType: 'ASSET' | 'STYLE';
+    }[] = [];
+    const sourceMediaItemsForReference: SourceMediaItemLink[] = [];
+
+    for (const refImage of this.referenceImages) {
+      if (refImage.sourceAssetId) {
+        referenceImagesPayload.push({
+          assetId: refImage.sourceAssetId,
+          referenceType: this.referenceImagesType, // Use the global type
+        });
+      } else if (refImage.sourceMediaItem) {
+        sourceMediaItemsForReference.push({
+          ...refImage.sourceMediaItem,
+          // Use the global type to determine the role
+          role:
+            this.referenceImagesType === 'STYLE'
+              ? 'image_reference_style'
+              : 'image_reference_asset',
+        });
+      }
+    }
+
     const payload: VeoRequest = {
       ...this.searchRequest,
       startImageAssetId: !this._input1IsVideo
@@ -405,9 +458,12 @@ export class VideoComponent implements AfterViewInit {
         ? (this.startImageAssetId ?? undefined)
         : undefined,
       endImageAssetId: this.endImageAssetId ?? undefined,
-      sourceMediaItems: validSourceMediaItems.length
-        ? validSourceMediaItems
-        : undefined,
+      referenceImages:
+        referenceImagesPayload.length > 0 ? referenceImagesPayload : undefined,
+      sourceMediaItems: [
+        ...validSourceMediaItems,
+        ...sourceMediaItemsForReference,
+      ],
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -480,16 +536,17 @@ export class VideoComponent implements AfterViewInit {
   resetAllFilters() {
     this.searchRequest = {
       prompt: '',
-      generationModel: 'veo-3.0-generate-preview',
+      generationModel: 'veo-3.0-generate-001',
       aspectRatio: '16:9',
-      style: 'Modern',
       numberOfMedia: 4,
-      lighting: 'Cinematic',
-      colorAndTone: 'Vibrant',
-      composition: 'Closeup',
+      style: null,
+      lighting: null,
+      colorAndTone: null,
+      composition: null,
       negativePrompt: '',
       generateAudio: true,
       durationSeconds: 8,
+      useBrandGuidelines: false,
     };
   }
 
@@ -557,7 +614,7 @@ export class VideoComponent implements AfterViewInit {
     }
   }
 
-  openImageSelector(imageNumber: 1 | 2) {
+  openImageSelector(imageNumber: 1 | 2): void {
     const dialogRef = this.dialog.open(ImageSelectorComponent, {
       width: '90vw',
       height: '80vh',
@@ -594,13 +651,13 @@ export class VideoComponent implements AfterViewInit {
 
     if (isVideo) {
       const isVeo3 = [
-        'veo-3.0-fast-generate-preview',
-        'veo-3.0-generate-preview',
+        'veo-3.0-fast-generate-001',
+        'veo-3.0-generate-001',
       ].includes(this.searchRequest.generationModel);
 
       if (isVeo3) {
         const veo2Model = this.generationModels.find(
-          m => m.value === 'veo-2.0-generate-001',
+          m => m.value === 'veo-2.0-fast-generate-001',
         );
         if (veo2Model) {
           this.selectModel(veo2Model);
@@ -608,7 +665,7 @@ export class VideoComponent implements AfterViewInit {
             panelClass: ['green-toast'],
             duration: 8000,
             data: {
-              text: "Veo 3 doesn't support video as input, so we've switched to Veo 2 for you.",
+              text: "Veo 3 doesn't support video as input, so we've switched to Veo 2 Fast for you.",
               matIcon: 'info_outline',
             },
           });
@@ -672,38 +729,77 @@ export class VideoComponent implements AfterViewInit {
     }
   }
 
+  // This method is called by both click and drop events
+  handleFileUpload(file: File, imageNumber: 1 | 2): void {
+    if (file.type.startsWith('image/')) {
+      // If it's an image, open the cropper
+      this.openCropperDialog(file, imageNumber);
+    } else if (file.type.startsWith('video/')) {
+      // If it's a video, upload directly
+      this.uploadVideoDirectly(file, imageNumber);
+    } else {
+      handleErrorSnackbar(
+        this._snackBar,
+        {message: 'Unsupported file type.'},
+        'File Upload',
+      );
+    }
+  }
+
+  openCropperDialog(file: File, imageNumber: 1 | 2) {
+    const dialogRef = this.dialog.open(ImageCropperDialogComponent, {
+      data: {
+        imageFile: file,
+        assetType: AssetTypeEnum.GENERIC_IMAGE,
+      },
+      width: '600px',
+    });
+
+    dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
+      if (result && result.id) {
+        this.processInput(result, imageNumber);
+        this.updateModeAndNotify();
+        this.clearOtherImage(imageNumber);
+      }
+    });
+  }
+
+  uploadVideoDirectly(file: File, imageNumber: 1 | 2) {
+    this.isLoading = true;
+    // No aspectRatio is sent for videos, so we don't pass the second argument
+    this.sourceAssetService
+      .uploadAsset(file)
+      .pipe(finalize(() => (this.isLoading = false)))
+      .subscribe({
+        next: asset => {
+          this.processInput(asset, imageNumber);
+          this.updateModeAndNotify();
+          this.clearOtherImage(imageNumber);
+        },
+        error: error => {
+          handleErrorSnackbar(this._snackBar, error, 'File upload');
+        },
+      });
+  }
+
   onDrop(event: DragEvent, imageNumber: 1 | 2) {
     event.preventDefault();
     const file = event.dataTransfer?.files[0];
     if (file) {
-      const reader = new FileReader();
-      this.isLoading = true;
-      this.uploadAsset(file)
-        .pipe(finalize(() => (this.isLoading = false)))
-        .subscribe({
-          next: (asset: SourceAssetResponseDto) => {
-            this.processInput(asset, imageNumber);
-            this.updateModeAndNotify();
-            this.clearOtherImage(imageNumber);
-          },
-          error: error => {
-            handleErrorSnackbar(this._snackBar, error, 'Image upload');
-          },
-        });
+      if (file.type.startsWith('image/')) {
+        // If it's an IMAGE, open the cropper dialog
+        this.openCropperDialog(file, imageNumber);
+      } else if (file.type.startsWith('video/')) {
+        // If it's a VIDEO, upload it directly
+        this.uploadVideoDirectly(file, imageNumber);
+      } else {
+        handleErrorSnackbar(
+          this._snackBar,
+          {message: 'Unsupported file type.'},
+          'File Upload',
+        );
+      }
     }
-  }
-
-  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
   }
 
   clearImage(imageNumber: 1 | 2, event: MouseEvent) {
@@ -750,8 +846,8 @@ export class VideoComponent implements AfterViewInit {
 
   private clearOtherImage(imageNumberJustSet: 1 | 2) {
     const isVeo3 = [
-      'veo-3.0-fast-generate-preview',
-      'veo-3.0-generate-preview',
+      'veo-3.0-fast-generate-001',
+      'veo-3.0-generate-001',
     ].includes(this.searchRequest.generationModel);
 
     const image1Set = !!this.startImageAssetId || !!this.sourceMediaItems[0];
@@ -967,5 +1063,113 @@ export class VideoComponent implements AfterViewInit {
     setTimeout(() => {
       this.openImageSelector(2);
     }, 1500);
+  }
+
+  openImageSelectorForReference(): void {
+    if (this.referenceImages.length >= 3) return;
+    const dialogRef = this.dialog.open(ImageSelectorComponent, {
+      width: '90vw',
+      height: '80vh',
+      maxWidth: '90vw',
+      data: {
+        mimeType: 'image/*', // Only allow images for references
+      },
+      panelClass: 'image-selector-dialog',
+    });
+
+    dialogRef
+      .afterClosed()
+      .subscribe((result: MediaItemSelection | SourceAssetResponseDto) => {
+        if (result && this.referenceImages.length < 3) {
+          if ('gcsUri' in result) {
+            this.referenceImages.push({
+              sourceAssetId: result.id,
+              previewUrl: result.presignedUrl || '',
+            });
+          } else {
+            const previewUrl =
+              result.mediaItem.presignedUrls?.[result.selectedIndex];
+            if (previewUrl) {
+              this.referenceImages.push({
+                previewUrl: previewUrl,
+                sourceMediaItem: {
+                  mediaItemId: result.mediaItem.id,
+                  mediaIndex: result.selectedIndex,
+                  role: 'image_reference_asset', // Role is now set dynamically in searchTerm
+                },
+              });
+            }
+          }
+          this.handleReferenceImageAdded();
+        }
+      });
+  }
+
+  // Called when DROPPING a file on the new drop zone
+  onReferenceImageDrop(event: DragEvent) {
+    event.preventDefault();
+    if (this.referenceImages.length >= 3) return;
+    const file = event.dataTransfer?.files[0];
+    if (file && file.type.startsWith('image/')) {
+      // For a direct drop, go straight to the cropper
+      const dialogRef = this.dialog.open(ImageCropperDialogComponent, {
+        data: {
+          imageFile: file,
+          assetType: AssetTypeEnum.GENERIC_IMAGE,
+        },
+        width: '600px',
+      });
+
+      dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
+        if (result && result.id) {
+          this.referenceImages.push({
+            sourceAssetId: result.id,
+            previewUrl: result.presignedUrl || '',
+          });
+          this.handleReferenceImageAdded();
+        }
+      });
+    }
+  }
+
+  private handleReferenceImageAdded(): void {
+    if (this.referenceImages.length === 1) {
+      // If there's a start/end frame or a video for extension/concatenation, clear them.
+      const hadInputs = this.image1Preview || this.image2Preview;
+      const snackbarMessage =
+        'Start/end frames and extension videos have been cleared to use reference images.';
+      if (this.image1Preview || this.image2Preview) {
+        this.startImageAssetId = null;
+        this.image1Preview = null;
+        this._input1IsVideo = false;
+        this.sourceMediaItems[0] = null;
+        this.endImageAssetId = null;
+        this.image2Preview = null;
+        this._input2IsVideo = false;
+        this.sourceMediaItems[1] = null;
+        this.updateModeAndNotify();
+        this._snackBar.open(snackbarMessage, 'OK', {duration: 5000});
+      }
+
+      const expModel = this.generationModels.find(
+        m => m.value === 'veo-2.0-generate-exp',
+      );
+      if (expModel) {
+        this.selectModel(expModel);
+        this._snackBar.openFromComponent(ToastMessageComponent, {
+          panelClass: ['green-toast'],
+          duration: 8000,
+          data: {
+            text: "We've switched to the Veo 2 Exp model for you, as it's the only one that supports reference images.",
+            matIcon: 'info_outline',
+          },
+        });
+      }
+    }
+  }
+
+  clearReferenceImage(index: number, event: MouseEvent) {
+    event.stopPropagation();
+    this.referenceImages.splice(index, 1);
   }
 }

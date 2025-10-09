@@ -166,6 +166,49 @@ Example of a General Prompt for you to replace with the information received:
   }
 }
 
+IMPORTANT!! Example 3 of prompts if no styling properties ('style', 'color_and_tone', 'lighting' and 'composition') received or empty then 'visual_style' should return emtpy:
+{
+  "metadata": {
+    "prompt_name": "Abstract Landscape",
+    "version": 1.0,
+    "target_model": "Imagen 3",
+    "core_concept": "A vibrant abstract landscape with no clear focal point."
+  },
+  "subject_and_scene": {
+    "main_subject": "Swirling colors and shapes",
+    "subject_details": "Interlocking forms with undefined edges.",
+    "environment": "An infinite plane.",
+    "mood_and_atmosphere": "Energetic, chaotic, undefined"
+  },
+  "constraints": {
+    "negative_prompts": ["realistic", "figures", "portraits"]
+  }
+}
+
+Example 4 of prompts if styling properties ('style', 'color_and_tone', 'lighting' and 'composition') are empty strings then 'visual_style' should return empty:
+{
+  "metadata": {
+    "prompt_name": "Abstract Landscape",
+    "version": 1.0,
+    "target_model": "Imagen 3",
+    "core_concept": "A vibrant abstract landscape with no clear focal point."
+  },
+  "subject_and_scene": {
+    "main_subject": "Swirling colors and shapes",
+    "subject_details": "Interlocking forms with undefined edges.",
+    "environment": "An infinite plane.",
+    "mood_and_atmosphere": "Energetic, chaotic, undefined"
+  },
+  "visual_style": null,
+  "photography_directives": null,
+  "constraints": {
+    "negative_prompts": ["realistic", "figures", "portraits"]
+  }
+}
+
+
+
+
 The User Prompt to rewrite with the corresponding JSON format:
 '{}'
 """
@@ -292,6 +335,84 @@ Example 2 of prompts:
     ]
   },
   "final_summary_prompt": "Photorealistic 4K macro video. In a magical forest at dawn, a single dewdrop falls onto a mossy rock, causing a beautiful, intricate crystal flower to grow and bloom in a hyper-lapse. The mood is serene and wondrous, with soft, ethereal lighting and a focus on the magical transformation."
+}
+
+
+Example 3 of prompts if no styling properties ('style', 'color_and_tone', 'lighting' and 'composition') received or empty then 'visual_style' should return emtpy:
+{
+  "metadata": {
+    "prompt_name": "Simple Scene",
+    "version": 1.0,
+    "target_model": "Veo",
+    "core_concept": "A person walking in a park."
+  },
+  "scene_setup": {
+    "environment": "A sunny park with green grass and trees.",
+    "mood": "Peaceful, calm.",
+    "key_objects": [
+      "A person",
+      "Trees",
+      "Grass"
+    ]
+  },
+  "camera_directives": {
+    "overall_movement": "Fixed shot.",
+    "shot_types": "Wide shot"
+  },
+  "timeline": [
+    {
+      "sequence_id": 1,
+      "timestamp": "00:00-00:05",
+      "action": "A person walks from left to right.",
+      "camera_instruction": "Follow the person.",
+      "audio_description": "Footsteps, birds chirping."
+    }
+  ],
+  "constraints": {
+    "negative_prompts": [
+      "no cars",
+      "no buildings"
+    ]
+  },
+  "final_summary_prompt": "A person walking in a sunny park."
+}
+
+
+Example 4 of prompts if styling properties ('style', 'color_and_tone', 'lighting' and 'composition') are empty strings then 'visual_style' should return emtpy:
+{
+  "metadata": {
+    "prompt_name": "Simple Scene",
+    "version": 1.0,
+    "target_model": "Veo",
+    "core_concept": "A person walking in a park."
+  },
+  "scene_setup": {
+    "environment": "A sunny park with green grass and trees.",
+    "mood": "Peaceful, calm.",
+    "key_objects": [
+      "A person",
+      "Trees",
+      "Grass"
+    ]
+  },
+  "visual_style": null,
+  "camera_directives": null,
+  "timeline": [
+  {
+    "sequence_id": 1,
+    "timestamp": "00:00-00:05",
+    "action": "A person walks from left to right.",
+    "camera_instruction": "Follow the person.",
+    "audio_description": "Footsteps, birds chirping."
+  }
+  ],
+  "constraints": {
+    "negative_prompts": [
+      "no cars",
+      "no buildings"
+    ]
+  },
+  "final_summary_prompt": "A person walking in a sunny park."
 }
 
 

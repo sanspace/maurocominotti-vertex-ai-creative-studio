@@ -42,8 +42,8 @@ class CreateImagenDto(BaseDto):
         le=4,
         description="Number of images to generate (between 1 and 4).",
     )
-    style: StyleEnum = Field(
-        default=StyleEnum.MODERN, description="Style of the image."
+    style: Optional[StyleEnum] = Field(
+        default=None, description="Style of the image."
     )
     negative_prompt: str = Field(
         default="", description="Negative prompt for the image."
@@ -75,6 +75,10 @@ class CreateImagenDto(BaseDto):
     ] = Field(
         default=None,
         description="A list of previously generated media items (from the gallery) to be used as inputs for the new generation.",
+    )
+    use_brand_guidelines: bool = Field(
+        default=False,
+        description="Whether to prepend brand guidelines to the prompt.",
     )
 
     @field_validator("prompt")

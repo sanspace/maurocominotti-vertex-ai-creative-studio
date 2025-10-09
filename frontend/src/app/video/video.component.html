@@ -31,13 +31,13 @@
     <ng-template #videoOrGallery>
 
       <ng-container *ngIf="activeVideoJob$ | async as job">
-        <div *ngIf="job.status === JobStatus.PROCESSING" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
+        <div *ngIf="job.status === JobStatus.PROCESSING" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl">
           <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
           <p class="mt-4 text-white text-lg">Your video is being generated...</p>
           <p class="text-gray-400 text-sm">This may take a few minutes. You can safely navigate away.</p>
         </div>
 
-        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
+        <div *ngIf="job.status === JobStatus.FAILED && showErrorOverlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-70 rounded-xl text-center p-4">
           <mat-icon class="text-red-500 !w-16 !h-16 !text-6xl">error_outline</mat-icon>
           <p class="mt-4 text-white text-lg">Video Generation Failed</p>
           <p class="text-gray-400 text-sm max-w-md">{{ job.errorMessage || job.error_message }}</p>
@@ -105,7 +105,8 @@
             *ngFor="let ratio of aspectRatioOptions"
             [disabled]="ratio.disabled"
             mat-menu-item
-            (click)="selectAspectRatio(ratio.value)"
+            [ngClass]="{'menu-item-selected': searchRequest.aspectRatio=== ratio.value}"
+            (click)="selectAspectRatio(ratio)"
           >
             <span>{{ ratio.viewValue }}</span>
           </button>
@@ -129,6 +130,7 @@
           <button
             *ngFor="let model of generationModels"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.generationModel === model.value}"
             (click)="selectModel(model)"
           >
             <span>{{ model.viewValue }}</span>
@@ -148,12 +150,13 @@
           <mat-icon>style</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.style }}
+          {{ searchRequest.style ? searchRequest.style : 'Style' }}
         </div>
         <mat-menu #videoStylingMenu="matMenu">
           <button
             *ngFor="let style of videoStyles"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.style === style}"
             (click)="selectVideoStyle(style)"
           >
             <span>{{ style }}</span>
@@ -173,12 +176,13 @@
           <mat-icon>palette</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.colorAndTone }}
+          {{ searchRequest.colorAndTone ? searchRequest.colorAndTone : 'Color & Tone' }}
         </div>
         <mat-menu #colorMenu="matMenu">
           <button
             *ngFor="let color of colorsAndTones"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.colorAndTone === color}"
             (click)="selectColor(color)"
           >
             <span>{{ color }}</span>
@@ -197,12 +201,13 @@
           <mat-icon svgIcon="lighting-icon"></mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.lighting }}
+          {{ searchRequest.lighting ? searchRequest.lighting : 'Lighting' }}
         </div>
         <mat-menu #lightingMenu="matMenu">
           <button
             *ngFor="let light of lightings"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.lighting === light}"
             (click)="selectLighting(light)"
           >
             <span>{{ light }}</span>
@@ -229,6 +234,7 @@
           <button
             *ngFor="let num of numberOfVideosOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.numberOfMedia === num}"
             (click)="selectNumberOfVideos(num)"
           >
             <span>{{ num }}</span>
@@ -253,6 +259,7 @@
           <button
             *ngFor="let duration of durationOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.durationSeconds === duration}"
             (click)="selectDuration(duration)"
           >
             <span>{{ duration }}s</span>
@@ -271,12 +278,13 @@
           <mat-icon>movie_edit</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.composition }}
+          {{ searchRequest.composition ? searchRequest.composition : 'Composition' }}
         </div>
         <mat-menu #compositionMenu="matMenu">
           <button
             *ngFor="let comp of compositions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.composition === comp}"
             (click)="selectComposition(comp)"
           >
             <span>{{ comp }}</span>
@@ -347,6 +355,19 @@
           </div>
         </mat-menu>
       </div>
+      <div
+        matTooltip="Enable Brand Guidelines"
+        class="cursor-pointer w-32 inline-flex flex-col justify-start items-center"
+      >
+        <mat-slide-toggle
+          [(ngModel)]="searchRequest.useBrandGuidelines"
+          class="!w-16 !h-16 !shadow-none text-center !flex justify-center items-center text-stone-300"
+        >
+        </mat-slide-toggle>
+        <div class="text-center justify-center text-neutral-200 text-base mt-2">
+          Brand Guidelines
+        </div>
+      </div>
 
       <!-- <div
         matTooltip="Replay Last Execution"
@@ -364,7 +385,7 @@
     <!-- Prompt Generator -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 my-8">
       <!-- Prompt Section -->
-      <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
+      <div class="lg:col-span-2 flex flex-col justify-start items-start gap-4">
         <div
           class="justify-center text-neutral-200 text-base font-bold leading-7"
         >
@@ -401,11 +422,11 @@
               </span>
             </button>
           </div>
-          <button mat-stroked-button class="!text-white" (click)="resetAllFilters()" [disabled]="isLoading">Clear</button>
+          <button mat-stroked-button class="!text-white" (click)="resetAllFilters()" [disabled]="isLoading">Clear All</button>
         </div>
       </div>
 
-      <div class="lg:col-span-1 grid grid-cols-2 gap-4 text-center">
+      <div class="lg:col-span-2 grid grid-cols-3 gap-4 text-center">
         <div
           class="drop-zone"
           (click)="openImageSelector(1)"
@@ -414,7 +435,7 @@
         >
           <div *ngIf="!image1Preview" class="drop-zone-placeholder">
             <mat-icon>add_photo_alternate</mat-icon>
-            <span>Drop image to start video or click to select</span>
+            <span>Add a starting frame (image) or a video to extend</span>
           </div>
           <div *ngIf="image1Preview" class="image-preview-container">
             <img [src]="image1Preview" alt="Dropped Image 1" />
@@ -431,13 +452,62 @@
         >
           <div *ngIf="!image2Preview" class="drop-zone-placeholder">
             <mat-icon>add_photo_alternate</mat-icon>
-            <span>Drop image to finish video or click to select</span>
+            <span>Add an ending frame (image) or a video to concatenate</span>
           </div>
           <div *ngIf="image2Preview" class="image-preview-container">
             <img [src]="image2Preview" alt="Dropped Image 2" />
             <button (click)="clearImage(2, $event)" class="clear-button" mat-icon-button>
                 <mat-icon>close</mat-icon>
             </button>
+          </div>
+        </div>
+
+        <div
+          class="drop-zone relative flex flex-col p-2"
+          [class.disabled]="referenceImages.length >= 3"
+          (click)="referenceImages.length < 3 && openImageSelectorForReference()"
+          (dragover)="$event.preventDefault()"
+          (drop)="referenceImages.length < 3 && onReferenceImageDrop($event)"
+        >
+          <div *ngIf="referenceImages.length === 0" class="drop-zone-placeholder m-auto">
+            <mat-icon>collections</mat-icon>
+            <span>Add Reference Images</span>
+            <span>(Max 3)</span>
+          </div>
+
+          <div *ngIf="referenceImages.length > 0" class="w-full h-full flex flex-col gap-2">
+            <div class="global-reference-toggle">
+              <mat-slide-toggle
+                [checked]="referenceImagesType === 'STYLE'"
+                (change)="referenceImagesType = $event.checked ? 'STYLE' : 'ASSET'"
+                (click)="$event.stopPropagation()"
+              >
+                <span class="text-white text-sm font-medium">Use all as STYLE</span>
+              </mat-slide-toggle>
+            </div>
+
+            <div class="reference-previews-container">
+              <div
+                *ngFor="let refImage of referenceImages; let i = index"
+                class="image-preview-container small"
+              >
+                <img [src]="refImage.previewUrl" [alt]="'Reference Image ' + (i + 1)" />
+                <button
+                  (click)="clearReferenceImage(i, $event)"
+                  class="clear-button small"
+                  mat-icon-button
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <div
+              *ngIf="referenceImages.length >= 3"
+              class="drop-zone-limit-reached"
+            >
+              <p>Maximum of 3 reference images reached.</p>
+            </div>
           </div>
         </div>
 

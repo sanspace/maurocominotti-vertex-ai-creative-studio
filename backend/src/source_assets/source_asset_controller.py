@@ -21,11 +21,13 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Response,
     UploadFile,
     status,
 )
 
 from src.auth.auth_guard import RoleChecker, get_current_user
+from src.common.base_dto import AspectRatioEnum
 from src.common.dto.pagination_response_dto import PaginationResponseDto
 from src.source_assets.dto.source_asset_response_dto import (
     SourceAssetResponseDto,
@@ -60,6 +62,7 @@ async def upload_source_asset(
     workspaceId: str = Form(),
     scope: Optional[AssetScopeEnum] = Form(None),
     assetType: Optional[AssetTypeEnum] = Form(None),
+    aspectRatio: Optional[AspectRatioEnum] = Form(None),
     current_user: UserModel = Depends(get_current_user),
     service: SourceAssetService = Depends(),
 ):
@@ -83,7 +86,23 @@ async def upload_source_asset(
         scope=scope,
         workspace_id=workspaceId,
         asset_type=assetType,
+        aspect_ratio=aspectRatio,
     )
+
+
+@router.post("/convert-to-png", response_class=Response)
+async def convert_image_to_png(
+    file: UploadFile = File(),
+    # Keep auth dependencies to protect the endpoint
+    current_user: UserModel = Depends(get_current_user),
+    service: SourceAssetService = Depends(),
+):
+    """
+    Accepts any image file, converts it to PNG, and returns the binary data.
+    Used for pre-processing unsupported formats before cropping on the frontend.
+    """
+    png_contents = await service.convert_to_png(file=file)
+    return Response(content=png_contents, media_type="image/png")
 
 
 @router.post(

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from typing import List, Optional
+
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
+
 
 class ImageMetadata(BaseModel):
     """High-level administrative data for the image prompt."""
@@ -32,8 +34,14 @@ class SubjectAndScene(BaseModel):
 
 class VisualStyle(BaseModel):
     """Defines the overall artistic and visual style of the image."""
-    aesthetic: Annotated[str, Field(description="The primary artistic style. E.g., 'Photorealistic', 'Cinematic', 'Studio photography', 'Fantasy art'.")]
-    color_palette: Annotated[str, Field(description="Describe the dominant colors. E.g., 'Warm autumn colors', 'Cool blues and muted grays'.")]
+    aesthetic: Optional[str] = Field(
+        default=None,
+        description="The primary artistic style. E.g., 'Photorealistic', 'Cinematic', 'Studio photography', 'Fantasy art'.",
+    )
+    color_palette: Optional[str] = Field(
+        default=None,
+        description="Describe the dominant colors. E.g., 'Warm autumn colors', 'Cool blues and muted grays'.",
+    )
     artistic_influences: Optional[str] = Field(default=None, description="Optional artists or movements to draw inspiration from. E.g., 'in the style of Ansel Adams', 'reminiscent of impressionist paintings'.")
 
 class PhotographyDirectives(BaseModel):
@@ -52,6 +60,6 @@ class CreatePromptImageDto(BaseModel):
     """The structured request model for generating a high-quality image with Imagen."""
     metadata: ImageMetadata
     subject_and_scene: SubjectAndScene
-    visual_style: VisualStyle
+    visual_style: Optional[VisualStyle]
     photography_directives: PhotographyDirectives
     constraints: Constraints
