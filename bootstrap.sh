@@ -303,8 +303,8 @@ setup_firebase_app() {
     info "Enabling Identity Platform API (required for OAuth client lookup)..."
     gcloud services enable identitytoolkit.googleapis.com --project="$GCP_PROJECT_ID"
 
-    info "Logging into Firebase CLI using your gcloud credentials..."
-    firebase login --reauth --no-localhost
+    # info "Logging into Firebase CLI using your gcloud credentials..."
+    # firebase login --reauth --no-localhost
 
     info "Checking for existing Firebase web app named '$FE_SERVICE_NAME'..."
     if ! firebase apps:list --project="$GCP_PROJECT_ID" | grep -q "$FE_SERVICE_NAME"; then
