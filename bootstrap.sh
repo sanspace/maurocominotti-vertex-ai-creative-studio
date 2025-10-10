@@ -313,8 +313,9 @@ configure_oauth_vars() {
         warn "Could not automatically find the OAuth Client ID. You may need to update custom_audiences and IAP_AUDIENCE in your .tfvars file manually."
     else
         info "Found OAuth Client ID. Updating $TFVARS_FILE_PATH..."
-        sed -i.bak "s/YOUR_OAUTH_CLIENT_ID_PLACEHOLDER/$AUTO_OAUTH_CLIENT_ID/g" "$TFVARS_FILE_PATH"
-        sed -i.bak "s/YOUR_PROJECT_ID_PLACEHOLDER/$GCP_PROJECT_ID/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s/your-custom-audience.apps.googleusercontent.com/$AUTO_OAUTH_CLIENT_ID/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s/\"creative-studio\"/\"$GCP_PROJECT_ID\"/g" "$TFVARS_FILE_PATH"
+
         rm -f "$TFVARS_FILE_PATH.bak"
         success "OAuth Client ID and Project ID audiences updated in .tfvars file."
     fi
@@ -335,7 +336,8 @@ setup_firebase_app() {
 }
 
 run_terraform() {
-    step 9 "Deploying Infrastructure with Terraform"; TFVARS_FILE_PATH="$REPO_ROOT/infra/environments/$ENV_NAME/$ENV_NAME.tfvars"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+    step 9 "Deploying Infrastructure with Terraform";
+	TFVARS_FILE_PATH="$REPO_ROOT/infra/environments/$ENV_NAME/$ENV_NAME.tfvars"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
     info "Initializing Terraform..."; terraform init -reconfigure
     info "Planning Terraform changes..."; terraform plan -var-file="$TFVARS_FILE_PATH"
     prompt "\nTerraform is ready to apply the changes. This will create the infrastructure, including empty secret shells."; prompt "Do you want to proceed with 'terraform apply'? (y/n)"; read -r REPLY < /dev/tty
