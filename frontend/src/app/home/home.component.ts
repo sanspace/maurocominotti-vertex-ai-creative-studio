@@ -49,6 +49,7 @@ import {environment} from '../../environments/environment';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
+import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
 
 @Component({
   selector: 'app-home',
@@ -82,13 +83,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     prompt: '',
     generationModel: 'gemini-2.5-flash-image-preview',
     aspectRatio: '1:1',
-    style: 'Modern',
     numberOfMedia: 4,
-    lighting: 'Cinematic',
-    colorAndTone: 'Vibrant',
-    composition: 'Closeup',
+    style: null,
+    lighting: null,
+    colorAndTone: null,
+    composition: null,
     addWatermark: false,
     negativePrompt: '',
+    useBrandGuidelines: false,
   };
 
   // --- Negative Prompt Chips ---
@@ -141,19 +143,19 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }[] = [
     {
       value: '1:1',
-      viewValue: '1:1 \n Post',
+      viewValue: '1:1 \n Square',
       disabled: false,
       icon: 'crop_square',
     },
     {
       value: '16:9',
-      viewValue: '16:9 \n Landscape',
+      viewValue: '16:9 \n Horizontal',
       disabled: false,
       icon: 'crop_16_9',
     },
     {
       value: '9:16',
-      viewValue: '9:16 \n Story',
+      viewValue: '9:16 \n Vertical',
       disabled: false,
       icon: 'crop_portrait',
     },
@@ -168,43 +170,43 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       viewValue: '4:3 \n Pin',
       disabled: false,
       icon: 'crop_landscape',
-    }
+    },
   ];
   selectedAspectRatio = this.aspectRatioOptions[0].viewValue;
   imageStyles = [
-    'Photorealistic',
     'Cinematic',
-    'Modern',
-    'Realistic',
-    'Vintage',
-    'Monochrome',
     'Fantasy',
+    'Modern',
+    'Monochrome',
+    'Photorealistic',
+    'Realistic',
     'Sketch',
+    'Vintage',
   ];
   lightings = [
-    'Cinematic',
-    'Studio',
-    'Natural',
-    'Dramatic',
     'Ambient',
     'Backlighting',
+    'Cinematic',
+    'Dramatic',
     'Dramatic Light',
-    'Golden Hour',
     'Exposure',
+    'Golden Hour',
     'Low Lighting',
     'Multiexposure',
+    'Natural',
+    'Studio',
     'Studio Light',
   ];
   colorsAndTones = [
-    'Vibrant',
-    'Muted',
-    'Warm',
-    'Cool',
-    'Monochrome',
     'Black & White',
+    'Cool',
     'Golden',
+    'Monochrome',
+    'Muted',
     'Pastel',
     'Toned',
+    'Vibrant',
+    'Warm',
   ];
   numberOfImagesOptions = [1, 2, 3, 4];
   compositions = [
@@ -405,28 +407,39 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedGenerationModelObject = model;
   }
 
-  selectAspectRatio(ratio: string): void {
-    this.searchRequest.aspectRatio = ratio;
+  selectAspectRatio(ratio: {value: string; viewValue: string}): void {
+    this.searchRequest.aspectRatio = ratio.value;
+    this.selectedAspectRatio = ratio.viewValue;
   }
 
   selectImageStyle(style: string): void {
-    this.searchRequest.style = style;
+    this.searchRequest.style === style
+      ? (this.searchRequest.style = null)
+      : (this.searchRequest.style = style);
   }
 
   selectLighting(lighting: string): void {
-    this.searchRequest.lighting = lighting;
+    this.searchRequest.lighting === lighting
+      ? (this.searchRequest.lighting = null)
+      : (this.searchRequest.lighting = lighting);
   }
 
   selectColor(color: string): void {
-    this.searchRequest.colorAndTone = color;
+    this.searchRequest.colorAndTone === color
+      ? (this.searchRequest.colorAndTone = null)
+      : (this.searchRequest.colorAndTone = color);
   }
 
   selectNumberOfImages(num: number): void {
-    this.searchRequest.numberOfMedia = num;
+    this.searchRequest.numberOfMedia === num
+      ? (this.searchRequest.numberOfMedia = 4)
+      : (this.searchRequest.numberOfMedia = num);
   }
 
   selectComposition(composition: string): void {
-    this.searchRequest.composition = composition;
+    this.searchRequest.composition === composition
+      ? (this.searchRequest.composition = null)
+      : (this.searchRequest.composition = composition);
   }
 
   selectWatermark(option: {value: boolean; viewValue: string}): void {
@@ -558,13 +571,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       prompt: '',
       generationModel: 'gemini-2.5-flash-image-preview',
       aspectRatio: '1:1',
-      style: 'Modern',
       numberOfMedia: 4,
-      lighting: 'Cinematic',
-      colorAndTone: 'Vibrant',
-      composition: 'Closeup',
+      style: null,
+      lighting: null,
+      colorAndTone: null,
+      composition: null,
       addWatermark: false,
       negativePrompt: '',
+      useBrandGuidelines: false,
     };
   }
 
@@ -619,46 +633,44 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
               role: 'input',
             };
             this[targetPreview] =
-              selection.mediaItem.presignedUrls?.[0] || null;
+              selection.mediaItem.presignedUrls?.[
+                selection.selectedIndex || 0
+              ] || null;
             this[targetAssetId] = null;
           }
         }
       });
   }
 
-  private uploadAsset(file: File): Observable<SourceAssetResponseDto> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
-    if (activeWorkspaceId) {
-      formData.append('workspaceId', activeWorkspaceId);
-    }
-    return this.http.post<SourceAssetResponseDto>(
-      `${environment.backendURL}/source_assets/upload`,
-      formData,
-    );
+  openCropperDialog(file: File, imageNumber: 1 | 2) {
+    const dialogRef = this.dialog.open(ImageCropperDialogComponent, {
+      data: {
+        imageFile: file,
+        assetType: AssetTypeEnum.GENERIC_IMAGE,
+      },
+      width: '600px',
+    });
+
+    dialogRef.afterClosed().subscribe((result: SourceAssetResponseDto) => {
+      if (result && result.id) {
+        const targetAssetId =
+          imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
+        const targetPreview =
+          imageNumber === 1 ? 'image1Preview' : 'image2Preview';
+
+        this[targetAssetId] = result.id;
+        this[targetPreview] = result.presignedUrl || null;
+        this.clearSourceMediaItem(imageNumber);
+      }
+    });
   }
 
   onDrop(event: DragEvent, imageNumber: 1 | 2) {
     event.preventDefault();
     const file = event.dataTransfer?.files[0];
     if (file) {
-      this.isLoading = true;
-      this.uploadAsset(file)
-        .pipe(finalize(() => (this.isLoading = false)))
-        .subscribe({
-          next: asset => {
-            const targetAssetId =
-              imageNumber === 1 ? 'sourceAssetId1' : 'sourceAssetId2';
-            const targetPreview =
-              imageNumber === 1 ? 'image1Preview' : 'image2Preview';
-            this[targetAssetId] = asset.id;
-            this[targetPreview] = asset.presignedUrl || null;
-          },
-          error: error => {
-            handleErrorSnackbar(this._snackBar, error, 'Image upload');
-          },
-        });
+      // Instead of uploading directly, just open the cropper dialog
+      this.openCropperDialog(file, imageNumber);
     }
   }
 

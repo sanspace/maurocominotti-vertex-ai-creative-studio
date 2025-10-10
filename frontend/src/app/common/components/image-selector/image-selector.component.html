@@ -13,14 +13,16 @@
           <mat-icon>upload_file</mat-icon>
           <p>Drag & drop a file here or click to select a file</p>
         </ng-container>
+
         <ng-template #uploading>
           <mat-progress-spinner
             color="primary"
             mode="indeterminate"
             [diameter]="50"
           ></mat-progress-spinner>
-          <p>Uploading...</p>
+          <p>Uploading video...</p>
         </ng-template>
+
         <input
           hidden
           type="file"

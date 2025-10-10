@@ -29,7 +29,11 @@ from google.cloud.logging.handlers import CloudLoggingHandler
 from google.genai import types
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.base_dto import (
+    GenerationModelEnum,
+    MimeTypeEnum,
+    ReferenceImageTypeEnum,
+)
 from src.common.media_utils import concatenate_videos, generate_thumbnail
 from src.common.schema.genai_model_setup import GenAIModelSetup
 from src.common.schema.media_item_model import (
@@ -111,12 +115,14 @@ def _process_video_in_background(
             # --- Handle Source Assets for API Call ---
             start_image_for_api: Optional[types.Image] = None
             end_image_for_api: Optional[types.Image] = None
-            original_source_video_item_link: Optional[SourceMediaItemLink] = (
-                None
-            )
+            reference_images_for_api: List[
+                types.VideoGenerationReferenceImage
+            ] = []  # 1. Create a list for reference images
+
             # --- Handle Video Extension ---
             source_video_for_api: Optional[types.Video] = None
 
+            # --- Handle Generated Inputs for Source Assets (start/end frames, source video, and references) ---
             if request_dto.source_video_asset_id:
                 video_asset = source_asset_repo.get_by_id(
                     request_dto.source_video_asset_id
@@ -145,7 +151,42 @@ def _process_video_in_background(
                         gcs_uri=end_asset.gcs_uri, mime_type=end_asset.mime_type
                     )
 
-            # --- Handle Generated Inputs (from other MediaItems) ---
+            if request_dto.reference_images:
+                worker_logger.info(
+                    f"Loading {len(request_dto.reference_images)} reference images."
+                )
+                for ref_dto in request_dto.reference_images:
+                    asset = source_asset_repo.get_by_id(ref_dto.asset_id)
+                    if asset and asset.gcs_uri:
+                        image = types.Image(
+                            gcs_uri=asset.gcs_uri, mime_type=asset.mime_type
+                        )
+
+                        # Map our DTO enum to the Google SDK's enum
+                        sdk_ref_type = None
+                        if (
+                            ref_dto.reference_type
+                            == ReferenceImageTypeEnum.ASSET
+                        ):
+                            sdk_ref_type = (
+                                types.VideoGenerationReferenceType.ASSET
+                            )
+                        elif (
+                            ref_dto.reference_type
+                            == ReferenceImageTypeEnum.STYLE
+                        ):
+                            sdk_ref_type = (
+                                types.VideoGenerationReferenceType.STYLE
+                            )
+
+                        if sdk_ref_type:
+                            reference_images_for_api.append(
+                                types.VideoGenerationReferenceImage(
+                                    image=image, reference_type=sdk_ref_type
+                                )
+                            )
+
+            # --- Handle Generated Inputs for Media Items (start/end frames, source video, and references) ---
             if request_dto.source_media_items:
                 for gen_input in request_dto.source_media_items:
                     parent_item = media_repo.get_by_id(gen_input.media_item_id)
@@ -167,12 +208,45 @@ def _process_video_in_background(
                             gen_input.role
                             == AssetRoleEnum.VIDEO_EXTENSION_SOURCE
                         ):
-                            original_source_video_item_link = gen_input
                             source_video_for_api = types.Video(uri=gcs_uri)
+                        elif (
+                            gen_input.role
+                            == AssetRoleEnum.IMAGE_REFERENCE_ASSET
+                        ):
+                            image_for_api = types.Image(
+                                gcs_uri=gcs_uri, mime_type=parent_item.mime_type
+                            )
+                            reference_images_for_api.append(
+                                types.VideoGenerationReferenceImage(
+                                    image=image_for_api,
+                                    reference_type=types.VideoGenerationReferenceType.ASSET,
+                                )
+                            )
+                        elif (
+                            gen_input.role
+                            == AssetRoleEnum.IMAGE_REFERENCE_STYLE
+                        ):
+                            image_for_api = types.Image(
+                                gcs_uri=gcs_uri, mime_type=parent_item.mime_type
+                            )
+                            reference_images_for_api.append(
+                                types.VideoGenerationReferenceImage(
+                                    image=image_for_api,
+                                    reference_type=types.VideoGenerationReferenceType.STYLE,
+                                )
+                            )
                     else:
                         worker_logger.warning(
                             f"Could not find or use generated_input: {gen_input.media_item_id} at index {gen_input.media_index}"
                         )
+
+            # Validation to prevent conflicting inputs
+            if reference_images_for_api and (
+                start_image_for_api or end_image_for_api or source_video_for_api
+            ):
+                raise ValueError(
+                    "Reference images cannot be used at the same time as a start/end image or a source video."
+                )
 
             all_generated_videos: List[types.GeneratedVideo] = []
 
@@ -197,6 +271,11 @@ def _process_video_in_background(
                             else 7
                         ),
                         last_frame=end_image_for_api,
+                        reference_images=(
+                            reference_images_for_api
+                            if reference_images_for_api
+                            else None
+                        ),
                     ),
                 )
             )
@@ -529,6 +608,20 @@ class VeoService:
                     role=AssetRoleEnum.VIDEO_EXTENSION_SOURCE,
                 )
             )
+
+        if request_dto.reference_images:
+            for ref_image in request_dto.reference_images:
+                role = (
+                    AssetRoleEnum.IMAGE_REFERENCE_STYLE
+                    if ref_image.reference_type == ReferenceImageTypeEnum.STYLE
+                    else AssetRoleEnum.IMAGE_REFERENCE_ASSET
+                )
+                source_assets.append(
+                    SourceAssetLink(
+                        asset_id=ref_image.asset_id,
+                        role=role,
+                    )
+                )
 
         # 2. Create a placeholder document
         placeholder_item = MediaItemModel(

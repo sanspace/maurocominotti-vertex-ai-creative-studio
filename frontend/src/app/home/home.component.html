@@ -133,7 +133,8 @@
             *ngFor="let ratio of aspectRatioOptions"
             [disabled]="ratio.disabled"
             mat-menu-item
-            (click)="selectAspectRatio(ratio.value)"
+            [ngClass]="{'menu-item-selected': searchRequest.aspectRatio=== ratio.value}"
+            (click)="selectAspectRatio(ratio)"
           >
             <mat-icon>{{ ratio.icon }}</mat-icon>
             <span>{{ ratio.viewValue }}</span>
@@ -169,6 +170,7 @@
           <button
             *ngFor="let model of generationModels"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.generationModel === model.value}"
             (click)="selectModel(model)"
           >
             <img
@@ -201,12 +203,13 @@
           <mat-icon>style</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.style }}
+          {{ searchRequest.style ? searchRequest.style : 'Style' }}
         </div>
         <mat-menu #imageStylingMenu="matMenu">
           <button
             *ngFor="let style of imageStyles"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.style === style}"
             (click)="selectImageStyle(style)"
           >
             <span>{{ style }}</span>
@@ -226,12 +229,13 @@
           <mat-icon>palette</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.colorAndTone }}
+          {{ searchRequest.colorAndTone ? searchRequest.colorAndTone : 'Color & Tone' }}
         </div>
         <mat-menu #colorMenu="matMenu">
           <button
             *ngFor="let color of colorsAndTones"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.colorAndTone === color}"
             (click)="selectColor(color)"
           >
             <span>{{ color }}</span>
@@ -251,12 +255,13 @@
           <mat-icon svgIcon="lighting-icon"></mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.lighting }}
+          {{ searchRequest.lighting ? searchRequest.lighting : 'Lighting' }}
         </div>
         <mat-menu #lightingMenu="matMenu">
           <button
             *ngFor="let light of lightings"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.lighting === light}"
             (click)="selectLighting(light)"
           >
             <span>{{ light }}</span>
@@ -283,6 +288,7 @@
           <button
             *ngFor="let num of numberOfImagesOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.numberOfMedia === num}"
             (click)="selectNumberOfImages(num)"
           >
             <span>{{ num }}</span>
@@ -302,12 +308,13 @@
           <mat-icon>movie_edit</mat-icon>
         </button>
         <div class="text-center justify-center text-neutral-200 text-base mt-2">
-          {{ searchRequest.composition }}
+          {{ searchRequest.composition ? searchRequest.composition : 'Composition' }}
         </div>
         <mat-menu #compositionMenu="matMenu">
           <button
             *ngFor="let comp of compositions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.composition === comp}"
             (click)="selectComposition(comp)"
           >
             <span>{{ comp }}</span>
@@ -374,11 +381,26 @@
           <button
             *ngFor="let option of watermarkOptions"
             mat-menu-item
+            [ngClass]="{'menu-item-selected': searchRequest.addWatermark === option.value}"
             (click)="selectWatermark(option)"
           >
             <span>{{ option.viewValue }}</span>
           </button>
         </mat-menu>
+      </div>
+
+      <div
+        matTooltip="Enable Brand Guidelines"
+        class="cursor-pointer w-32 inline-flex flex-col justify-start items-center"
+      >
+        <mat-slide-toggle
+          [(ngModel)]="searchRequest.useBrandGuidelines"
+          class="!w-16 !h-16 !shadow-none text-center !flex justify-center items-center text-stone-300"
+        >
+        </mat-slide-toggle>
+        <div class="text-center justify-center text-neutral-200 text-base mt-2">
+          Brand Guidelines
+        </div>
       </div>
       <!-- <div
         matTooltip="Replay Last Execution"
@@ -393,7 +415,8 @@
       </div> -->
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 my-8">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-8"
+        [ngClass]="(imagenDocuments?.presignedUrls?.length || 0) > 0 ? 'mb-8' : ''">
       <div class="lg:col-span-3 flex flex-col justify-start items-start gap-4">
         <div
           class="justify-center text-neutral-200 text-base font-bold leading-7"
@@ -427,7 +450,7 @@
               </span>
             </button>
           </div>
-          <button mat-stroked-button class="!text-white" (click)="resetAllFilters()" [disabled]="isLoading">Clear</button>
+          <button mat-stroked-button class="!text-white" (click)="resetAllFilters()" [disabled]="isLoading">Clear All</button>
         </div>
       </div>
       <div class="lg:col-span-1 grid grid-cols-2 gap-4 text-center">
@@ -450,8 +473,8 @@
         </div>
         <div
           class="drop-zone"
-          (dragover)="$event.preventDefault()"
           (click)="openImageSelector(2)"
+          (dragover)="$event.preventDefault()"
           (drop)="onDrop($event, 2)"
         >
           <div *ngIf="!image2Preview" class="drop-zone-placeholder">
@@ -468,4 +491,6 @@
       </div>
     </div>
   </div>
+
 </div>
+>

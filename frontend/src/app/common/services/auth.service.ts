@@ -119,7 +119,7 @@ export class AuthService {
     // This is synchronous and tells us if we have a valid, non-expired token.
     if (!this.isLoggedIn()) {
       return throwError(
-        () => new Error('User session is not valid or has expired.'),
+        () => new Error('User session is not valid or has expired. 1'),
       );
     }
 
@@ -240,9 +240,7 @@ export class AuthService {
     // First, check our own session info which is loaded from localStorage.
     // This is synchronous and tells us if we have a valid, non-expired token.
     if (!this.isLoggedIn()) {
-      return throwError(
-        () => new Error('User session is not valid or has expired.'),
-      );
+      return of();
     }
 
     // Fallback case: The Firebase Auth instance is not yet initialized, but we

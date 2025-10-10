@@ -44,8 +44,9 @@ module "creative_studio_platform" {
   github_repo_name          = var.github_repo_name
   github_branch_name        = var.github_branch_name
 
-  frontend_secrets = var.frontend_secrets
-  backend_secrets  = var.backend_secrets
+  frontend_secrets       = var.frontend_secrets
+  backend_secrets        = var.backend_secrets
+  fe_build_substitutions = var.fe_build_substitutions
 
   depends_on = [ google_project_service.apis ]
 }
