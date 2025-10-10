@@ -22,9 +22,14 @@ BE_SERVICE_NAME="cstudio-be"
 FE_SERVICE_NAME="cstudio-fe"
 
 # script will automatically set these
-AUTO_FIREBASE_API_KEY=""
-AUTO_FIREBASE_AUTH_DOMAIN=""
+AUTO_FIREBASE_API_KEY=""           # Your Firebase Web API Key
+AUTO_FIREBASE_AUTH_DOMAIN=""       # Your Firebase Auth Domain (e.g., project-id.firebaseapp.com)
+AUTO_FIREBASE_PROJECT_ID=""        # Your Firebase Project ID
+AUTO_FIREBASE_STORAGE_BUCKET=""    # Your Firebase Storage Bucket (e.g., project-id.appspot.com)
+AUTO_FIREBASE_MESSAGING_SENDER_ID="" # Your Firebase Cloud Messaging Sender ID
+AUTO_FIREBASE_APP_ID=""            # Your Firebase Web App ID
 AUTO_OAUTH_CLIENT_ID=""
+
 STATE_FILE=""
 REPO_ROOT=""
 
@@ -310,7 +315,14 @@ setup_firebase_app() {
     else info "Firebase web app '$FE_SERVICE_NAME' already exists."; fi
     info "Fetching Firebase SDK configuration to store in memory..."; local APP_ID=$(firebase apps:list --project="$GCP_PROJECT_ID" --json | jq -r --arg name "$FE_SERVICE_NAME" '.result[] | select(.displayName == $name) | .appId')
     local SDK_CONFIG_JSON=$(firebase apps:sdkconfig WEB "$APP_ID" --project="$GCP_PROJECT_ID" --json)
-    AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey'); AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
+
+    AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey')
+    AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
+    AUTO_FIREBASE_PROJECT_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.projectId')
+    AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.storageBucket')
+    AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.messagingSenderId')
+    AUTO_FIREBASE_APP_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.appId')
+
     if [ -z "$AUTO_FIREBASE_API_KEY" ]; then fail "Could not automatically fetch Firebase API Key. Please check your Firebase setup."; fi
     success "Firebase secrets have been fetched and will be populated automatically after Terraform runs."
 }
@@ -387,15 +399,37 @@ update_secrets() {
     if [ -z "$ALL_SECRETS" ]; then success "No secrets defined in Terraform outputs. Nothing to do."; return; fi
     for SECRET_NAME in $ALL_SECRETS; do
         info "Processing secret: ${C_YELLOW}${SECRET_NAME}${C_RESET}"
-        if [[ "$SECRET_NAME" == "FIREBASE_API_KEY" && -n "$AUTO_FIREBASE_API_KEY" ]]; then
-            info "  Value was auto-detected from Firebase. Populating automatically."; echo -n "$AUTO_FIREBASE_API_KEY" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet; success "  Successfully added new version for ${SECRET_NAME}."
-        elif [[ "$SECRET_NAME" == "FIREBASE_AUTH_DOMAIN" && -n "$AUTO_FIREBASE_AUTH_DOMAIN" ]]; then
-            info "  Value was auto-detected from Firebase. Populating automatically."; echo -n "$AUTO_FIREBASE_AUTH_DOMAIN" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet; success "  Successfully added new version for ${SECRET_NAME}."
+
+        SECRET_VALUE=""
+        AUTO_DISCOVERED=false
+
+        # Check if we have an auto-discovered value for the current secret
+        case $SECRET_NAME in
+            "FIREBASE_API_KEY")               SECRET_VALUE=$AUTO_FIREBASE_API_KEY; AUTO_DISCOVERED=true ;;
+            "FIREBASE_AUTH_DOMAIN")           SECRET_VALUE=$AUTO_FIREBASE_AUTH_DOMAIN; AUTO_DISCOVERED=true ;;
+            "FIREBASE_PROJECT_ID")            SECRET_VALUE=$AUTO_FIREBASE_PROJECT_ID; AUTO_DISCOVERED=true ;;
+            "FIREBASE_STORAGE_BUCKET")        SECRET_VALUE=$AUTO_FIREBASE_STORAGE_BUCKET; AUTO_DISCOVERED=true ;;
+            "FIREBASE_MESSAGING_SENDER_ID")   SECRET_VALUE=$AUTO_FIREBASE_MESSAGING_SENDER_ID; AUTO_DISCOVERED=true ;;
+            "FIREBASE_APP_ID")                SECRET_VALUE=$AUTO_FIREBASE_APP_ID; AUTO_DISCOVERED=true ;;
+            # GOOGLE_CLIENT_ID is handled by populate_oauth_secrets, so we skip it here
+            "GOOGLE_CLIENT_ID")               info "  Value is handled by the OAuth population step. Skipping."; continue ;;
+            "GOOGLE_TOKEN_AUDIENCE")          info "  Value is handled by the OAuth population step. Skipping."; continue ;;
+        esac
+
+        if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" ]; then
+            info "  Value was auto-detected from Firebase. Populating automatically."
+            echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+            success "  Successfully added new version for ${SECRET_NAME}."
+
         else
-            warn "  This secret requires manual input."; echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in history.${C_RESET}"
+            # This fallback is now only for secrets that are not auto-discovered
+            warn "  This secret requires manual input."
+            echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in history.${C_RESET}"
             read -s -p "  Enter new value: " SECRET_VALUE < /dev/tty; echo
+
             if [ -z "$SECRET_VALUE" ]; then warn "  No value provided. Skipping ${SECRET_NAME}."; continue; fi
-            echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet; success "  Successfully added new version for ${SECRET_NAME}."
+            echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+            success "  Successfully added new version for ${SECRET_NAME}."
         fi
     done; success "All secrets have been populated."
 }

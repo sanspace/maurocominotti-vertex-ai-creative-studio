@@ -70,7 +70,7 @@ variable "be_build_substitutions" {
 
 variable "fe_build_substitutions" {
   type        = map(string)
-  description = "A map of substitution variables for the backend Cloud Build trigger."
+  description = "A map of substitution variables for the frontend Cloud Build trigger."
   default     = {}
 }
 
