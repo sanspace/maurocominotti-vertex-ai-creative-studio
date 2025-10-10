@@ -322,7 +322,7 @@ configure_oauth_vars() {
 
 setup_firebase_app() {
     step 8 "Automating Firebase Web App Configuration"; cd "$REPO_ROOT"
-    info "Logging into Firebase CLI using your gcloud credentials..."; firebase login --reauth --no-localhost
+
     info "Checking for existing Firebase web app named '$FE_SERVICE_NAME'...";
     if ! firebase apps:list --project="$GCP_PROJECT_ID" | grep -q "$FE_SERVICE_NAME"; then
         info "No existing app found. Creating a new Firebase web app..."; firebase apps:create WEB "$FE_SERVICE_NAME" --project="$GCP_PROJECT_ID"
