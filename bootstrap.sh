@@ -242,7 +242,7 @@ configure_environment() {
     else info "Using previously configured environment: $ENV_NAME"; fi
     ENV_DIR="environments/$ENV_NAME";
     TFVARS_FILE_PATH="$REPO_ROOT/infra/$ENV_DIR/$ENV_NAME.tfvars"
-    STATE_FILE="$ENV_DIR/.bootstrap_state";
+    STATE_FILE="$REPO_ROOT/infra/$ENV_DIR/.bootstrap_state";
     read_state
     if [ ! -d "$ENV_DIR" ]; then
         info "Creating new environment directory from template: $TEMPLATE_ENV_DIR"; cp -r "$TEMPLATE_ENV_DIR" "$ENV_DIR"
