@@ -25,9 +25,8 @@ FE_SERVICE_NAME="cstudio-fe"
 AUTO_FIREBASE_API_KEY=""
 AUTO_FIREBASE_AUTH_DOMAIN=""
 AUTO_OAUTH_CLIENT_ID=""
-
-# --- Color Definitions ---
-# C_RESET='\033[0m'; C_RED='\033[0;31m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_BLUE='\033[0;34m'; C_CYAN='\033[0;36m'
+STATE_FILE=""
+REPO_ROOT=""
 
 # --- Color Definitions (High Contrast) ---
 C_RESET='\033[0m'
@@ -55,23 +54,24 @@ prompt_and_update_tfvar() {
     read -p "   $prompt_text [default value: $default_value]: " user_input < /dev/tty
     local final_value=${user_input:-$default_value}
     
-    sed -i.bak "s/$tfvar_name = \".*\"/$tfvar_name = \"$final_value\"/g" "$TFVARS_FILE"
+    sed -i.bak "s/$tfvar_name = \".*\"/$tfvar_name = \"$final_value\"/g" "$TFVARS_FILE_PATH"
     
     # Set the variable in the script's global scope
     eval "$var_to_set_ref='$final_value'"
 }
 
 # --- State Management ---
-STATE_FILE="" 
-REPO_ROOT=""
 write_state() {
     if [ -z "$STATE_FILE" ]; then return; fi
-    echo "DEBUG: PWD is: `pwd`"
-    touch "$STATE_FILE"
-    TMP_STATE_FILE=$(mktemp)
-    grep -v "^$1=" "$STATE_FILE" > "$TMP_STATE_FILE" || true
-    echo "$1=$2" >> "$TMP_STATE_FILE"
-    mv "$TMP_STATE_FILE" "$STATE_FILE"
+    if ! (
+        touch "$STATE_FILE"
+        TMP_STATE_FILE=$(mktemp)
+        grep -v "^$1=" "$STATE_FILE" > "$TMP_STATE_FILE" || true
+        echo "$1=$2" >> "$TMP_STATE_FILE"
+        mv "$TMP_STATE_FILE" "$STATE_FILE"
+    ); then
+        warn "Could not write to state file: $STATE_FILE. Resuming will not be possible from this point."
+    fi
 }
 read_state() {
     if [ -f "$STATE_FILE" ]; then
@@ -81,7 +81,6 @@ read_state() {
 }
 
 # --- Script Functions ---
-
 check_prerequisites() {
     step 1 "Checking Prerequisites"
     command -v gcloud >/dev/null || fail "gcloud CLI not found. Please install from https://cloud.google.com/sdk/docs/install"
@@ -91,13 +90,13 @@ check_prerequisites() {
         prompt "Would you like to try and install it now? (y/n)"; read -r REPLY < /dev/tty
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             warn "This may require sudo privileges."
-            if command -v apt-get &>/dev/null; then sudo apt-get update && sudo apt-get install -y jq
-            elif command -v brew &>/dev/null; then brew install jq
-            elif command -v yum &>/dev/null; then sudo yum install -y jq
-            else fail "Cannot automatically install jq on this OS. Please install it manually and run again."
-            fi
-        else fail "Please install jq and run this script again."
-        fi
+			if command -v apt-get &>/dev/null; then sudo apt-get update && sudo apt-get install -y jq
+			elif command -v brew &>/dev/null; then brew install jq
+			elif command -v yum &>/dev/null; then sudo yum install -y jq
+			else fail "Cannot automatically install jq on this OS. Please install it manually and run again."
+			fi
+        else fail "Please install jq and run this script again.";
+		fi
     fi
     if ! command -v firebase &> /dev/null; then
         warn "Firebase CLI ('firebase-tools') is not installed. It is required for automation."
@@ -281,12 +280,11 @@ configure_environment() {
 }
 
 handle_manual_steps() {
-    step 6 "Manual Steps Required"; cd "$REPO_ROOT/infra"
-    info "Enabling Cloud Build and Secret Manager APIs..."; gcloud services enable cloudbuild.googleapis.com secretmanager.googleapis.com --project="$GCP_PROJECT_ID"
+    step 6 "Manual Steps Required"; cd "$REPO_ROOT/infra"; TFVARS_FILE_PATH="$ENV_DIR/$ENV_NAME.tfvars"
+    info "Enabling required Google Cloud APIs..."; gcloud services enable cloudbuild.googleapis.com secretmanager.googleapis.com firebase.googleapis.com identitytoolkit.googleapis.com --project="$GCP_PROJECT_ID"
     if [ -z "$GITHUB_CONN_NAME" ]; then
         prompt "\nDo you already have a Cloud Build Host Connection for GitHub in this project? (y/n)"; read -r REPLY < /dev/tty
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            prompt "Please enter the existing connection name:"; read -p "   Connection Name: " GITHUB_CONN_NAME < /dev/tty
+        if [[ $REPLY =~ ^[Yy]$ ]]; then prompt "Please enter the existing connection name:"; read -p "   Connection Name: " GITHUB_CONN_NAME < /dev/tty
         else
             warn "You will now be guided to create a new GitHub connection."; info "Please perform the following manual steps:"
             echo "1. Open this URL in your browser:"; echo -e "   ${C_YELLOW}https://console.cloud.google.com/cloud-build/connections/create?project=${GCP_PROJECT_ID}${C_RESET}"
@@ -295,69 +293,65 @@ handle_manual_steps() {
             echo "5. After creating the connection, copy its name (e.g., 'gh-yourname-con')."
             prompt "Paste the new Cloud Build Connection Name here:"; read -p "   Connection Name: " GITHUB_CONN_NAME < /dev/tty
         fi
-        sed -i.bak "s/github_conn_name = \".*\"/github_conn_name = \"$GITHUB_CONN_NAME\"/g" "$TFVARS_FILE"
+        sed -i.bak "s/github_conn_name = \".*\"/github_conn_name = \"$GITHUB_CONN_NAME\"/g" "$TFVARS_FILE_PATH"
         write_state "GITHUB_CONN_NAME" "$GITHUB_CONN_NAME"
     fi
     warn "\nTerraform cannot accept legal terms on your behalf."; info "Please perform this one-time manual step for Firebase:"
     echo "1. Open this URL in your browser:"; echo -e "   ${C_YELLOW}https://console.firebase.google.com/?project=${GCP_PROJECT_ID}${C_RESET}"
     echo "2. You should be prompted to 'Add Firebase' to your existing project."; echo "3. Follow the prompts and accept the terms."
     prompt "Press [Enter] to continue after you have linked the project."; read -r < /dev/tty
-    rm -f "$ENV_DIR"/*.bak
+    rm -f "$TFVARS_FILE_PATH.bak"
 }
 
-setup_firebase_app() {
-    step 7 "Automating Firebase Web App Configuration"
+configure_oauth_vars() {
+    step 7 "Configuring OAuth Variables"
     cd "$REPO_ROOT/infra"
+    info "Looking for the auto-created OAuth 2.0 Web Client ID to update .tfvars..."
     
-    info "Enabling Identity Platform API (required for OAuth client lookup)..."
-    gcloud services enable identitytoolkit.googleapis.com --project="$GCP_PROJECT_ID"
-
-    # info "Logging into Firebase CLI using your gcloud credentials..."
-    # firebase login --reauth --no-localhost
-
-    info "Checking for existing Firebase web app named '$FE_SERVICE_NAME'..."
-    if ! firebase apps:list --project="$GCP_PROJECT_ID" | grep -q "$FE_SERVICE_NAME"; then
-        info "No existing app found. Creating a new Firebase web app..."
-        firebase apps:create WEB "$FE_SERVICE_NAME" --project="$GCP_PROJECT_ID"
-    else
-        info "Firebase web app '$FE_SERVICE_NAME' already exists."
-    fi
-
-    info "Fetching Firebase SDK configuration to store in memory..."
-    local APP_ID=$(firebase apps:list --project="$GCP_PROJECT_ID" --json | jq -r --arg name "$FE_SERVICE_NAME" '.result[] | select(.displayName == $name) | .appId')
-    local SDK_CONFIG_JSON=$(firebase apps:sdkconfig WEB "$APP_ID" --project="$GCP_PROJECT_ID" --json)
-
-    AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey')
-    AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
-
-    if [ -z "$AUTO_FIREBASE_API_KEY" ]; then
-        fail "Could not automatically fetch Firebase API Key. Please check your Firebase setup."
-    fi
-    success "Firebase secrets have been fetched and will be populated after Terraform runs."
-}
-
-
-run_terraform() {
-    step 8 "Deploying Infrastructure with Terraform"; info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."; cd "$REPO_ROOT/infra/$ENV_DIR"
-    info "Initializing Terraform..."; terraform init -reconfigure
-    info "Planning Terraform changes..."; terraform plan -var-file="$TFVARS_FILE" -parallelism=30
-    prompt "\nTerraform is ready to apply the changes. This will create all the required infrastructure and may take several minutes."; prompt "Do you want to proceed with 'terraform apply'? (y/n)"; read -r REPLY < /dev/tty
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then warn "Apply cancelled. You can run 'terraform apply -var-file=$TFVARS_FILE' manually later."; return; fi
-    terraform apply -auto-approve -var-file="$TFVARS_FILE" -parallelism=30
-}
-
-populate_oauth_secrets() {
-    step 9 "Automating OAuth Secret Population"
-    cd "$REPO_ROOT"
-    info "Looking for the auto-created OAuth 2.0 Web Client ID..."
-    
-    # This command finds the client created by "Google Service" and extracts its ID
+    # This command finds the client created by "Google Service" and extracts its client ID (the part ending in .apps.googleusercontent.com)
     AUTO_OAUTH_CLIENT_ID=$(gcloud iap oauth-clients list "$GCP_PROJECT_ID" --format="json" | jq -r '.[] | select(.displayName == "Web client (auto created by Google Service)") | .name' | sed 's/projects\/'"$GCP_PROJECT_ID"'\/brands\/'"$GCP_PROJECT_ID"'\/identityAwareProxyClients\///')
 
     if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
-        warn "Could not automatically find the OAuth Client ID. You may need to enter it manually in the next step."
+        warn "Could not automatically find the OAuth Client ID. You may need to update custom_audiences and IAP_AUDIENCE in your .tfvars file manually."
     else
-        info "Found OAuth Client ID. Populating secrets automatically..."
+        info "Found OAuth Client ID. Updating $TFVARS_FILE_PATH..."
+        sed -i.bak "s/YOUR_OAUTH_CLIENT_ID_PLACEHOLDER/$AUTO_OAUTH_CLIENT_ID/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s/YOUR_PROJECT_ID_PLACEHOLDER/$GCP_PROJECT_ID/g" "$TFVARS_FILE_PATH"
+        rm -f "$TFVARS_FILE_PATH.bak"
+        success "OAuth Client ID and Project ID audiences updated in .tfvars file."
+    fi
+}
+
+setup_firebase_app() {
+    step 8 "Automating Firebase Web App Configuration"; cd "$REPO_ROOT"
+    info "Logging into Firebase CLI using your gcloud credentials..."; firebase login --reauth --no-localhost
+    info "Checking for existing Firebase web app named '$FE_SERVICE_NAME'...";
+    if ! firebase apps:list --project="$GCP_PROJECT_ID" | grep -q "$FE_SERVICE_NAME"; then
+        info "No existing app found. Creating a new Firebase web app..."; firebase apps:create WEB "$FE_SERVICE_NAME" --project="$GCP_PROJECT_ID"
+    else info "Firebase web app '$FE_SERVICE_NAME' already exists."; fi
+    info "Fetching Firebase SDK configuration to store in memory..."; local APP_ID=$(firebase apps:list --project="$GCP_PROJECT_ID" --json | jq -r --arg name "$FE_SERVICE_NAME" '.result[] | select(.displayName == $name) | .appId')
+    local SDK_CONFIG_JSON=$(firebase apps:sdkconfig WEB "$APP_ID" --project="$GCP_PROJECT_ID" --json)
+    AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey'); AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
+    if [ -z "$AUTO_FIREBASE_API_KEY" ]; then fail "Could not automatically fetch Firebase API Key. Please check your Firebase setup."; fi
+    success "Firebase secrets have been fetched and will be populated automatically after Terraform runs."
+}
+
+run_terraform() {
+    step 9 "Deploying Infrastructure with Terraform"; TFVARS_FILE_PATH="$REPO_ROOT/infra/environments/$ENV_NAME/$ENV_NAME.tfvars"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+    info "Initializing Terraform..."; terraform init -reconfigure
+    info "Planning Terraform changes..."; terraform plan -var-file="$TFVARS_FILE_PATH"
+    prompt "\nTerraform is ready to apply the changes. This will create the infrastructure, including empty secret shells."; prompt "Do you want to proceed with 'terraform apply'? (y/n)"; read -r REPLY < /dev/tty
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then warn "Apply cancelled."; return; fi
+    terraform apply -auto-approve -var-file="$TFVARS_FILE_PATH" -parallelism=30
+}
+
+populate_oauth_secrets() {
+    step 10 "Automating OAuth Secret Population"
+    cd "$REPO_ROOT"
+    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
+        warn "Could not find OAuth Client ID automatically. You may need to enter it manually in the next step."
+    else
+        info "Populating OAuth secrets in Secret Manager automatically..."
         echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_CLIENT_ID --data-file="-" --project="$GCP_PROJECT_ID" --quiet
         echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_TOKEN_AUDIENCE --data-file="-" --project="$GCP_PROJECT_ID" --quiet
         success "OAuth secrets (Client ID, Token Audience) have been populated."
@@ -365,138 +359,75 @@ populate_oauth_secrets() {
 }
 
 update_oauth_client() {
-    step 10 "Configuring OAuth Client URIs"
-    cd "$REPO_ROOT"
-    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
-        warn "Could not find OAuth Client ID automatically. Skipping URI update."
-        return
-    fi
-    
-    info "Fetching full OAuth client name..."
-    local OAUTH_CLIENT_FULL_NAME=$(gcloud iap oauth-clients list "$GCP_PROJECT_ID" --format="json" | jq -r --arg clientid "$AUTO_OAUTH_CLIENT_ID" '.[] | select(.name | contains($clientid)) | .name')
-
-    if [ -z "$OAUTH_CLIENT_FULL_NAME" ]; then
-        warn "Could not resolve the full name for the OAuth client. Skipping URI update."
-        return
-    fi
-    
-    info "Adding web.app domain to OAuth Client origins and redirect URIs..."
-    # Construct only the web.app origin and redirect URI to be added
-    local WEBAPP_ORIGIN="https://$(gcloud projects describe $GCP_PROJECT_ID --format='value(projectId)').web.app"
-    local WEBAPP_REDIRECT_URI="${WEBAPP_ORIGIN}/__/auth/handler"
-    
-    # This command is non-destructive and adds the new URIs to the existing lists
-    gcloud iap oauth-clients update "$OAUTH_CLIENT_FULL_NAME" \
-        --add-javascript-origins="$WEBAPP_ORIGIN" \
-        --add-redirect-uris="$WEBAPP_REDIRECT_URI" \
-        --project="$GCP_PROJECT_ID"
-        
-    success "OAuth Client updated automatically with web.app URIs."
+    step 11 "Configuring OAuth Client URIs"; cd "$REPO_ROOT"
+    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then warn "Could not find OAuth Client ID automatically. Skipping URI update."; return; fi
+    info "Fetching full OAuth client name..."; local OAUTH_CLIENT_FULL_NAME=$(gcloud iap oauth-clients list "$GCP_PROJECT_ID" --format="json" | jq -r --arg clientid "$AUTO_OAUTH_CLIENT_ID" '.[] | select(.name | contains($clientid)) | .name')
+    if [ -z "$OAUTH_CLIENT_FULL_NAME" ]; then warn "Could not resolve the full name for the OAuth client. Skipping URI update."; return; fi
+    info "Ensuring OAuth Client has all required origins and redirect URIs..."; local PROJECT_DOMAIN_BASE=$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectId)')
+    local FIREBASEAPP_ORIGIN="https://${PROJECT_DOMAIN_BASE}.firebaseapp.com"; local WEBAPP_ORIGIN="https://${PROJECT_DOMAIN_BASE}.web.app"
+    local FIREBASEAPP_REDIRECT_URI="${FIREBASEAPP_ORIGIN}/__/auth/handler"; local WEBAPP_REDIRECT_URI="${WEBAPP_ORIGIN}/__/auth/handler"
+    gcloud iap oauth-clients update "$OAUTH_CLIENT_FULL_NAME" --add-javascript-origins="$FIREBASEAPP_ORIGIN" --add-javascript-origins="$WEBAPP_ORIGIN" --add-redirect-uris="$FIREBASEAPP_REDIRECT_URI" --add-redirect-uris="$WEBAPP_REDIRECT_URI" --project="$GCP_PROJECT_ID" --quiet
+    success "OAuth Client URIs configured automatically."
 }
 
 update_secrets() {
-    step 11 "Updating Secrets"
-    info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."
-    cd "$REPO_ROOT/infra/$ENV_DIR"
-    info "Populating values in Secret Manager..."
-    
-    local TERRAFORM_OUTPUTS=$(terraform output -json)
-    local FRONTEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .frontend_secrets.value[])
-    local BACKEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .backend_secrets.value[])
+    step 12 "Updating Remaining Secrets"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+    info "Populating values in Secret Manager..."; local TERRAFORM_OUTPUTS=$(terraform output -json)
+    local FRONTEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .frontend_secrets.value[]); local BACKEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .backend_secrets.value[])
     local ALL_SECRETS=$(echo "${FRONTEND_SECRETS} ${BACKEND_SECRETS}" | tr ' ' '\n' | sort -u | grep .)
-
     if [ -z "$ALL_SECRETS" ]; then success "No secrets defined in Terraform outputs. Nothing to do."; return; fi
-    
     for SECRET_NAME in $ALL_SECRETS; do
         info "Processing secret: ${C_YELLOW}${SECRET_NAME}${C_RESET}"
-        
-        # Check if this is one of the auto-populated secrets
         if [[ "$SECRET_NAME" == "FIREBASE_API_KEY" && -n "$AUTO_FIREBASE_API_KEY" ]]; then
-            info "  Value was auto-detected from Firebase. Populating automatically."
-            echo -n "$AUTO_FIREBASE_API_KEY" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
-            success "  Successfully added new version for ${SECRET_NAME}."
+            info "  Value was auto-detected from Firebase. Populating automatically."; echo -n "$AUTO_FIREBASE_API_KEY" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet; success "  Successfully added new version for ${SECRET_NAME}."
         elif [[ "$SECRET_NAME" == "FIREBASE_AUTH_DOMAIN" && -n "$AUTO_FIREBASE_AUTH_DOMAIN" ]]; then
-            info "  Value was auto-detected from Firebase. Populating automatically."
-            echo -n "$AUTO_FIREBASE_AUTH_DOMAIN" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
-            success "  Successfully added new version for ${SECRET_NAME}."
+            info "  Value was auto-detected from Firebase. Populating automatically."; echo -n "$AUTO_FIREBASE_AUTH_DOMAIN" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet; success "  Successfully added new version for ${SECRET_NAME}."
         else
-            # Fallback to the interactive prompt for all other secrets
-            warn "  This secret requires manual input."
-            echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in history.${C_RESET}"
-            read -s -p "  Enter new value: " SECRET_VALUE < /dev/tty
-            echo
-            if [ -z "$SECRET_VALUE" ]; then
-                warn "  No value provided. Skipping ${SECRET_NAME}."
-                continue
-            fi
-            echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
-            success "  Successfully added new version for ${SECRET_NAME}."
+            warn "  This secret requires manual input."; echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in history.${C_RESET}"
+            read -s -p "  Enter new value: " SECRET_VALUE < /dev/tty; echo
+            if [ -z "$SECRET_VALUE" ]; then warn "  No value provided. Skipping ${SECRET_NAME}."; continue; fi
+            echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet; success "  Successfully added new version for ${SECRET_NAME}."
         fi
-    done
-    success "All secrets have been populated."
+    done; success "All secrets have been populated."
 }
 
 trigger_builds() {
-    step 12 "Triggering Initial Builds"; cd "$REPO_ROOT"
+    step 13 "Triggering Initial Builds"; cd "$REPO_ROOT"
     prompt "Would you like to trigger the initial builds for the frontend and backend now? (y/n)"; read -r REPLY < /dev/tty
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then info "You can trigger the builds manually later by pushing a commit or via the Cloud Build UI."; return; fi
     info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID"
     info "Triggering frontend build..."; gcloud builds triggers run "${FE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID"
-    success "Builds have been triggered."; info "You can monitor their progress in the Cloud Build console:"
-    echo -e "   ${C_YELLOW}https://console.cloud.google.com/cloud-build/builds?project=${GCP_PROJECT_ID}${C_RESET}"
+    success "Builds have been triggered."; info "You can monitor their progress in the Cloud Build console:"; echo -e "   ${C_YELLOW}https://console.cloud.google.com/cloud-build/builds?project=${GCP_PROJECT_ID}${C_RESET}"
 }
 
 # --- Main Execution ---
 main() {
     echo -e "${C_GREEN}=====================================================${C_RESET}"
-    echo -e "${C_GREEN} Welcome to the Creative Studio Infrastructure Setup ${C_RESET}"
+    echo -e "${C_GREEN} 🚀 Welcome to the Creative Studio Infrastructure Setup ${C_RESET}"
     echo -e "${C_GREEN}=====================================================${C_RESET}"
     prompt "Are you resuming a previous installation? (y/n)"; read -r REPLY < /dev/tty
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         prompt "Please enter the full local path to your cloned repository:"; read -p "   Local Path: " REPO_ROOT < /dev/tty
         if [[ ! -d "$REPO_ROOT/.git" ]]; then fail "The path you provided does not appear to be a valid git repository."; fi
-        export REPO_ROOT
-        prompt "Please enter the environment name you were setting up:"; read -p "   Environment Name: " ENV_NAME < /dev/tty
-        STATE_FILE="$REPO_ROOT/infra/environments/$ENV_NAME/.bootstrap_state"
-        if [[ ! -f "$STATE_FILE" ]]; then fail "Could not find a state file at the specified location."; fi
+        export REPO_ROOT; prompt "Please enter the environment name you were setting up:"; read -p "   Environment Name: " ENV_NAME < /dev/tty
+        STATE_FILE="$REPO_ROOT/infra/environments/$ENV_NAME/.bootstrap_state"; if [[ ! -f "$STATE_FILE" ]]; then fail "Could not find a state file at the specified location."; fi
     fi
-    read_state
-    LAST_COMPLETED_STEP=${LAST_COMPLETED_STEP:-0}
-
-    # Define the sequence of steps
-    declare -a steps_to_run=(
-        "check_prerequisites" 
-        "check_and_install_terraform" 
-        "setup_project" 
-        "setup_repo" 
-        "configure_environment" 
-        "handle_manual_steps" 
-        "setup_firebase_app" 
-        "run_terraform" 
-        "populate_oauth_secrets" 
-        "update_oauth_client" 
-        "update_secrets" 
-        "trigger_builds"
-    )
-    
-    # Execute steps in order, starting from the last completed step
+    read_state; LAST_COMPLETED_STEP=${LAST_COMPLETED_STEP:-0}
+    declare -a steps_to_run=( "check_prerequisites" "check_and_install_terraform" "setup_project" "setup_repo" "configure_environment" "handle_manual_steps" "setup_firebase_app" "run_terraform" "populate_oauth_secrets" "update_oauth_client" "update_secrets" "trigger_builds" )
     for i in "${!steps_to_run[@]}"; do
         step_num=$((i + 1))
         if (( LAST_COMPLETED_STEP < step_num )); then
-            ${steps_to_run[$i]}
-            write_state "LAST_COMPLETED_STEP" "$step_num"
+            if [ -z "$STATE_FILE" ] && [ "$step_num" -gt 4 ]; then
+                STATE_FILE="$REPO_ROOT/infra/environments/$ENV_NAME/.bootstrap_state"
+                write_state "REPO_ROOT" "$REPO_ROOT"
+            fi
+            ${steps_to_run[$i]}; write_state "LAST_COMPLETED_STEP" "$step_num"
         fi
     done
-
-    step 12 "🎉 Deployment Complete! 🎉"
-    info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
-    FRONTEND_URL=$(terraform output -raw frontend_service_url)
-    BACKEND_URL=$(terraform output -raw backend_service_url)
+    step 14 "🎉 Deployment Complete! 🎉"; info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+    FRONTEND_URL=$(terraform output -raw frontend_service_url); BACKEND_URL=$(terraform output -raw backend_service_url)
     success "Your infrastructure is ready."
-    echo "------------------------------------------------------------------"
-    echo -e "   Frontend URL: ${C_YELLOW}${FRONTEND_URL}${C_RESET}"
-    echo -e "   Backend URL:  ${C_YELLOW}${BACKEND_URL}${C_RESET}"
-    echo "------------------------------------------------------------------"
+    echo "------------------------------------------------------------------"; echo -e "   Frontend URL: ${C_YELLOW}${FRONTEND_URL}${C_RESET}"; echo -e "   Backend URL:  ${C_YELLOW}${BACKEND_URL}${C_RESET}"; echo "------------------------------------------------------------------"
     info "It may take a few minutes for the builds to complete and the services to become available."
 }
 
