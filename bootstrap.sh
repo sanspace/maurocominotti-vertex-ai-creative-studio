@@ -27,7 +27,15 @@ AUTO_FIREBASE_AUTH_DOMAIN=""
 AUTO_OAUTH_CLIENT_ID=""
 
 # --- Color Definitions ---
-C_RESET='\033[0m'; C_RED='\033[0;31m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_BLUE='\033[0;34m'; C_CYAN='\033[0;36m'
+# C_RESET='\033[0m'; C_RED='\033[0;31m'; C_GREEN='\033[0;32m'; C_YELLOW='\033[0;33m'; C_BLUE='\033[0;34m'; C_CYAN='\033[0;36m'
+
+# --- Color Definitions (High Contrast) ---
+C_RESET='\033[0m'
+C_RED='\033[1;31m'     # Bold/Bright Red for errors
+C_GREEN='\033[1;32m'   # Bold/Bright Green for success
+C_YELLOW='\033[1;33m'  # Bold/Bright Yellow for warnings and URLs
+C_BLUE='\033[1;34m'    # Bold/Bright Blue for steps and prompts
+C_CYAN='\033[1;36m'    # Bold/Bright Cyan for general info
 
 # --- Helper Functions ---
 info() { echo -e "${C_CYAN}➡️  $1${C_RESET}"; }
@@ -356,8 +364,38 @@ populate_oauth_secrets() {
     fi
 }
 
+update_oauth_client() {
+    step 10 "Configuring OAuth Client URIs"
+    cd "$REPO_ROOT"
+    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
+        warn "Could not find OAuth Client ID automatically. Skipping URI update."
+        return
+    fi
+    
+    info "Fetching full OAuth client name..."
+    local OAUTH_CLIENT_FULL_NAME=$(gcloud iap oauth-clients list "$GCP_PROJECT_ID" --format="json" | jq -r --arg clientid "$AUTO_OAUTH_CLIENT_ID" '.[] | select(.name | contains($clientid)) | .name')
+
+    if [ -z "$OAUTH_CLIENT_FULL_NAME" ]; then
+        warn "Could not resolve the full name for the OAuth client. Skipping URI update."
+        return
+    fi
+    
+    info "Adding web.app domain to OAuth Client origins and redirect URIs..."
+    # Construct only the web.app origin and redirect URI to be added
+    local WEBAPP_ORIGIN="https://$(gcloud projects describe $GCP_PROJECT_ID --format='value(projectId)').web.app"
+    local WEBAPP_REDIRECT_URI="${WEBAPP_ORIGIN}/__/auth/handler"
+    
+    # This command is non-destructive and adds the new URIs to the existing lists
+    gcloud iap oauth-clients update "$OAUTH_CLIENT_FULL_NAME" \
+        --add-javascript-origins="$WEBAPP_ORIGIN" \
+        --add-redirect-uris="$WEBAPP_REDIRECT_URI" \
+        --project="$GCP_PROJECT_ID"
+        
+    success "OAuth Client updated automatically with web.app URIs."
+}
+
 update_secrets() {
-    step 10 "Updating Secrets"
+    step 11 "Updating Secrets"
     info "Navigating to $REPO_ROOT/infra/$ENV_DIR..."
     cd "$REPO_ROOT/infra/$ENV_DIR"
     info "Populating values in Secret Manager..."
@@ -399,7 +437,7 @@ update_secrets() {
 }
 
 trigger_builds() {
-    step 11 "Triggering Initial Builds"; cd "$REPO_ROOT"
+    step 12 "Triggering Initial Builds"; cd "$REPO_ROOT"
     prompt "Would you like to trigger the initial builds for the frontend and backend now? (y/n)"; read -r REPLY < /dev/tty
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then info "You can trigger the builds manually later by pushing a commit or via the Cloud Build UI."; return; fi
     info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID"
@@ -436,6 +474,7 @@ main() {
         "setup_firebase_app" 
         "run_terraform" 
         "populate_oauth_secrets" 
+        "update_oauth_client" 
         "update_secrets" 
         "trigger_builds"
     )
