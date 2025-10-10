@@ -54,6 +54,7 @@ steps:
       - FIREBASE_SENDER_ID
       - FIREBASE_APP_ID
       - FIREBASE_MEASUREMENT_ID
+      - GOOGLE_CLIENT_ID
 
   # 3. Build the application
   - name: 'node:20-alpine' # Use the same version
