@@ -236,7 +236,7 @@ configure_environment() {
         ENV_NAME=${ENV_NAME:-$DEFAULT_ENV_NAME}
     else info "Using previously configured environment: $ENV_NAME"; fi
     ENV_DIR="environments/$ENV_NAME";
-    TFVARS_FILE="$ENV_NAME.tfvars";
+    TFVARS_FILE_PATH="$REPO_ROOT/infra/$ENV_DIR/$ENV_NAME.tfvars"
     STATE_FILE="$ENV_DIR/.bootstrap_state";
     read_state
     if [ ! -d "$ENV_DIR" ]; then
@@ -255,10 +255,8 @@ configure_environment() {
     prefix = \"$BUCKET_PREFIX\"
   }
 }" > "$ENV_DIR/backend.tf"
-        info "Updating $TFVARS_FILE_PATH..."; mv "$ENV_DIR/dev.tfvars" "$ENV_DIR/$TFVARS_FILE"
-
-        # Define the full path for sed operations
-        TFVARS_FILE_PATH="$ENV_DIR/$TFVARS_FILE"
+        info "Updating $TFVARS_FILE_PATH...";
+        mv "$ENV_DIR/dev.tfvars" "$TFVARS_FILE_PATH"
 
         sed -i.bak "s/gcp_project_id = \".*\"/gcp_project_id = \"$GCP_PROJECT_ID\"/g" "$TFVARS_FILE_PATH"
         sed -i.bak "s/github_repo_owner = \".*\"/github_repo_owner = \"$GITHUB_REPO_OWNER\"/g" "$TFVARS_FILE_PATH"
