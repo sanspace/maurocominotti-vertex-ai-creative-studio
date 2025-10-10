@@ -76,30 +76,75 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   fail "Operation cancelled."
 fi
 
-# 4. Loop, Prompt, and Write
+# 4. Attempt to auto-discover Firebase config
+info "Checking for Firebase Web App configuration..."
+WEB_APP_CONFIG=$(gcloud firebase apps list --project="$PROJECT_ID" --format="json" | jq -r '.[] | select(.platform=="WEB") | .appId' | head -n 1 | xargs -I {} gcloud firebase apps get-config {} --project="$PROJECT_ID" --format="json" 2>/dev/null)
+
+if [ -n "$WEB_APP_CONFIG" ]; then
+  success "Found Firebase Web App config. Will attempt to auto-populate secrets."
+  # Extract values
+  AUTO_FIREBASE_API_KEY=$(echo "$WEB_APP_CONFIG" | jq -r .apiKey)
+  AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$WEB_APP_CONFIG" | jq -r .authDomain)
+  AUTO_FIREBASE_PROJECT_ID=$(echo "$WEB_APP_CONFIG" | jq -r .projectId)
+  AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$WEB_APP_CONFIG" | jq -r .storageBucket)
+  AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$WEB_APP_CONFIG" | jq -r .messagingSenderId)
+  AUTO_FIREBASE_APP_ID=$(echo "$WEB_APP_CONFIG" | jq -r .appId)
+else
+  warn "Could not automatically find a Firebase Web App config for project '$PROJECT_ID'."
+  warn "You will be prompted for all Firebase secrets manually."
+fi
+
+# 5. Loop, Prompt, and Write
 for SECRET_NAME in $ALL_SECRETS; do
   info "Updating secret: ${C_YELLOW}${SECRET_NAME}${C_RESET}"
+  SECRET_VALUE=""
+  AUTO_DISCOVERED=false
 
-  # Add reassurance for the user
-  echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in disk or history.${C_RESET}"
-  
-  # Securely prompt for the secret value (the -s flag hides the input)
-  read -s -p "  Enter new value: " SECRET_VALUE
-  echo # Add a newline after the prompt
+  # Check if we have an auto-discovered value for the current secret
+  case $SECRET_NAME in
+    "FIREBASE_API_KEY")           SECRET_VALUE=$AUTO_FIREBASE_API_KEY; AUTO_DISCOVERED=true ;;
+    "FIREBASE_AUTH_DOMAIN")       SECRET_VALUE=$AUTO_FIREBASE_AUTH_DOMAIN; AUTO_DISCOVERED=true ;;
+    "FIREBASE_PROJECT_ID")        SECRET_VALUE=$AUTO_FIREBASE_PROJECT_ID; AUTO_DISCOVERED=true ;;
+    "FIREBASE_STORAGE_BUCKET")    SECRET_VALUE=$AUTO_FIREBASE_STORAGE_BUCKET; AUTO_DISCOVERED=true ;;
+    "FIREBASE_MESSAGING_SENDER_ID") SECRET_VALUE=$AUTO_FIREBASE_MESSAGING_SENDER_ID; AUTO_DISCOVERED=true ;;
+    "FIREBASE_APP_ID")            SECRET_VALUE=$AUTO_FIREBASE_APP_ID; AUTO_DISCOVERED=true ;;
+  esac
+
+  if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" ]; then
+    info "  Auto-populating from Firebase config."
+  else
+    # Add reassurance for the user
+    echo -e "${C_CYAN}  It is safe to paste your secret. The value is read securely, not displayed, and not stored in disk or history.${C_RESET}"
+
+    # Securely prompt for the secret value (the -s flag hides the input)
+    read -s -p "  Enter new value: " SECRET_VALUE
+    echo # Add a newline after the prompt
+  fi
 
   if [ -z "$SECRET_VALUE" ]; then
     warn "  No value provided. Skipping ${SECRET_NAME}."
     continue
   fi
 
-  # Write the secret value from the variable directly to gcloud stdin
-  # This avoids saving it to disk or command history.
-  echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" \
-    --data-file="-" \
-    --project="$PROJECT_ID" \
-    --quiet
+  # Check if the secret already exists and has the same value
+  LATEST_VERSION=$(gcloud secrets versions access latest --secret="$SECRET_NAME" --project="$PROJECT_ID" 2>/dev/null || echo "")
+  if [ "$LATEST_VERSION" == "$SECRET_VALUE" ]; then
+    success "  Secret ${SECRET_NAME} is already up-to-date. Skipping."
+  else
+    # Write the secret value from the variable directly to gcloud stdin
+    # This avoids saving it to disk or command history.
+    echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" \
+      --data-file="-" \
+      --project="$PROJECT_ID" \
+      --quiet
 
-  success "  Successfully added new version for ${SECRET_NAME}."
+    if [ $? -eq 0 ]; then
+      success "  Successfully added new version for ${SECRET_NAME}."
+    else
+      fail "  Failed to update secret ${SECRET_NAME}."
+    fi
+  fi
+
 done
 
 success "All secrets updated."
