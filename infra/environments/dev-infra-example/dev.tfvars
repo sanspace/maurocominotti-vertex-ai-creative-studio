@@ -46,6 +46,7 @@ frontend_secrets = [
   "FIREBASE_STORAGE_BUCKET",   # Your Firebase Storage Bucket (e.g., project-id.appspot.com)
   "FIREBASE_MESSAGING_SENDER_ID", # Your Firebase Cloud Messaging Sender ID
   "FIREBASE_APP_ID",           # Your Firebase Web App ID
+  "FIREBASE_MEASUREMENT_ID",   # Your Google Analytics Measurement ID
   "GOOGLE_CLIENT_ID",          # Your Google OAuth 2.0 Client ID for web
 ]
 

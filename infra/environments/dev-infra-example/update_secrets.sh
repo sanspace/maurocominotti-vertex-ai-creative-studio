@@ -44,9 +44,17 @@ info "All tools found."
 
 # --- Main Script ---
 
-# 1. Fetch outputs from the Terraform state in the current directory
+# 1. Find the .tfvars file in the current directory
+TFVARS_FILE=$(find . -maxdepth 1 -name "*.tfvars" ! -name "terraform.tfvars.dist" | head -n 1)
+
+if [ -z "$TFVARS_FILE" ]; then
+  fail "No .tfvars file found in the current directory. Cannot proceed."
+fi
+info "Using variables from: ${C_YELLOW}${TFVARS_FILE}${C_RESET}"
+
+# 2. Fetch outputs from the Terraform state in the current directory
 info "Fetching secrets from Terraform state..."
-TERRAFORM_OUTPUTS=$(terraform output -json)
+TERRAFORM_OUTPUTS=$(terraform output -json -var-file="$TFVARS_FILE")
 
 # 2. Parse the outputs using jq
 PROJECT_ID=$(echo "$TERRAFORM_OUTPUTS" | jq -r .gcp_project_id.value)
@@ -89,6 +97,7 @@ if [ -n "$WEB_APP_CONFIG" ]; then
   AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$WEB_APP_CONFIG" | jq -r .storageBucket)
   AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$WEB_APP_CONFIG" | jq -r .messagingSenderId)
   AUTO_FIREBASE_APP_ID=$(echo "$WEB_APP_CONFIG" | jq -r .appId)
+  AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$WEB_APP_CONFIG" | jq -r .measurementId)
 else
   warn "Could not automatically find a Firebase Web App config for project '$PROJECT_ID'."
   warn "You will be prompted for all Firebase secrets manually."
@@ -108,6 +117,7 @@ for SECRET_NAME in $ALL_SECRETS; do
     "FIREBASE_STORAGE_BUCKET")    SECRET_VALUE=$AUTO_FIREBASE_STORAGE_BUCKET; AUTO_DISCOVERED=true ;;
     "FIREBASE_MESSAGING_SENDER_ID") SECRET_VALUE=$AUTO_FIREBASE_MESSAGING_SENDER_ID; AUTO_DISCOVERED=true ;;
     "FIREBASE_APP_ID")            SECRET_VALUE=$AUTO_FIREBASE_APP_ID; AUTO_DISCOVERED=true ;;
+    "FIREBASE_MEASUREMENT_ID")    SECRET_VALUE=$AUTO_FIREBASE_MEASUREMENT_ID; AUTO_DISCOVERED=true ;;
   esac
 
   if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" ]; then
