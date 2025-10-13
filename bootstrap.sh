@@ -351,22 +351,29 @@ populate_oauth_secrets() {
     AUTO_OAUTH_CLIENT_ID=$(echo "$API_RESPONSE" | jq -r '.oauthClientId')
 
     if [ -z "$AUTO_OAUTH_CLIENT_ID" ] || [ "$AUTO_OAUTH_CLIENT_ID" == "null" ]; then
-        warn "Could not automatically find the OAuth Client ID via API. You may need to enter it manually."
+        warn "Could not automatically find the OAuth Client ID via API."
+        info "Please perform the following manual steps:"
+        echo "1. Open this URL in your browser to find your OAuth Client ID:"
+        echo -e "   ${C_YELLOW}https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}${C_RESET}"
+        echo "2. Find the OAuth 2.0 Client ID of type 'Web application'."
+        prompt "Paste the OAuth Client ID here:"
+        read -p "   Client ID: " AUTO_OAUTH_CLIENT_ID < /dev/tty
+        if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
+            fail "OAuth Client ID is required to proceed. Please restart the script."
+        fi
     else
-        info "Found OAuth Client ID. Populating secrets automatically..."
-        echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_CLIENT_ID --data-file="-" --project="$GCP_PROJECT_ID" --quiet
-        echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_TOKEN_AUDIENCE --data-file="-" --project="$GCP_PROJECT_ID" --quiet
-        success "OAuth secrets (Client ID, Token Audience) have been populated."
-
-        info "Found OAuth Client ID. Updating $TFVARS_FILE_PATH..."
-		infor "DEBUG: [$TFVARS_FILE_PATH] [`pwd`]"
-        sed -i.bak "s|your-custom-audience.apps.googleusercontent.com|$AUTO_OAUTH_CLIENT_ID|g" "$TFVARS_FILE_PATH"
-        sed -i.bak "s|\"creative-studio\"|\"$GCP_PROJECT_ID\"|g" "$TFVARS_FILE_PATH"
-
-        rm -f "$TFVARS_FILE_PATH.bak"
-        success "OAuth Client ID and Project ID audiences updated in .tfvars file."
-        read
+        info "Found OAuth Client ID via Firebase API."
     fi
+
+    info "Populating secrets with Client ID: ${C_YELLOW}${AUTO_OAUTH_CLIENT_ID}${C_RESET}"
+    echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_CLIENT_ID --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+    echo -n "$AUTO_OAUTH_CLIENT_ID" | gcloud secrets versions add GOOGLE_TOKEN_AUDIENCE --data-file="-" --project="$GCP_PROJECT_ID" --quiet
+    success "Secrets 'GOOGLE_CLIENT_ID' and 'GOOGLE_TOKEN_AUDIENCE' have been populated."
+
+    info "Updating audiences in $TFVARS_FILE_PATH..."
+    sed -i.bak "s|your-custom-audience.apps.googleusercontent.com|$AUTO_OAUTH_CLIENT_ID|g" "$TFVARS_FILE_PATH"
+    rm -f "$TFVARS_FILE_PATH.bak"
+    success "Audiences updated in .tfvars file."
 }
 
 run_terraform() {
