@@ -337,22 +337,6 @@ resource "google_firestore_index" "source_assets_scope_type" {
   }
 }
 
-# Index for: source_assets by scope, created_at
-resource "google_firestore_index" "source_assets_scope_created" {
-  project    = var.gcp_project_id
-  database   = google_firestore_database.default.name
-  collection = "source_assets"
-
-  fields {
-    field_path = "scope"
-    order      = "ASCENDING"
-  }
-  fields {
-    field_path = "created_at"
-    order      = "DESCENDING"
-  }
-}
-
 
 # Index for: source_assets by created_at, original_filename
 resource "google_firestore_index" "source_assets_created_ogfilename" {
@@ -366,22 +350,6 @@ resource "google_firestore_index" "source_assets_created_ogfilename" {
   }
   fields {
     field_path = "original_filename"
-    order      = "DESCENDING"
-  }
-}
-
-# Index for: source_assets by scope, created_at
-resource "google_firestore_index" "source_assets_assettype_created" {
-  project    = var.gcp_project_id
-  database   = google_firestore_database.default.name
-  collection = "source_assets"
-
-  fields {
-    field_path = "asset_type"
-    order      = "ASCENDING"
-  }
-  fields {
-    field_path = "created_at"
     order      = "DESCENDING"
   }
 }
