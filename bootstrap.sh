@@ -422,6 +422,31 @@ update_secrets() {
     local FRONTEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .frontend_secrets.value[]); local BACKEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .backend_secrets.value[])
     local ALL_SECRETS=$(echo "${FRONTEND_SECRETS} ${BACKEND_SECRETS}" | tr ' ' '\n' | sort -u | grep .)
     if [ -z "$ALL_SECRETS" ]; then success "No secrets defined in Terraform outputs. Nothing to do."; return; fi
+
+    # --- Double-check for Firebase config if variables are not set ---
+    # This handles cases where the script is resumed after step 7
+    if [ -z "$AUTO_FIREBASE_API_KEY" ]; then
+        info "Auto-discovered Firebase variables not set. Re-running discovery..."
+        local FE_APP_NAME=$(grep 'frontend_service_name' "$TFVARS_FILE_PATH" | awk -F'"' '{print $2}')
+        if [ -z "$FE_APP_NAME" ]; then
+            warn "Could not determine frontend service name from .tfvars. Cannot auto-discover Firebase secrets."
+        else
+            local APP_ID=$(firebase apps:list --project="$GCP_PROJECT_ID" --json | jq -r --arg name "$FE_SERVICE_NAME" '.result[] | select(.displayName == $name) | .appId')
+            if [ -n "$APP_ID" ]; then
+                local SDK_CONFIG_JSON=$(firebase apps:sdkconfig WEB "$APP_ID" --project="$GCP_PROJECT_ID" --json)
+                AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey')
+                # ... (re-populate all other AUTO_... variables)
+                AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
+                AUTO_FIREBASE_PROJECT_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.projectId')
+                AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.storageBucket')
+                AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.messagingSenderId')
+                AUTO_FIREBASE_APP_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.appId')
+                AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.measurementId')
+                success "Successfully re-discovered Firebase configuration."
+            fi
+        fi
+    fi
+
     for SECRET_NAME in $ALL_SECRETS; do
         info "Processing secret: ${C_YELLOW}${SECRET_NAME}${C_RESET}"
 
@@ -475,7 +500,7 @@ seed_data() {
     export GOOGLE_CLOUD_PROJECT=$GCP_PROJECT_ID
     export ADMIN_USER_EMAIL=$CURRENT_USER
 
-    local PYTHON_SCRIPT_PATH="backend/bootstrap.py"
+    local PYTHON_SCRIPT_PATH="backend/bootstrap/bootstrap.py"
     if [ ! -f "$PYTHON_SCRIPT_PATH" ]; then
         fail "Bootstrap script not found at: ${PYTHON_SCRIPT_PATH}"
     fi
