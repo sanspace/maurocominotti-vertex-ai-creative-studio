@@ -54,7 +54,7 @@ prompt_and_update_tfvar() {
     read -p "   $prompt_text [default value: $default_value]: " user_input < /dev/tty
     local final_value=${user_input:-$default_value}
     
-    sed -i.bak "s/$tfvar_name = \".*\"/$tfvar_name = \"$final_value\"/g" "$TFVARS_FILE_PATH"
+	sed -i.bak "s|^[#[:space:]]*${tfvar_name}[[:space:]]*=.*|${tfvar_name} = \"${final_value}\"|g" "$TFVARS_FILE_PATH"
     
     # Set the variable in the script's global scope
     eval "$var_to_set_ref='$final_value'"
@@ -258,14 +258,14 @@ configure_environment() {
         info "Updating $TFVARS_FILE_PATH...";
         mv "$ENV_DIR/dev.tfvars" "$TFVARS_FILE_PATH"
 
-        sed -i.bak "s/gcp_project_id = \".*\"/gcp_project_id = \"$GCP_PROJECT_ID\"/g" "$TFVARS_FILE_PATH"
-        sed -i.bak "s/github_repo_owner = \".*\"/github_repo_owner = \"$GITHUB_REPO_OWNER\"/g" "$TFVARS_FILE_PATH"
-        sed -i.bak "s/github_repo_name = \".*\"/github_repo_name = \"$GITHUB_REPO_NAME\"/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|^[#[:space:]]*gcp_project_id[[:space:]]*=.*|gcp_project_id = \"$GCP_PROJECT_ID\"|g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|^[#[:space:]]*github_repo_owner[[:space:]]*=.*|github_repo_owner = \"$GITHUB_REPO_OWNER\"|g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|^[#[:space:]]*github_repo_name[[:space:]]*=.*|github_repo_name = \"$GITHUB_REPO_NAME\"|g" "$TFVARS_FILE_PATH"
         
         # Set service names automatically
         info "Default service names will be '$BE_SERVICE_NAME' and '$FE_SERVICE_NAME'."
-        sed -i.bak "s/backend_service_name = \".*\"/backend_service_name = \"$BE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
-        sed -i.bak "s/frontend_service_name = \".*\"/frontend_service_name = \"$FE_SERVICE_NAME\"/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|^[#[:space:]]*backend_service_name[[:space:]]*=.*|backend_service_name = \"$BE_SERVICE_NAME\"|g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|^[#[:space:]]*frontend_service_name[[:space:]]*=.*|frontend_service_name = \"$FE_SERVICE_NAME\"|g" "$TFVARS_FILE_PATH"
 
         # Prompt only for the branch name
         export TFVARS_FILE=$TFVARS_FILE_PATH # Set context for helper function
@@ -291,7 +291,7 @@ handle_manual_steps() {
             echo "5. After creating the connection, copy its name (e.g., 'gh-yourname-con')."
             prompt "Paste the new Cloud Build Connection Name here:"; read -p "   Connection Name: " GITHUB_CONN_NAME < /dev/tty
         fi
-        sed -i.bak "s/github_conn_name = \".*\"/github_conn_name = \"$GITHUB_CONN_NAME\"/g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|^[#[:space:]]*github_conn_name[[:space:]]*=.*|github_conn_name = \"$GITHUB_CONN_NAME\"|g" "$TFVARS_FILE_PATH"
         write_state "GITHUB_CONN_NAME" "$GITHUB_CONN_NAME"
     fi
     warn "\nTerraform cannot accept legal terms on your behalf."; info "Please perform this one-time manual step for Firebase:"
@@ -313,8 +313,9 @@ configure_oauth_vars() {
         warn "Could not automatically find the OAuth Client ID. You may need to update custom_audiences and IAP_AUDIENCE in your .tfvars file manually."
     else
         info "Found OAuth Client ID. Updating $TFVARS_FILE_PATH..."
-        sed -i.bak "s/your-custom-audience.apps.googleusercontent.com/$AUTO_OAUTH_CLIENT_ID/g" "$TFVARS_FILE_PATH"
-        sed -i.bak "s/\"creative-studio\"/\"$GCP_PROJECT_ID\"/g" "$TFVARS_FILE_PATH"
+		infor "DEBUG: [$TFVARS_FILE_PATH] [`pwd`]"
+        sed -i.bak "s|your-custom-audience.apps.googleusercontent.com|$AUTO_OAUTH_CLIENT_ID|g" "$TFVARS_FILE_PATH"
+        sed -i.bak "s|\"creative-studio\"|\"$GCP_PROJECT_ID\"|g" "$TFVARS_FILE_PATH"
 
         rm -f "$TFVARS_FILE_PATH.bak"
         success "OAuth Client ID and Project ID audiences updated in .tfvars file."
