@@ -149,9 +149,6 @@ for SECRET_NAME in $ALL_SECRETS; do
     echo # Add a newline after the prompt
   fi
 
-  # Display the value for verification before updating
-  info "  Value to be set: ${C_YELLOW}${SECRET_VALUE}${C_RESET}"
-
   if [ -z "$SECRET_VALUE" ]; then
     # If measurement ID is empty, default to an empty string to ensure the secret is created.
     if [ "$SECRET_NAME" == "FIREBASE_MEASUREMENT_ID" ]; then
