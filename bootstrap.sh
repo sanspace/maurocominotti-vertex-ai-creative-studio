@@ -444,8 +444,42 @@ update_secrets() {
     done; success "All secrets have been populated."
 }
 
+seed_data() {
+    step 12 "Seeding Initial Data (Workspaces, Templates, Assets)"
+    cd "$REPO_ROOT" # Ensure we are at the repo root
+
+    info "The user running this script will be set as the owner of initial data."
+    local CURRENT_USER=$(gcloud config get-value account 2>/dev/null)
+    if [ -z "$CURRENT_USER" ]; then
+      warn "Could not determine current gcloud user. Defaulting to 'system' owner in bootstrap script."
+      CURRENT_USER="system"
+    fi
+
+    info "Setting bootstrap script environment variables..."
+    export GOOGLE_CLOUD_PROJECT=$GCP_PROJECT_ID
+    export ADMIN_USER_EMAIL=$CURRENT_USER
+
+    local PYTHON_SCRIPT_PATH="backend/bootstrap.py"
+    if [ ! -f "$PYTHON_SCRIPT_PATH" ]; then
+        fail "Bootstrap script not found at: ${PYTHON_SCRIPT_PATH}"
+    fi
+
+    if ! command -v python3 >/dev/null; then
+        fail "python3 is required to run the data seeding script, but it's not installed."
+    fi
+
+    info "Executing Python bootstrap script..."
+    if python3 "$PYTHON_SCRIPT_PATH"; then
+        success "Python bootstrap script executed successfully."
+    else
+        fail "Python bootstrap script failed."
+    fi
+}
+
+
+
 trigger_builds() {
-    step 12 "Triggering Initial Builds"; cd "$REPO_ROOT"
+    step 13 "Triggering Initial Builds"; cd "$REPO_ROOT"
     prompt "Would you like to trigger the initial builds for the frontend and backend now? (y/n)"; read -r REPLY < /dev/tty
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then info "You can trigger the builds manually later by pushing a commit or via the Cloud Build UI."; return; fi
     info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID" --region="us-central1"
@@ -469,7 +503,7 @@ main() {
     echo -e "${C_RESET}"
 
     read_state; LAST_COMPLETED_STEP=${LAST_COMPLETED_STEP:-0}
-    declare -a steps_to_run=( "check_prerequisites" "check_and_install_terraform" "setup_project" "setup_repo" "configure_environment" "handle_manual_steps" "setup_firebase_app" "run_terraform" "populate_oauth_secrets" "update_oauth_client" "update_secrets" "trigger_builds" )
+    declare -a steps_to_run=( "check_prerequisites" "check_and_install_terraform" "setup_project" "setup_repo" "configure_environment" "handle_manual_steps" "setup_firebase_app" "run_terraform" "populate_oauth_secrets" "update_oauth_client" "update_secrets" "seed_data" "trigger_builds" )
     for i in "${!steps_to_run[@]}"; do
         step_num=$((i + 1))
         if (( LAST_COMPLETED_STEP < step_num )); then
@@ -480,7 +514,7 @@ main() {
             ${steps_to_run[$i]}; write_state "LAST_COMPLETED_STEP" "$step_num"
         fi
     done
-    step 13 "🎉 Deployment Complete! 🎉"; info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+    step 14 "🎉 Deployment Complete! 🎉"; info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
     FRONTEND_URL=$(terraform output -raw frontend_service_url); BACKEND_URL=$(terraform output -raw backend_service_url)
     success "Your infrastructure is ready."
     echo "------------------------------------------------------------------"; echo -e "   Frontend URL: ${C_YELLOW}${FRONTEND_URL}${C_RESET}"; echo -e "   Backend URL:  ${C_YELLOW}${BACKEND_URL}${C_RESET}"; echo "------------------------------------------------------------------"
