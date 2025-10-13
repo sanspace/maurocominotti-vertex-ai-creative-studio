@@ -28,6 +28,7 @@ AUTO_FIREBASE_PROJECT_ID=""        # Your Firebase Project ID
 AUTO_FIREBASE_STORAGE_BUCKET=""    # Your Firebase Storage Bucket (e.g., project-id.appspot.com)
 AUTO_FIREBASE_MESSAGING_SENDER_ID="" # Your Firebase Cloud Messaging Sender ID
 AUTO_FIREBASE_APP_ID=""            # Your Firebase Web App ID
+AUTO_FIREBASE_MEASUREMENT_ID=""    # Your Google Analytics Measurement ID
 AUTO_OAUTH_CLIENT_ID=""
 
 STATE_FILE=""
@@ -43,10 +44,10 @@ C_CYAN='\033[1;36m'    # Bold/Bright Cyan for general info
 
 # --- Helper Functions ---
 info() { echo -e "${C_CYAN}➡️  $1${C_RESET}"; }
-prompt() { echo -e "${C_BLUE}🤔 $1${C_RESET}"; }
+prompt() { echo -e "${C_BLUE}🤔  $1${C_RESET}"; }
 warn() { echo -e "${C_YELLOW}⚠️  $1${C_RESET}"; }
-fail() { echo -e "${C_RED}❌ $1${C_RESET}" >&2; exit 1; }
-success() { echo -e "${C_GREEN}✅ $1${C_RESET}"; }
+fail() { echo -e "${C_RED}❌  $1${C_RESET}" >&2; exit 1; }
+success() { echo -e "${C_GREEN}✅  $1${C_RESET}"; }
 step() { echo -e "\n${C_BLUE}--- Step $1: $2 ---${C_RESET}"; }
 
 # A reusable function to prompt for a value and update the .tfvars file
@@ -242,7 +243,7 @@ configure_environment() {
     else info "Using previously configured environment: $ENV_NAME"; fi
     ENV_DIR="environments/$ENV_NAME";
     TFVARS_FILE_PATH="$REPO_ROOT/infra/$ENV_DIR/$ENV_NAME.tfvars"
-    STATE_FILE="$ENV_DIR/.bootstrap_state";
+    STATE_FILE="$REPO_ROOT/infra/$ENV_DIR/.bootstrap_state";
     read_state
     if [ ! -d "$ENV_DIR" ]; then
         info "Creating new environment directory from template: $TEMPLATE_ENV_DIR"; cp -r "$TEMPLATE_ENV_DIR" "$ENV_DIR"
@@ -322,6 +323,7 @@ setup_firebase_app() {
     AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.storageBucket')
     AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.messagingSenderId')
     AUTO_FIREBASE_APP_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.appId')
+    AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.measurementId')
 
     if [ -z "$AUTO_FIREBASE_API_KEY" ]; then fail "Could not automatically fetch Firebase API Key. Please check your Firebase setup."; fi
     success "Firebase secrets have been fetched and will be populated automatically after Terraform runs."
@@ -411,6 +413,7 @@ update_secrets() {
             "FIREBASE_STORAGE_BUCKET")        SECRET_VALUE=$AUTO_FIREBASE_STORAGE_BUCKET; AUTO_DISCOVERED=true ;;
             "FIREBASE_MESSAGING_SENDER_ID")   SECRET_VALUE=$AUTO_FIREBASE_MESSAGING_SENDER_ID; AUTO_DISCOVERED=true ;;
             "FIREBASE_APP_ID")                SECRET_VALUE=$AUTO_FIREBASE_APP_ID; AUTO_DISCOVERED=true ;;
+            "FIREBASE_MEASUREMENT_ID")        SECRET_VALUE=$AUTO_FIREBASE_MEASUREMENT_ID; AUTO_DISCOVERED=true ;;
             # GOOGLE_CLIENT_ID is handled by populate_oauth_secrets, so we skip it here
             "GOOGLE_CLIENT_ID")               info "  Value is handled by the OAuth population step. Skipping."; continue ;;
             "GOOGLE_TOKEN_AUDIENCE")          info "  Value is handled by the OAuth population step. Skipping."; continue ;;
@@ -445,9 +448,9 @@ trigger_builds() {
 
 # --- Main Execution ---
 main() {
-    echo -e "${C_GREEN}=====================================================${C_RESET}"
-    echo -e "${C_GREEN} 🚀 Welcome to the Creative Studio Infrastructure Setup 🚀 ${C_RESET}"
-    echo -e "${C_GREEN}=====================================================${C_RESET}"
+    echo -e "${C_GREEN}============================================================${C_RESET}"
+    echo -e "${C_GREEN} 🚀  Welcome to the Creative Studio Infrastructure Setup 🚀 ${C_RESET}"
+    echo -e "${C_GREEN}============================================================${C_RESET}"
 
     echo -e "${C_BLUE}"
     echo -e " ██████ ██████  ███████  █████  ████████ ██ ██    ██ ███████     ███████ ████████ ██    ██ ██████  ██  ██████  "
