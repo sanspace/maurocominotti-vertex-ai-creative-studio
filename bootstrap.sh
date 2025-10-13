@@ -305,6 +305,22 @@ handle_manual_steps() {
     echo "2. You should be prompted to 'Add Firebase' to your existing project."; echo "3. Follow the prompts and accept the terms."
     prompt "Press [Enter] to continue after you have linked the project."; read -r < /dev/tty
     rm -f "$TFVARS_FILE_PATH.bak"
+
+    # --- Automate .tfvars placeholder replacement ---
+    info "\nConfiguring OAuth Client ID and Project ID in .tfvars file..."
+    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
+        warn "The OAuth Client ID is required for the .tfvars file."
+        echo "1. Open this URL in your browser to find your OAuth Client ID:"
+        echo -e "   ${C_YELLOW}https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}${C_RESET}"
+        echo "2. Find the OAuth 2.0 Client ID of type 'Web application'."
+        prompt "Paste the OAuth Client ID here:"
+        read -p "   Client ID: " AUTO_OAUTH_CLIENT_ID &lt; /dev/tty
+        if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then fail "OAuth Client ID is required to proceed."; fi
+    fi
+
+    sed -i.bak "s|YOUR_OAUTH_WEB_CLIENT_ID_HERE|$AUTO_OAUTH_CLIENT_ID|g" "$TFVARS_FILE_PATH"
+    sed -i.bak "s|YOUR_GCP_PROJECT_ID|$GCP_PROJECT_ID|g" "$TFVARS_FILE_PATH"
+    success "Replaced placeholders in $TFVARS_FILE_PATH."
 }
 
 setup_firebase_app() {
