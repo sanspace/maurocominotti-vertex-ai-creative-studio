@@ -23,15 +23,15 @@ info() {
 }
 
 success() {
-  echo -e "${C_GREEN}✅ $1${C_RESET}"
+  echo -e "${C_GREEN}✅  $1${C_RESET}"
 }
 
 warn() {
-  echo -e "${C_YELLOW}⚠️ $1${C_RESET}"
+  echo -e "${C_YELLOW}⚠️  $1${C_RESET}"
 }
 
 fail() {
-  echo -e "${C_RED}❌ $1${C_RESET}" >&2
+  echo -e "${C_RED}❌  $1${C_RESET}" >&2
   exit 1
 }
 
@@ -92,10 +92,6 @@ WEB_APP_ID=$(firebase apps:list --project="$PROJECT_ID" --json | jq -r --arg nam
 if [ -n "$WEB_APP_ID" ]; then
   WEB_APP_CONFIG_RAW=$(firebase apps:sdkconfig WEB "$WEB_APP_ID" --project="$PROJECT_ID" --json 2>/dev/null)
   WEB_APP_SDK_CONFIG=$(echo "$WEB_APP_CONFIG_RAW" | jq -r '.result.sdkConfig')
-
-  # Find the OAuth Client ID by listing all clients and filtering for the one of type 'WEB'.
-  # This is more reliable than parsing from other configs.
-  AUTO_OAUTH_CLIENT_ID=$(gcloud iam oauth-clients list --project="$PROJECT_ID" --format="json" | jq -r '.[] | select(.displayName == "Web client (auto created by Google Service)") | .name' | head -n 1)
 fi
 
 if [ -n "$WEB_APP_SDK_CONFIG" ]; then
@@ -107,6 +103,7 @@ if [ -n "$WEB_APP_SDK_CONFIG" ]; then
   AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .messagingSenderId)
   AUTO_FIREBASE_APP_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .appId)
   AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .measurementId)
+  AUTO_OAUTH_CLIENT_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .oauthClientId)
 else
   warn "Could not automatically find a Firebase Web App config for project '$PROJECT_ID'."
   warn "You will be prompted for all Firebase secrets manually."
@@ -180,5 +177,4 @@ for SECRET_NAME in $ALL_SECRETS; do
   fi
 
 done
-
 success "All secrets updated."
