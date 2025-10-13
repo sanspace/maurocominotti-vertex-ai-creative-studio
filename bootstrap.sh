@@ -314,7 +314,7 @@ handle_manual_steps() {
         echo -e "   ${C_YELLOW}https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}${C_RESET}"
         echo "2. Find the OAuth 2.0 Client ID of type 'Web application'."
         prompt "Paste the OAuth Client ID here:"
-        read -p "   Client ID: " AUTO_OAUTH_CLIENT_ID &lt; /dev/tty
+        read -p "   Client ID: " AUTO_OAUTH_CLIENT_ID < /dev/tty
         if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then fail "OAuth Client ID is required to proceed."; fi
     fi
 
