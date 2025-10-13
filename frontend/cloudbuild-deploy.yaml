@@ -44,7 +44,7 @@ steps:
         sed -i "s|BACKEND_SERVICE_ID_PLACEHOLDER|$${_BACKEND_SERVICE_ID}|g" firebase.json
     dir: 'frontend'
     env:
-      - 'BACKEND_URL=${_BACKEND_URL}'
+      - '_BACKEND_URL=${_BACKEND_URL}'
       - '_FE_SERVICE_NAME=${_FE_SERVICE_NAME}'
       - '_BACKEND_SERVICE_ID=${_BACKEND_SERVICE_ID}'
     secretEnv:

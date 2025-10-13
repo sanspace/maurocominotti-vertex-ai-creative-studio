@@ -87,23 +87,26 @@ fi
 
 # 4. Attempt to auto-discover Firebase config
 info "Checking for Firebase Web App configuration..."
-WEB_APP_ID=$(firebase apps:list --project="$PROJECT_ID" --json | jq -r '.result[] | select(.platform=="WEB") | .appId' | head -n 1)
+WEB_APP_ID=$(firebase apps:list --project="$PROJECT_ID" --json | jq -r --arg name "cstudio-fe" '.result[] | select(.displayName == $name) | .appId')
 
 if [ -n "$WEB_APP_ID" ]; then
   WEB_APP_CONFIG_RAW=$(firebase apps:sdkconfig WEB "$WEB_APP_ID" --project="$PROJECT_ID" --json 2>/dev/null)
-  WEB_APP_CONFIG=$(echo "$WEB_APP_CONFIG_RAW" | jq -r '.result')
+  WEB_APP_SDK_CONFIG=$(echo "$WEB_APP_CONFIG_RAW" | jq -r '.result.sdkConfig')
+
+  # Find the OAuth Client ID by listing all clients and filtering for the one of type 'WEB'.
+  # This is more reliable than parsing from other configs.
+  AUTO_OAUTH_CLIENT_ID=$(gcloud iam oauth-clients list --project="$PROJECT_ID" --format="json" | jq -r '.[] | select(.displayName == "Web client (auto created by Google Service)") | .name' | head -n 1)
 fi
 
-if [ -n "$WEB_APP_CONFIG" ]; then
+if [ -n "$WEB_APP_SDK_CONFIG" ]; then
   success "Found Firebase Web App config. Will attempt to auto-populate secrets."
   # Extract values
-  AUTO_FIREBASE_API_KEY=$(echo "$WEB_APP_CONFIG" | jq -r .apiKey)
-  AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$WEB_APP_CONFIG" | jq -r .authDomain)
-  AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$WEB_APP_CONFIG" | jq -r .storageBucket)
-  AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$WEB_APP_CONFIG" | jq -r .messagingSenderId)
-  AUTO_FIREBASE_APP_ID=$(echo "$WEB_APP_CONFIG" | jq -r .appId)
-  AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$WEB_APP_CONFIG" | jq -r .measurementId)
-  AUTO_OAUTH_CLIENT_ID=$(echo "$WEB_APP_CONFIG" | jq -r .oauthClientId)
+  AUTO_FIREBASE_API_KEY=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .apiKey)
+  AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .authDomain)
+  AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .storageBucket)
+  AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .messagingSenderId)
+  AUTO_FIREBASE_APP_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .appId)
+  AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$WEB_APP_SDK_CONFIG" | jq -r .measurementId)
 else
   warn "Could not automatically find a Firebase Web App config for project '$PROJECT_ID'."
   warn "You will be prompted for all Firebase secrets manually."
@@ -128,7 +131,7 @@ for SECRET_NAME in $ALL_SECRETS; do
     "GOOGLE_TOKEN_AUDIENCE")      SECRET_VALUE=$AUTO_OAUTH_CLIENT_ID; AUTO_DISCOVERED=true ;;
   esac
 
-  if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" ]; then
+  if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" ] && [ "$SECRET_VALUE" != "null" ]; then
     info "  Auto-populating from Firebase config."
   elif [ "$SECRET_NAME" == "GOOGLE_CLIENT_ID" ] || [ "$SECRET_NAME" == "GOOGLE_TOKEN_AUDIENCE" ]; then
     warn "  Could not auto-discover OAuth Client ID."
@@ -146,9 +149,18 @@ for SECRET_NAME in $ALL_SECRETS; do
     echo # Add a newline after the prompt
   fi
 
+  # Display the value for verification before updating
+  info "  Value to be set: ${C_YELLOW}${SECRET_VALUE}${C_RESET}"
+
   if [ -z "$SECRET_VALUE" ]; then
-    warn "  No value provided. Skipping ${SECRET_NAME}."
-    continue
+    # If measurement ID is empty, default to an empty string to ensure the secret is created.
+    if [ "$SECRET_NAME" == "FIREBASE_MEASUREMENT_ID" ]; then
+      warn "  No value found for ${SECRET_NAME}. Defaulting to an empty string to ensure secret exists."
+      SECRET_VALUE="" # Explicitly set to empty string to proceed
+    else
+      warn "  No value provided. Skipping ${SECRET_NAME}."
+      continue
+    fi
   fi
 
   # Check if the secret already exists and has the same value
