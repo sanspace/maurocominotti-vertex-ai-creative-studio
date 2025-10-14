@@ -284,6 +284,9 @@ export class WorkspaceSwitcherComponent implements OnInit {
           formData.append('file', result.file);
           formData.append('workspaceId', workspaceId);
 
+          // Immediately show the spinner in the UI
+          this.brandGuidelineService.setProcessingState();
+
           this.brandGuidelineService.createBrandGuideline(formData).subscribe({
             error: error => {
               handleErrorSnackbar(

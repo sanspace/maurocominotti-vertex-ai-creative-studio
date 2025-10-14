@@ -81,7 +81,7 @@ export class BrandGuidelineService {
   }
 
   private pollBrandGuidelineJob(jobId: string) {
-    const pollInterval = 5000; // Poll every 5 seconds
+    const pollInterval = 10000; // Poll every 5 seconds
     const maxAttempts = 120; // Poll for up to 10 minutes
 
     this.stopPolling();
@@ -126,5 +126,16 @@ export class BrandGuidelineService {
 
   clearActiveJob() {
     this.activeBrandGuidelineJobSubject.next(null);
+  }
+
+  /**
+   * Manually pushes a temporary "processing" state to the job subject.
+   * This is used to provide immediate UI feedback before the backend responds.
+   */
+  setProcessingState() {
+    this.activeBrandGuidelineJobSubject.next({
+      status: JobStatus.PROCESSING,
+      // Cast to BrandGuidelineModel to satisfy the type checker for the temporary state
+    } as BrandGuidelineModel);
   }
 }

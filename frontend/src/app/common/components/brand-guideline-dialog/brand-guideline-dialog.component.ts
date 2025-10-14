@@ -79,8 +79,7 @@ export class BrandGuidelineDialogComponent {
   }
 
   onUpload(): void {
-    if (this.form.valid && !this.isUploading) {
-      this.isUploading = true;
+    if (this.form.valid) {
       this.dialogRef.close(this.form.value);
     }
   }
