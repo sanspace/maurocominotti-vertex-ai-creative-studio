@@ -50,11 +50,18 @@
       </button>
       <button
         mat-menu-item
+        [disabled]="
+          !canEditBrandGuidelines ||
+          (brandGuidelineService.activeBrandGuidelineJob$ | async)?.status ===
+            JobStatus.PROCESSING
+        "
         (click)="openBrandGuidelinesDialog($event)"
-        [disabled]="!canEditBrandGuidelines || isFetchingGuidelines"
       >
-        <mat-icon *ngIf="!isFetchingGuidelines">style</mat-icon>
-        <mat-spinner *ngIf="isFetchingGuidelines" [diameter]="20" class="inline-block mr-2"></mat-spinner>
+        <ng-container *ngIf="brandGuidelineService.activeBrandGuidelineJob$ | async as job">
+          <mat-spinner *ngIf="job.status === JobStatus.PROCESSING" [diameter]="20" class="inline-block mr-2"></mat-spinner>
+          <mat-icon *ngIf="job.status !== JobStatus.PROCESSING">style</mat-icon>
+        </ng-container>
+        <mat-icon *ngIf="!(brandGuidelineService.activeBrandGuidelineJob$ | async)">style</mat-icon>
         <span>Brand Guidelines</span>
       </button>
 

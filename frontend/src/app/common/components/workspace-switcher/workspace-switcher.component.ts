@@ -36,6 +36,7 @@ import {
 } from '../brand-guideline-dialog/brand-guideline-dialog.component';
 import {BrandGuidelineService} from '../../services/brand-guideline/brand-guideline.service';
 import {finalize, map, switchMap} from 'rxjs';
+import {JobStatus, MediaItem} from '../../models/media-item.model';
 
 @Component({
   selector: 'app-workspace-switcher',
@@ -47,13 +48,13 @@ export class WorkspaceSwitcherComponent implements OnInit {
   activeWorkspaceId: string | null = null;
   activeWorkspace: Workspace | null = null;
   currentUser: UserModel | null;
-  isFetchingGuidelines = false;
+  readonly JobStatus = JobStatus;
   public WorkspaceScope = WorkspaceScope;
 
   constructor(
     private workspaceService: WorkspaceService,
     private workspaceStateService: WorkspaceStateService,
-    private brandGuidelineService: BrandGuidelineService,
+    public brandGuidelineService: BrandGuidelineService,
     private userService: UserService,
     private route: ActivatedRoute,
     public dialog: MatDialog,
@@ -67,6 +68,28 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.workspaceStateService.activeWorkspaceId$.subscribe(id => {
       this.activeWorkspaceId = id;
       this.activeWorkspace = this.workspaces.find(w => w.id === id) || null;
+    });
+
+    this.brandGuidelineService.activeBrandGuidelineJob$.subscribe(job => {
+      if (job) {
+        if (job.status === JobStatus.COMPLETED) {
+          handleSuccessSnackbar(
+            this.snackBar,
+            'Brand Guidelines processed successfully!',
+          );
+          // Reset the job so the spinner disappears and the button is re-enabled.
+          this.brandGuidelineService.clearActiveJob();
+        } else if (job.status === JobStatus.FAILED) {
+          handleErrorSnackbar(
+            this.snackBar,
+            {
+              message: job.errorMessage || 'Brand Guideline processing failed.',
+            },
+            'Processing Error',
+          );
+          this.brandGuidelineService.clearActiveJob();
+        }
+      }
     });
   }
 
@@ -197,14 +220,12 @@ export class WorkspaceSwitcherComponent implements OnInit {
 
   openBrandGuidelinesDialog(event: MouseEvent): void {
     event.stopPropagation();
-    if (!this.activeWorkspaceId || this.isFetchingGuidelines) return;
+    if (!this.activeWorkspaceId) return;
     const workspaceId = this.activeWorkspaceId;
 
-    this.isFetchingGuidelines = true;
     this.brandGuidelineService
       .getBrandGuidelineForWorkspace(workspaceId)
       .pipe(
-        finalize(() => (this.isFetchingGuidelines = false)),
         switchMap(guideline => {
           const dialogRef = this.dialog.open<
             BrandGuidelineDialogComponent,
@@ -263,25 +284,15 @@ export class WorkspaceSwitcherComponent implements OnInit {
           formData.append('file', result.file);
           formData.append('workspaceId', workspaceId);
 
-          this.isFetchingGuidelines = true;
-          this.brandGuidelineService
-            .createBrandGuideline(formData)
-            .pipe(finalize(() => (this.isFetchingGuidelines = false)))
-            .subscribe({
-              next: () => {
-                handleSuccessSnackbar(
-                  this.snackBar,
-                  'Brand Guideline uploaded!',
-                );
-              },
-              error: error => {
-                handleErrorSnackbar(
-                  this.snackBar,
-                  error,
-                  'Failed to upload brand guideline.',
-                );
-              },
-            });
+          this.brandGuidelineService.createBrandGuideline(formData).subscribe({
+            error: error => {
+              handleErrorSnackbar(
+                this.snackBar,
+                error,
+                'Failed to upload brand guideline.',
+              );
+            },
+          });
         }
       });
   }
