@@ -15,6 +15,7 @@
 import logging
 
 # --- Setup Logging Globally First ---
+from src.common.base_dto import AspectRatioEnum
 from src.users.user_model import UserModel, UserRoleEnum
 from src.config.logger_config import setup_logging
 
@@ -48,6 +49,9 @@ from src.workspaces.schema.workspace_model import WorkspaceModel, WorkspaceScope
 
 logger = logging.getLogger(__name__)
 
+# Get the absolute path of the directory where this script is located.
+# This makes all file paths relative to the script's own location.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_admin_user() -> str:
     return os.getenv("ADMIN_USER_EMAIL", "system")
@@ -136,12 +140,19 @@ def upload_assets_from_folder(
     uri_map = {}
     logger.info(f"Uploading assets from '{local_folder}' to GCS...")
 
-    if not os.path.isdir(local_folder):
-        logger.warning(f"Local asset folder not found: {local_folder}")
+    # Construct an absolute path to the assets folder
+    abs_local_folder = os.path.join(SCRIPT_DIR, "assets", local_folder)
+    logger.info(
+        f"Uploading assets from '{abs_local_folder}' to GCS prefix '{gcs_prefix}'..."
+    )
+
+    if not os.path.isdir(abs_local_folder):
+        logger.warning(f"Local asset folder not found: {abs_local_folder}")
         return {}
 
-    for filename in os.listdir(local_folder):
-        local_path = os.path.join(local_folder, filename)
+    for filename in os.listdir(abs_local_folder):
+        local_path = os.path.join(abs_local_folder, filename)
+
         if os.path.isfile(local_path):
             destination_blob_name = f"{gcs_prefix}/{filename}"
             mime_type, _ = mimetypes.guess_type(local_path)
@@ -168,7 +179,7 @@ def seed_media_templates():
 
     # 1. Upload all assets first
     uri_map = upload_assets_from_folder(
-        "bootstrap/assets/media_templates", "media_template_assets"
+        "media-template", "media_template_assets"
     )
     # 2. Iterate through template data and create documents
     for template_data in TEMPLATES:
@@ -233,7 +244,7 @@ def seed_vto_assets():
     vto_asset_folders = ["vto/garments", "vto/models"]
 
     for folder in vto_asset_folders:
-        local_folder = f"bootstrap/assets/{folder}"
+        local_folder = folder
         gcs_prefix = f"system_assets/{folder}"
         mime_type = "image/png"  # Assuming all VTO assets are PNGs
 
@@ -278,12 +289,14 @@ def seed_vto_assets():
                 scope=AssetScope.SYSTEM,
                 asset_type=asset_type,
                 user_id=get_admin_user(),
+                aspect_ratio=AspectRatioEnum.RATIO_9_16,
             )
             asset_repo.save(new_asset)
             logger.info(f"  - Successfully saved VTO asset '{filename}'.")
 
 
 if __name__ == "__main__":
+    ensure_admin_user_exists()
     ensure_default_workspace_exists()
     seed_vto_assets()
     seed_media_templates()
