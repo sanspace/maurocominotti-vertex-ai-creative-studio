@@ -114,7 +114,17 @@ check_prerequisites() {
             fail "Please install firebase-tools (npm install -g firebase-tools) and run this script again."
         fi
     fi
-    success "Prerequisites met. gcloud, git, jq and firebase"
+    check_and_install_uv
+    success "Prerequisites met. gcloud, git, jq, firebase and uv"
+}
+
+check_and_install_uv() {
+    if command -v uv >/dev/null; then
+        info "uv is already installed."
+        return
+    fi
+    info "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 }
 
 get_platform_arch() {
@@ -487,7 +497,6 @@ update_secrets() {
 
 seed_data() {
     step 12 "Seeding Initial Data (Workspaces, Templates, Assets)"
-    cd "$REPO_ROOT" # Ensure we are at the repo root
 
     info "The user running this script will be set as the owner of initial data."
     local CURRENT_USER=$(gcloud config get-value account 2>/dev/null)
@@ -496,25 +505,55 @@ seed_data() {
       CURRENT_USER="system"
     fi
 
+    info "Project:      ${C_YELLOW}${GCP_PROJECT_ID}${C_RESET}"
+    info "Deploying as: ${C_YELLOW}${CURRENT_USER}${C_RESET}"
+
+    # Temporarily change to the project root so Python module resolution works
+    pushd "$REPO_ROOT" > /dev/null
+
+    # 1. Manually construct the CORRECT asset bucket name
+    local ASSET_BUCKET_NAME="${GCP_PROJECT_ID}-cs-development-bucket"
+    success "Using asset bucket: gs://${ASSET_BUCKET_NAME}"
+
     info "Setting bootstrap script environment variables..."
     export GOOGLE_CLOUD_PROJECT=$GCP_PROJECT_ID
     export ADMIN_USER_EMAIL=$CURRENT_USER
+    export GENMEDIA_BUCKET=$ASSET_BUCKET_NAME
 
     local PYTHON_SCRIPT_PATH="backend/bootstrap/bootstrap.py"
     if [ ! -f "$PYTHON_SCRIPT_PATH" ]; then
         fail "Bootstrap script not found at: ${PYTHON_SCRIPT_PATH}"
     fi
 
-    if ! command -v python3 >/dev/null; then
-        fail "python3 is required to run the data seeding script, but it's not installed."
+    # --- Set up virtual environment and install dependencies using uv ---
+    info "Setting up Python virtual environment for data seeding using uv..."
+    VENV_DIR="$REPO_ROOT/backend/.venv"
+    PYPROJECT_FILE="$REPO_ROOT/backend/pyproject.toml"
+
+    if [ ! -f "$PYPROJECT_FILE" ]; then
+        popd > /dev/null
+        fail "Python project file not found at '$PYPROJECT_FILE'."
     fi
 
+    # Create venv if it doesn't exist
+    uv venv "$VENV_DIR" --python python3
+
+    # Install dependencies from pyproject.toml into the virtual environment
+    info "Installing Python project and its dependencies from 'backend/pyproject.toml'..."
+    # Use an editable install (-e) to ensure all project dependencies are installed.
+    uv pip install --python "$VENV_DIR/bin/python" -e backend
+
     info "Executing Python bootstrap script..."
-    if python3 "$PYTHON_SCRIPT_PATH"; then
+    # We `cd` into the backend directory so that relative paths to assets inside the python script resolve correctly.
+    # The editable install ensures that `from src...` imports work without needing PYTHONPATH.
+    if (cd backend && "$VENV_DIR/bin/python" -m bootstrap.bootstrap); then
         success "Python bootstrap script executed successfully."
     else
         fail "Python bootstrap script failed."
     fi
+
+    # Return to the original directory
+    popd > /dev/null
 }
 
 
@@ -555,11 +594,33 @@ main() {
             ${steps_to_run[$i]}; write_state "LAST_COMPLETED_STEP" "$step_num"
         fi
     done
-    step 14 "🎉 Deployment Complete! 🎉"; info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
-    FRONTEND_URL=$(terraform output -raw frontend_service_url); BACKEND_URL=$(terraform output -raw backend_service_url)
+
+    step 14 "🎉 Deployment Complete! 🎉";
+    info "Fetching your application URLs...";
+    cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+
+    # Try to get the frontend URL from terraform output, but handle the error
+    FRONTEND_URL=$(terraform output -raw frontend_service_url 2>/dev/null || echo "")
+    if [ -z "$FRONTEND_URL" ]; then
+        warn "Could not find 'frontend_service_url' in Terraform outputs. Deducing from project ID."
+        # Construct the default Firebase Hosting URL
+        FRONTEND_URL="https://$(echo "$GCP_PROJECT_ID" | tr '[:upper:]' '[:lower:]').web.app"
+    fi
+
+    # Get the backend URL
+    BACKEND_URL=$(terraform output -raw backend_service_url 2>/dev/null || echo "")
+    if [ -z "$BACKEND_URL" ]; then
+        warn "Could not find 'backend_service_url' in Terraform outputs."
+    fi
+
     success "Your infrastructure is ready."
     echo "------------------------------------------------------------------"; echo -e "   Frontend URL: ${C_YELLOW}${FRONTEND_URL}${C_RESET}"; echo -e "   Backend URL:  ${C_YELLOW}${BACKEND_URL}${C_RESET}"; echo "------------------------------------------------------------------"
     info "It may take a few minutes for the builds to complete and the services to become available."
+
+    echo # Add a blank line for spacing
+    info "Thanks for using Creative Studio!"
+    info "We'd love your feedback: ${C_YELLOW}https://docs.google.com/forms/d/e/1FAIpQLSceWvu7G354h-dTbOGvNGEraEjcUAgPE300WNY5qr-WJbh3Eg/viewform${C_RESET}"
+    echo -e "${C_GREEN}============================================================${C_RESET}"
 }
 
 main "$@"
