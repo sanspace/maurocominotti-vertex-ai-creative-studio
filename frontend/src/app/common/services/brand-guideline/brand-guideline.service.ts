@@ -15,21 +15,46 @@
  */
 
 import {Injectable} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
-import {catchError, Observable, of} from 'rxjs';
+import {HttpClient, HttpErrorResponse} from '@angular/common/http';
+import {
+  BehaviorSubject,
+  catchError,
+  EMPTY,
+  Observable,
+  of,
+  Subscription,
+  switchMap,
+  take,
+  tap,
+  timer,
+} from 'rxjs';
 import {environment} from '../../../../environments/environment';
 import {BrandGuidelineModel} from '../../models/brand-guideline.model';
+import {JobStatus, MediaItem} from '../../models/media-item.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BrandGuidelineService {
   private apiUrl = `${environment.backendURL}/brand-guidelines`;
+  private pollingSubscription?: Subscription;
+
+  private readonly activeBrandGuidelineJobSubject =
+    new BehaviorSubject<MediaItem | null>(null);
+  readonly activeBrandGuidelineJob$ =
+    this.activeBrandGuidelineJobSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
-  createBrandGuideline(formData: FormData): Observable<BrandGuidelineModel> {
-    return this.http.post<BrandGuidelineModel>(this.apiUrl, formData);
+  createBrandGuideline(formData: FormData): Observable<MediaItem> {
+    return this.http.post<MediaItem>(this.apiUrl, formData).pipe(
+      tap(initialJob => {
+        this.activeBrandGuidelineJobSubject.next(initialJob);
+        if (initialJob.status === JobStatus.PROCESSING) {
+          this.pollBrandGuidelineJob(initialJob.id);
+        }
+      }),
+    );
   }
 
   /**
@@ -42,7 +67,9 @@ export class BrandGuidelineService {
   ): Observable<BrandGuidelineModel | null> {
     return this.http
       .get<BrandGuidelineModel>(`${this.apiUrl}/workspace/${workspaceId}`)
-      .pipe(catchError(() => of(null))); // Return null if not found (404) or on other errors
+      .pipe(
+        catchError(() => of(null)), // Return null if not found (404) or on other errors
+      );
   }
 
   /**
@@ -51,5 +78,53 @@ export class BrandGuidelineService {
    */
   deleteBrandGuideline(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  private pollBrandGuidelineJob(jobId: string) {
+    const pollInterval = 5000; // Poll every 5 seconds
+    const maxAttempts = 120; // Poll for up to 10 minutes
+
+    this.stopPolling();
+
+    this.pollingSubscription = timer(0, pollInterval)
+      .pipe(
+        take(maxAttempts),
+        switchMap(() =>
+          this.http.get<MediaItem>(
+            `${environment.backendURL}/brand-guidelines/${jobId}`,
+          ),
+        ),
+        tap(job => {
+          this.activeBrandGuidelineJobSubject.next(job);
+          if (
+            job.status === JobStatus.COMPLETED ||
+            job.status === JobStatus.FAILED
+          ) {
+            this.stopPolling();
+          }
+        }),
+        catchError((error: HttpErrorResponse) => {
+          const currentJob = this.activeBrandGuidelineJobSubject.getValue();
+          if (currentJob) {
+            this.activeBrandGuidelineJobSubject.next({
+              ...currentJob,
+              status: JobStatus.FAILED,
+              errorMessage:
+                error.error?.detail || 'Polling failed unexpectedly.',
+            });
+          }
+          this.stopPolling();
+          return EMPTY;
+        }),
+      )
+      .subscribe();
+  }
+
+  private stopPolling() {
+    this.pollingSubscription?.unsubscribe();
+  }
+
+  clearActiveJob() {
+    this.activeBrandGuidelineJobSubject.next(null);
   }
 }
