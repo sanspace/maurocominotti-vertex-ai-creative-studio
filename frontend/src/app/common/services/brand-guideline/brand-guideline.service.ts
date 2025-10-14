@@ -30,7 +30,7 @@ import {
 } from 'rxjs';
 import {environment} from '../../../../environments/environment';
 import {BrandGuidelineModel} from '../../models/brand-guideline.model';
-import {JobStatus, MediaItem} from '../../models/media-item.model';
+import {JobStatus} from '../../models/media-item.model';
 
 @Injectable({
   providedIn: 'root',
@@ -40,14 +40,14 @@ export class BrandGuidelineService {
   private pollingSubscription?: Subscription;
 
   private readonly activeBrandGuidelineJobSubject =
-    new BehaviorSubject<MediaItem | null>(null);
+    new BehaviorSubject<BrandGuidelineModel | null>(null);
   readonly activeBrandGuidelineJob$ =
     this.activeBrandGuidelineJobSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
-  createBrandGuideline(formData: FormData): Observable<MediaItem> {
-    return this.http.post<MediaItem>(this.apiUrl, formData).pipe(
+  createBrandGuideline(formData: FormData): Observable<BrandGuidelineModel> {
+    return this.http.post<BrandGuidelineModel>(this.apiUrl, formData).pipe(
       tap(initialJob => {
         this.activeBrandGuidelineJobSubject.next(initialJob);
         if (initialJob.status === JobStatus.PROCESSING) {
@@ -90,7 +90,7 @@ export class BrandGuidelineService {
       .pipe(
         take(maxAttempts),
         switchMap(() =>
-          this.http.get<MediaItem>(
+          this.http.get<BrandGuidelineModel>(
             `${environment.backendURL}/brand-guidelines/${jobId}`,
           ),
         ),
