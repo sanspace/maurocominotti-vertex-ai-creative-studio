@@ -1,4 +1,4 @@
-gcp_project_id = "creative-studio"
+gcp_project_id = "YOUR_GCP_PROJECT_ID"
 gcp_region     = "us-central1"
 environment    = "development"
 
@@ -13,8 +13,8 @@ github_repo_name   = "repo-owner-vertex-ai-creative-studio"
 github_branch_name = "develop"
 
 # --- Custom Audiences ---
-backend_custom_audiences  = ["your-custom-audience.apps.googleusercontent.com", "creative-studio"]
-frontend_custom_audiences = ["your-custom-audience.apps.googleusercontent.com", "creative-studio"]
+backend_custom_audiences  = ["YOUR_OAUTH_WEB_CLIENT_ID_HERE", "YOUR_GCP_PROJECT_ID"]
+frontend_custom_audiences = ["YOUR_OAUTH_WEB_CLIENT_ID_HERE", "YOUR_GCP_PROJECT_ID"]
 
 # --- Service-Specific Environment Variables ---
 be_env_vars = {
@@ -24,13 +24,13 @@ be_env_vars = {
   development = {
     ENVIRONMENT  = "development"
     FIREBASE_DB = "cstudio-development"
-    GOOGLE_TOKEN_AUDIENCE = "your-custom-audience.apps.googleusercontent.com"
+    GOOGLE_TOKEN_AUDIENCE = "YOUR_OAUTH_WEB_CLIENT_ID_HERE"
     IDENTITY_PLATFORM_ALLOWED_ORGS = "" # If empty then any org is allowed
   }
   production = {
     ENVIRONMENT  = "production"
     FIREBASE_DB = "cstudio-development"
-    GOOGLE_TOKEN_AUDIENCE = "your-custom-audience.apps.googleusercontent.com"
+    GOOGLE_TOKEN_AUDIENCE = "YOUR_OAUTH_WEB_CLIENT_ID_HERE"
     IDENTITY_PLATFORM_ALLOWED_ORGS = "" # If empty then any org is allowed
   }
 }

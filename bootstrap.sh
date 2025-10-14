@@ -114,7 +114,17 @@ check_prerequisites() {
             fail "Please install firebase-tools (npm install -g firebase-tools) and run this script again."
         fi
     fi
-    success "Prerequisites met. gcloud, git, jq and firebase"
+    check_and_install_uv
+    success "Prerequisites met. gcloud, git, jq, firebase and uv"
+}
+
+check_and_install_uv() {
+    if command -v uv >/dev/null; then
+        info "uv is already installed."
+        return
+    fi
+    info "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 }
 
 get_platform_arch() {
@@ -305,6 +315,22 @@ handle_manual_steps() {
     echo "2. You should be prompted to 'Add Firebase' to your existing project."; echo "3. Follow the prompts and accept the terms."
     prompt "Press [Enter] to continue after you have linked the project."; read -r < /dev/tty
     rm -f "$TFVARS_FILE_PATH.bak"
+
+    # --- Automate .tfvars placeholder replacement ---
+    info "\nConfiguring OAuth Client ID and Project ID in .tfvars file..."
+    if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then
+        warn "The OAuth Client ID is required for the .tfvars file."
+        echo "1. Open this URL in your browser to find your OAuth Client ID:"
+        echo -e "   ${C_YELLOW}https://console.cloud.google.com/apis/credentials?project=${GCP_PROJECT_ID}${C_RESET}"
+        echo "2. Find the OAuth 2.0 Client ID of type 'Web application'."
+        prompt "Paste the OAuth Client ID here:"
+        read -p "   Client ID: " AUTO_OAUTH_CLIENT_ID < /dev/tty
+        if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then fail "OAuth Client ID is required to proceed."; fi
+    fi
+
+    sed -i.bak "s|YOUR_OAUTH_WEB_CLIENT_ID_HERE|$AUTO_OAUTH_CLIENT_ID|g" "$TFVARS_FILE_PATH"
+    sed -i.bak "s|YOUR_GCP_PROJECT_ID|$GCP_PROJECT_ID|g" "$TFVARS_FILE_PATH"
+    success "Replaced placeholders in $TFVARS_FILE_PATH."
 }
 
 setup_firebase_app() {
@@ -406,6 +432,31 @@ update_secrets() {
     local FRONTEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .frontend_secrets.value[]); local BACKEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .backend_secrets.value[])
     local ALL_SECRETS=$(echo "${FRONTEND_SECRETS} ${BACKEND_SECRETS}" | tr ' ' '\n' | sort -u | grep .)
     if [ -z "$ALL_SECRETS" ]; then success "No secrets defined in Terraform outputs. Nothing to do."; return; fi
+
+    # --- Double-check for Firebase config if variables are not set ---
+    # This handles cases where the script is resumed after step 7
+    if [ -z "$AUTO_FIREBASE_API_KEY" ]; then
+        info "Auto-discovered Firebase variables not set. Re-running discovery..."
+        local FE_APP_NAME=$(grep 'frontend_service_name' "$TFVARS_FILE_PATH" | awk -F'"' '{print $2}')
+        if [ -z "$FE_APP_NAME" ]; then
+            warn "Could not determine frontend service name from .tfvars. Cannot auto-discover Firebase secrets."
+        else
+            local APP_ID=$(firebase apps:list --project="$GCP_PROJECT_ID" --json | jq -r --arg name "$FE_SERVICE_NAME" '.result[] | select(.displayName == $name) | .appId')
+            if [ -n "$APP_ID" ]; then
+                local SDK_CONFIG_JSON=$(firebase apps:sdkconfig WEB "$APP_ID" --project="$GCP_PROJECT_ID" --json)
+                AUTO_FIREBASE_API_KEY=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.apiKey')
+                # ... (re-populate all other AUTO_... variables)
+                AUTO_FIREBASE_AUTH_DOMAIN=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.authDomain')
+                AUTO_FIREBASE_PROJECT_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.projectId')
+                AUTO_FIREBASE_STORAGE_BUCKET=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.storageBucket')
+                AUTO_FIREBASE_MESSAGING_SENDER_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.messagingSenderId')
+                AUTO_FIREBASE_APP_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.appId')
+                AUTO_FIREBASE_MEASUREMENT_ID=$(echo "$SDK_CONFIG_JSON" | jq -r '.result.measurementId')
+                success "Successfully re-discovered Firebase configuration."
+            fi
+        fi
+    fi
+
     for SECRET_NAME in $ALL_SECRETS; do
         info "Processing secret: ${C_YELLOW}${SECRET_NAME}${C_RESET}"
 
@@ -444,12 +495,76 @@ update_secrets() {
     done; success "All secrets have been populated."
 }
 
+seed_data() {
+    step 12 "Seeding Initial Data (Workspaces, Templates, Assets)"
+
+    info "The user running this script will be set as the owner of initial data."
+    local CURRENT_USER=$(gcloud config get-value account 2>/dev/null)
+    if [ -z "$CURRENT_USER" ]; then
+      warn "Could not determine current gcloud user. Defaulting to 'system' owner in bootstrap script."
+      CURRENT_USER="system"
+    fi
+
+    info "Project:      ${C_YELLOW}${GCP_PROJECT_ID}${C_RESET}"
+    info "Deploying as: ${C_YELLOW}${CURRENT_USER}${C_RESET}"
+
+    # Temporarily change to the project root so Python module resolution works
+    pushd "$REPO_ROOT" > /dev/null
+
+    # 1. Manually construct the CORRECT asset bucket name
+    local ASSET_BUCKET_NAME="${GCP_PROJECT_ID}-cs-development-bucket"
+    success "Using asset bucket: gs://${ASSET_BUCKET_NAME}"
+
+    info "Setting bootstrap script environment variables..."
+    export GOOGLE_CLOUD_PROJECT=$GCP_PROJECT_ID
+    export ADMIN_USER_EMAIL=$CURRENT_USER
+    export GENMEDIA_BUCKET=$ASSET_BUCKET_NAME
+
+    local PYTHON_SCRIPT_PATH="backend/bootstrap/bootstrap.py"
+    if [ ! -f "$PYTHON_SCRIPT_PATH" ]; then
+        fail "Bootstrap script not found at: ${PYTHON_SCRIPT_PATH}"
+    fi
+
+    # --- Set up virtual environment and install dependencies using uv ---
+    info "Setting up Python virtual environment for data seeding using uv..."
+    VENV_DIR="$REPO_ROOT/backend/.venv"
+    PYPROJECT_FILE="$REPO_ROOT/backend/pyproject.toml"
+
+    if [ ! -f "$PYPROJECT_FILE" ]; then
+        popd > /dev/null
+        fail "Python project file not found at '$PYPROJECT_FILE'."
+    fi
+
+    # Create venv if it doesn't exist
+    uv venv "$VENV_DIR" --python python3
+
+    # Install dependencies from pyproject.toml into the virtual environment
+    info "Installing Python project and its dependencies from 'backend/pyproject.toml'..."
+    # Use an editable install (-e) to ensure all project dependencies are installed.
+    uv pip install --python "$VENV_DIR/bin/python" -e backend
+
+    info "Executing Python bootstrap script..."
+    # We `cd` into the backend directory so that relative paths to assets inside the python script resolve correctly.
+    # The editable install ensures that `from src...` imports work without needing PYTHONPATH.
+    if (cd backend && "$VENV_DIR/bin/python" -m bootstrap.bootstrap); then
+        success "Python bootstrap script executed successfully."
+    else
+        fail "Python bootstrap script failed."
+    fi
+
+    # Return to the original directory
+    popd > /dev/null
+}
+
+
+
 trigger_builds() {
-    step 12 "Triggering Initial Builds"; cd "$REPO_ROOT"
+    step 13 "Triggering Initial Builds"; cd "$REPO_ROOT"
     prompt "Would you like to trigger the initial builds for the frontend and backend now? (y/n)"; read -r REPLY < /dev/tty
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then info "You can trigger the builds manually later by pushing a commit or via the Cloud Build UI."; return; fi
-    info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID"
-    info "Triggering frontend build..."; gcloud builds triggers run "${FE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID"
+    info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID" --region="us-central1"
+    info "Triggering frontend build..."; gcloud builds triggers run "$GCP_PROJECT_ID-trigger" --branch="$GITHUB_BRANCH" --project $GCP_PROJECT_ID --region="us-central1"
+
     success "Builds have been triggered."; info "You can monitor their progress in the Cloud Build console:"; echo -e "   ${C_YELLOW}https://console.cloud.google.com/cloud-build/builds?project=${GCP_PROJECT_ID}${C_RESET}"
 }
 
@@ -468,7 +583,7 @@ main() {
     echo -e "${C_RESET}"
 
     read_state; LAST_COMPLETED_STEP=${LAST_COMPLETED_STEP:-0}
-    declare -a steps_to_run=( "check_prerequisites" "check_and_install_terraform" "setup_project" "setup_repo" "configure_environment" "handle_manual_steps" "setup_firebase_app" "run_terraform" "populate_oauth_secrets" "update_oauth_client" "update_secrets" "trigger_builds" )
+    declare -a steps_to_run=( "check_prerequisites" "check_and_install_terraform" "setup_project" "setup_repo" "configure_environment" "handle_manual_steps" "setup_firebase_app" "run_terraform" "populate_oauth_secrets" "update_oauth_client" "update_secrets" "seed_data" "trigger_builds" )
     for i in "${!steps_to_run[@]}"; do
         step_num=$((i + 1))
         if (( LAST_COMPLETED_STEP < step_num )); then
@@ -479,11 +594,33 @@ main() {
             ${steps_to_run[$i]}; write_state "LAST_COMPLETED_STEP" "$step_num"
         fi
     done
-    step 13 "🎉 Deployment Complete! 🎉"; info "Fetching your application URLs..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
-    FRONTEND_URL=$(terraform output -raw frontend_service_url); BACKEND_URL=$(terraform output -raw backend_service_url)
+
+    step 14 "🎉 Deployment Complete! 🎉";
+    info "Fetching your application URLs...";
+    cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+
+    # Try to get the frontend URL from terraform output, but handle the error
+    FRONTEND_URL=$(terraform output -raw frontend_service_url 2>/dev/null || echo "")
+    if [ -z "$FRONTEND_URL" ]; then
+        warn "Could not find 'frontend_service_url' in Terraform outputs. Deducing from project ID."
+        # Construct the default Firebase Hosting URL
+        FRONTEND_URL="https://$(echo "$GCP_PROJECT_ID" | tr '[:upper:]' '[:lower:]').web.app"
+    fi
+
+    # Get the backend URL
+    BACKEND_URL=$(terraform output -raw backend_service_url 2>/dev/null || echo "")
+    if [ -z "$BACKEND_URL" ]; then
+        warn "Could not find 'backend_service_url' in Terraform outputs."
+    fi
+
     success "Your infrastructure is ready."
     echo "------------------------------------------------------------------"; echo -e "   Frontend URL: ${C_YELLOW}${FRONTEND_URL}${C_RESET}"; echo -e "   Backend URL:  ${C_YELLOW}${BACKEND_URL}${C_RESET}"; echo "------------------------------------------------------------------"
     info "It may take a few minutes for the builds to complete and the services to become available."
+
+    echo # Add a blank line for spacing
+    info "Thanks for using Creative Studio!"
+    info "We'd love your feedback: ${C_YELLOW}https://docs.google.com/forms/d/e/1FAIpQLSceWvu7G354h-dTbOGvNGEraEjcUAgPE300WNY5qr-WJbh3Eg/viewform${C_RESET}"
+    echo -e "${C_GREEN}============================================================${C_RESET}"
 }
 
 main "$@"

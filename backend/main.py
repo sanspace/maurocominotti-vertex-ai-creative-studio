@@ -40,9 +40,7 @@ from src.media_templates.media_templates_controller import (
     router as media_template_router,
 )
 from src.multimodal.gemini_controller import router as gemini_router
-from src.source_assets.source_asset_controller import (
-    router as source_asset_router,
-)
+from src.source_assets.source_asset_controller import router as source_asset_router
 from src.users.user_controller import router as user_router
 from src.videos.veo_controller import router as video_router
 from src.workspaces.workspace_controller import router as workspace_router
@@ -96,9 +94,6 @@ async def lifespan(app: FastAPI):
     logger.info("Creating ProcessPoolExecutor...")
     # Create the pool and attach it to the app's state
     app.state.process_pool = ProcessPoolExecutor(max_workers=4)
-
-    # Ensure the default public workspace exists on startup.
-    firebase_client_service.firebase_client._ensure_default_workspace_exists()
 
     yield
 

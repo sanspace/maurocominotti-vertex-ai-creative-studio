@@ -45,7 +45,7 @@ class ConfigService(BaseSettings):
     GEMINI_AUDIO_ANALYSIS_MODEL_ID: str = "gemini-2.5-pro"
 
     # --- Collections ---
-    FIREBASE_DB: str = "(default)"
+    FIREBASE_DB: str = "cstudio-development"
 
     # --- Veo ---
     VEO_MODEL_ID: str = "veo-2.0-generate-001"
