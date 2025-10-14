@@ -61,7 +61,7 @@ def configure_cors(app):
                 "FRONTEND_URL environment variable not set in production"
             )
         allowed_origins.append(frontend_url)
-    elif environment in ["development", "test"]:
+    elif environment in ["development", "test", "local"]:
         allowed_origins.append("*")  # Allow all origins in development
     else:
         raise ValueError(

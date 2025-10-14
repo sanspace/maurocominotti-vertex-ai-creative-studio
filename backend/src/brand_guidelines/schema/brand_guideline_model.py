@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from src.common.base_repository import BaseDocument
+from src.common.schema.media_item_model import JobStatusEnum
 
 
 class BrandGuidelineModel(BaseDocument):
@@ -12,6 +13,8 @@ class BrandGuidelineModel(BaseDocument):
     Data is populated by an admin OR via AI-powered extraction from an uploaded PDF.
     """
     name: str
+    status: JobStatusEnum = JobStatusEnum.PROCESSING
+    error_message: Optional[str] = None
 
     workspace_id: Optional[str] = Field(
         default=None,

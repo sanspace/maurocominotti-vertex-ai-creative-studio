@@ -1,6 +1,15 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 
 from src.auth.auth_guard import get_current_user
 from src.brand_guidelines.brand_guideline_service import BrandGuidelineService
@@ -21,10 +30,11 @@ router = APIRouter(
 @router.post(
     "",
     response_model=BrandGuidelineResponseDto,
-    status_code=status.HTTP_200_OK,  # OK since it can be an update
+    status_code=status.HTTP_202_ACCEPTED,
     summary="Create a Brand Guideline from a PDF",
 )
 async def create_brand_guideline(
+    request: Request,
     name: str = Form(min_length=3, max_length=100),
     workspaceId: Optional[str] = Form(None),
     file: UploadFile = File(),
@@ -37,7 +47,8 @@ async def create_brand_guideline(
     If a brand guideline already exists for the workspace, it will be
     deleted and replaced with the new one.
 
-    The API will wait for the AI processing to finish before returning a response.
+    This endpoint is asynchronous. It returns a placeholder immediately and
+    starts the processing in the background.
     """
     if not file.content_type == "application/pdf":
         raise HTTPException(
@@ -56,9 +67,15 @@ async def create_brand_guideline(
             detail=f"File is too large. Maximum size is {MAX_UPLOAD_SIZE_BYTES // (1024*1024)}MB.",
         )
 
-    # The service method now handles the entire synchronous workflow.
-    return await service.create_and_process_guideline(
-        name, file, workspaceId, current_user
+    executor = request.app.state.process_pool
+
+    # The service method now starts the background job.
+    return await service.start_brand_guideline_processing_job(
+        name=name,
+        file=file,
+        workspace_id=workspaceId,
+        current_user=current_user,
+        executor=executor,
     )
 
 
