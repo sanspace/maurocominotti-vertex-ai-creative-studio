@@ -131,6 +131,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.workspaceStateService.setActiveWorkspaceId(workspaceId);
     this.activeWorkspace =
       this.workspaces.find(w => w.id === workspaceId) || null;
+    this.brandGuidelineService.clearCache();
   }
 
   openCreateWorkspaceDialog(): void {
