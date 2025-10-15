@@ -1,4 +1,4 @@
-# 🚀 GenMedia Creative Studio | Vertex AI
+# 🚀 GCC Creative Studio | Vertex AI
 
 ![Angular](https://img.shields.io/badge/angular-%23DD0031.svg?style=for-the-badge&logo=angular&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
@@ -8,7 +8,7 @@
 [![Code Style: Google](https://img.shields.io/badge/code%20style-google-blueviolet.svg?style=for-the-badge)](https://github.com/google/gts)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-GenMedia Creative Studio is an app that highlights the capabilities of Google Cloud Vertex AI generative AI creative APIs, including Imagen, the text-to-image model.
+GCC Creative Studio is GenMedia AI App that highlights the capabilities of Google Cloud Vertex AI generative AI creative APIs, including Imagen, text-to-image, video, R2V and the newest models.
 
 Features Gemini for prompt rewriting as well as for a critic to provide a multimodal evaluation of the generated images.
 
@@ -18,9 +18,9 @@ This app is built with [Angular](https://angular.dev/), a TypeScript-based free 
 
 ## GenMedia | Creative Studio
 
-![](./screenshots/creative_studio_login.png)
-![](./screenshots/creative_studio_homepage.png)
-![](./screenshots/creative_studio_imagen4.png)
+![](./screenshots/cstudio-login.png)
+![](./screenshots/cstudio-homepage.png)
+![](./screenshots/cstudio-brand-guidelines.png)
 
 ## Run locally
 
