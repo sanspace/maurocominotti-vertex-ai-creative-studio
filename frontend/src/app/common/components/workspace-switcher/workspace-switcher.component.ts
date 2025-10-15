@@ -174,17 +174,26 @@ export class WorkspaceSwitcherComponent implements OnInit {
     return isOwner || isAdmin;
   }
 
-  get canEditBrandGuidelines(): boolean {
-    if (!this.currentUser || !this.activeWorkspace) {
+  get canAccessBrandGuidelines(): boolean {
+    if (!this.currentUser || !this.activeWorkspace)
       return false;
-    }
+
+    // Anyone can access guidelines on a public workspace.
+    if (this.activeWorkspace.scope === WorkspaceScope.PUBLIC) return true;
+
+    // For private workspaces, only admins or owners can access.
     const isAdmin = !!this.currentUser.roles?.includes(UserRolesEnum.ADMIN);
-    // An admin can edit any workspace's guidelines.
-    // A non-admin can only edit guidelines for private workspaces they own.
     const isOwnerOfPrivateWorkspace =
       this.activeWorkspace.scope === WorkspaceScope.PRIVATE &&
       this.currentUser.id === this.activeWorkspace.ownerId;
     return isAdmin || isOwnerOfPrivateWorkspace;
+  }
+
+  get canPerformEditActionsOnBrandGuidelines(): boolean {
+    if (!this.currentUser || !this.activeWorkspace) return false;
+    const isAdmin = !!this.currentUser.roles?.includes(UserRolesEnum.ADMIN);
+    const isOwner = this.currentUser.id === this.activeWorkspace.ownerId;
+    return isAdmin || isOwner;
   }
 
   openInviteDialog(event: MouseEvent): void {
@@ -235,7 +244,11 @@ export class WorkspaceSwitcherComponent implements OnInit {
             width: '800px',
             maxWidth: '90vw',
             panelClass: 'brand-guideline-dialog',
-            data: {workspaceId: workspaceId, guideline},
+            data: {
+              workspaceId: workspaceId,
+              guideline,
+              canEdit: this.canPerformEditActionsOnBrandGuidelines,
+            },
           });
           return dialogRef
             .afterClosed()

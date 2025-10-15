@@ -76,12 +76,14 @@
   </div>
   <div mat-dialog-actions align="end">
     <button mat-button (click)="onCancel()">Close</button>
-    <button mat-button color="warn" (click)="onDelete()">
-      Delete
-    </button>
-    <button mat-raised-button color="primary" (click)="replaceGuideline()" class="ml-2">
-      Replace
-    </button>
+    @if (data.canEdit) {
+      <button mat-button color="warn" (click)="onDelete()">
+        Delete
+      </button>
+      <button mat-raised-button color="primary" (click)="replaceGuideline()" class="ml-2">
+        Replace
+      </button>
+    }
   </div>
 } @else {
   <div mat-dialog-content>
@@ -111,6 +113,7 @@
         @if (form.get('file')?.hasError('required') && form.get('file')?.touched) {
           <mat-error class="block mt-1">A PDF file is required.</mat-error>
         }
+        <p class="text-xs text-gray-400 !my-2">Maximum file size: 50MB</p>
       </div>
     </form>
   </div>

@@ -401,7 +401,7 @@ export class VideoComponent implements AfterViewInit {
       !this.isConcatenateMode
     ) {
       const veo2Model = this.generationModels.find(
-        m => m.value === 'veo-2.0-fast-generate-001',
+        m => m.value === 'veo-2.0-generate-001',
       );
       if (veo2Model) {
         this.selectModel(veo2Model);
@@ -409,7 +409,7 @@ export class VideoComponent implements AfterViewInit {
           panelClass: ['green-toast'],
           duration: 8000,
           data: {
-            text: "Veo 3 Fast doesn't support images as input, so we've switched to Veo 2 Fast for you.",
+            text: "Veo 3 Fast doesn't support images as input, so we've switched to Veo 2 for you.",
             matIcon: 'info_outline',
           },
         });
@@ -657,7 +657,7 @@ export class VideoComponent implements AfterViewInit {
 
       if (isVeo3) {
         const veo2Model = this.generationModels.find(
-          m => m.value === 'veo-2.0-fast-generate-001',
+          m => m.value === 'veo-2.0-generate-001',
         );
         if (veo2Model) {
           this.selectModel(veo2Model);
@@ -665,7 +665,7 @@ export class VideoComponent implements AfterViewInit {
             panelClass: ['green-toast'],
             duration: 8000,
             data: {
-              text: "Veo 3 doesn't support video as input, so we've switched to Veo 2 Fast for you.",
+              text: "Veo 3 doesn't support video as input, so we've switched to Veo 2 for you.",
               matIcon: 'info_outline',
             },
           });

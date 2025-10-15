@@ -51,7 +51,7 @@
       <button
         mat-menu-item
         [disabled]="
-          !canEditBrandGuidelines ||
+          !canAccessBrandGuidelines ||
           (brandGuidelineService.activeBrandGuidelineJob$ | async)?.status === JobStatus.PROCESSING
         "
         (click)="openBrandGuidelinesDialog($event)"
