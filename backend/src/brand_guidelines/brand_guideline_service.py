@@ -7,7 +7,11 @@ import os
 import shutil
 import sys
 import uuid
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import (
+    ProcessPoolExecutor,
+    ThreadPoolExecutor,
+    as_completed,
+)
 from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile, status
@@ -80,29 +84,6 @@ def _process_brand_guideline_in_background(
         gemini_service = GeminiService()
 
         try:
-            # 0. Check for and delete an existing guideline for the workspace
-            if workspace_id:
-                search_dto = BrandGuidelineSearchDto(
-                    workspace_id=workspace_id, limit=1
-                )
-                workspace_filter = FieldFilter(
-                    "workspace_id", "==", workspace_id
-                )
-                existing_guidelines_response = repo.query(
-                    search_dto, extra_filters=[workspace_filter]
-                )
-                if existing_guidelines_response.data:
-                    old_guideline = existing_guidelines_response.data[0]
-                    worker_logger.info(
-                        f"Deleting old guideline '{old_guideline.id}' and its assets."
-                    )
-                    # Delete all associated PDF chunks from GCS
-                    for uri in old_guideline.source_pdf_gcs_uris:
-                        gcs_service.delete_blob_from_uri(uri)
-
-                    # Delete the Firestore document
-                    repo.delete(old_guideline.id)
-
             # 1. Split if necessary and upload file(s) to GCS
             gcs_uris = asyncio.run(
                 BrandGuidelineService._split_and_upload_pdf(
@@ -123,12 +104,27 @@ def _process_brand_guideline_in_background(
             )
 
             # 2. Call Gemini for each chunk to extract structured data
-            # Since we are in a background process, we can call this synchronously in a loop.
-            partial_results = [
-                gemini_service.extract_brand_info_from_pdf(uri)
-                for uri in gcs_uris
-            ]
-            successful_partial_results = [r for r in partial_results if r]
+            # Use a ThreadPoolExecutor to run extractions in parallel.
+            successful_partial_results = []
+            with ThreadPoolExecutor(max_workers=len(gcs_uris)) as executor:
+                # Create a future for each extraction task
+                future_to_uri = {
+                    executor.submit(
+                        gemini_service.extract_brand_info_from_pdf, uri
+                    ): uri
+                    for uri in gcs_uris
+                }
+
+                for future in as_completed(future_to_uri):
+                    uri = future_to_uri[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            successful_partial_results.append(result)
+                    except Exception as exc:
+                        worker_logger.error(
+                            f"Extraction for PDF chunk {uri} failed: {exc}"
+                        )
 
             # 3. Aggregate the results
             extracted_data: BrandGuidelineModel | None = (
@@ -336,10 +332,24 @@ class BrandGuidelineService:
                 detail="Only a system admin can create global brand guidelines.",
             )
 
-        # 2. Read file contents into memory for the background process
+        # 2. Check for and delete an existing guideline for the workspace
+        if workspace_id:
+            search_dto = BrandGuidelineSearchDto(
+                workspace_id=workspace_id, limit=1
+            )
+            workspace_filter = FieldFilter("workspace_id", "==", workspace_id)
+            existing_guidelines_response = await asyncio.to_thread(
+                self.repo.query, search_dto, extra_filters=[workspace_filter]
+            )
+            if existing_guidelines_response.data:
+                await self._delete_guideline_and_assets(
+                    existing_guidelines_response.data[0]
+                )
+
+        # 3. Read file contents into memory for the background process
         file_contents = await file.read()
 
-        # 3. Create and save a placeholder document
+        # 4. Create and save a placeholder document
         guideline_id = str(uuid.uuid4())
         placeholder_guideline = BrandGuidelineModel(
             id=guideline_id,
@@ -349,7 +359,7 @@ class BrandGuidelineService:
         )
         self.repo.save(placeholder_guideline)
 
-        # 4. Submit the job to the background process pool
+        # 5. Submit the job to the background process pool
         executor.submit(
             _process_brand_guideline_in_background,
             guideline_id=guideline_id,
@@ -363,7 +373,7 @@ class BrandGuidelineService:
             f"Brand guideline processing job queued: {placeholder_guideline.id}"
         )
 
-        # 5. Return the placeholder DTO to the client
+        # 6. Return the placeholder DTO to the client
         return await self._create_brand_guideline_response(
             placeholder_guideline
         )
