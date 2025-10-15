@@ -491,7 +491,7 @@ update_secrets() {
             "GOOGLE_TOKEN_AUDIENCE")          info "  Value is handled by the OAuth population step. Skipping."; continue ;;
         esac
 
-        if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" ]; then
+        if [ "$AUTO_DISCOVERED" = true ] && [ -n "$SECRET_VALUE" && [ "$SECRET_VALUE" != "null" ] && [ "$SECRET_VALUE" != "" ]]; then
             info "  Value was auto-detected from Firebase. Populating automatically."
             echo -n "$SECRET_VALUE" | gcloud secrets versions add "$SECRET_NAME" --data-file="-" --project="$GCP_PROJECT_ID" --quiet
             success "  Successfully added new version for ${SECRET_NAME}."
