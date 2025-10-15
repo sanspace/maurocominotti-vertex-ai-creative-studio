@@ -27,7 +27,9 @@ from typing import Dict, List
 
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-from bootstrap.seed_data import TEMPLATES  # pylint: disable=wrong-import-position
+from bootstrap.seed_data import (
+    TEMPLATES,
+)  # pylint: disable=wrong-import-position
 from src.auth import firebase_client_service
 
 from src.common.storage_service import GcsService
@@ -39,19 +41,29 @@ from src.media_templates.schema.media_template_model import (
     GenerationParameters,
     MediaTemplateModel,
 )
-from src.source_assets.repository.source_asset_repository import SourceAssetRepository
-from src.source_assets.schema.source_asset_model import AssetScopeEnum as AssetScope
-from src.source_assets.schema.source_asset_model import AssetTypeEnum as AssetType
+from src.source_assets.repository.source_asset_repository import (
+    SourceAssetRepository,
+)
+from src.source_assets.schema.source_asset_model import (
+    AssetScopeEnum as AssetScope,
+)
+from src.source_assets.schema.source_asset_model import (
+    AssetTypeEnum as AssetType,
+)
 from src.source_assets.schema.source_asset_model import SourceAssetModel
 from src.users.repository.user_repository import UserRepository
 from src.workspaces.repository.workspace_repository import WorkspaceRepository
-from src.workspaces.schema.workspace_model import WorkspaceModel, WorkspaceScopeEnum
+from src.workspaces.schema.workspace_model import (
+    WorkspaceModel,
+    WorkspaceScopeEnum,
+)
 
 logger = logging.getLogger(__name__)
 
 # Get the absolute path of the directory where this script is located.
 # This makes all file paths relative to the script's own location.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 def get_admin_user() -> str:
     return os.getenv("ADMIN_USER_EMAIL", "system")
@@ -66,7 +78,9 @@ def ensure_admin_user_exists():
     admin_email = get_admin_user()
 
     if admin_email == "system":
-        logger.info("Bootstrap running as 'system'. Skipping admin user creation.")
+        logger.info(
+            "Bootstrap running as 'system'. Skipping admin user creation."
+        )
         return
 
     try:
@@ -78,21 +92,30 @@ def ensure_admin_user_exists():
         if existing_user:
             logger.info(f"User document for '{admin_email}' already exists.")
         else:
-            logger.warning(f"No user document found for email '{admin_email}'. Creating one.")
-            name = admin_email.split('@')[0]
+            logger.warning(
+                f"No user document found for email '{admin_email}'. Creating one."
+            )
+            name = admin_email.split("@")[0]
             logger.info(f"Setting user's default name to '{name}'.")
 
             new_user = UserModel(
                 email=admin_email,
                 name=name,
-                roles=[UserRoleEnum.USER , UserRoleEnum.ADMIN],
+                roles=[UserRoleEnum.USER, UserRoleEnum.ADMIN],
             )
             user_repo.save(new_user)
-            logger.info(f"Successfully created admin user document for '{admin_email}'.")
+            logger.info(
+                f"Successfully created admin user document for '{admin_email}'."
+            )
 
     except Exception as e:
-        logger.error(f"Failed to create or verify admin user for '{admin_email}': {e}", exc_info=True)
-        logger.warning("Please ensure the user exists in Firebase Authentication and that a user document is created in Firestore with the 'admin' role.")
+        logger.error(
+            f"Failed to create or verify admin user for '{admin_email}': {e}",
+            exc_info=True,
+        )
+        logger.warning(
+            "Please ensure the user exists in Firebase Authentication and that a user document is created in Firestore with the 'admin' role."
+        )
 
 
 def ensure_default_workspace_exists():
@@ -118,9 +141,13 @@ def ensure_default_workspace_exists():
                 members=[],
             )
             workspace_repo.save(default_workspace)
-            logger.info(f"Default public '{workspace_name}' created successfully.")
+            logger.info(
+                f"Default public '{workspace_name}' created successfully."
+            )
     except Exception as e:
-        logger.error(f"Failed to ensure default workspace exists: {e}", exc_info=True)
+        logger.error(
+            f"Failed to ensure default workspace exists: {e}", exc_info=True
+        )
 
 
 def upload_assets_from_folder(
@@ -188,9 +215,7 @@ def seed_media_templates():
             FieldFilter("name", "==", template_name)
         )
         if existing:
-            logger.info(
-                f"Template '{template_name}' already exists. Skipping."
-            )
+            logger.info(f"Template '{template_name}' already exists. Skipping.")
             continue
 
         logger.info(f"Creating template: '{template_name}'")
@@ -267,12 +292,14 @@ def seed_vto_assets():
                 # Get filename without extension, e.g., "vto_top_0"
                 base_name = os.path.splitext(filename)[0]
                 # Split by underscore and remove the last part (the index)
-                type_parts = base_name.split('_')[:-1]
+                type_parts = base_name.split("_")[:-1]
                 # Join the remaining parts to get the type string, e.g., "vto_top"
-                type_string = '_'.join(type_parts)
+                type_string = "_".join(type_parts)
                 # Convert the string to an AssetType enum member
                 asset_type = AssetType(type_string)
-                logger.info(f"  - Detected asset type as '{asset_type.value}' for {filename}")
+                logger.info(
+                    f"  - Detected asset type as '{asset_type.value}' for {filename}"
+                )
             except (ValueError, IndexError):
                 logger.warning(
                     f"  - Could not determine asset type for '{filename}' from its name. Skipping."

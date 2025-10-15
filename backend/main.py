@@ -40,7 +40,9 @@ from src.media_templates.media_templates_controller import (
     router as media_template_router,
 )
 from src.multimodal.gemini_controller import router as gemini_router
-from src.source_assets.source_asset_controller import router as source_asset_router
+from src.source_assets.source_asset_controller import (
+    router as source_asset_router,
+)
 from src.users.user_controller import router as user_router
 from src.videos.veo_controller import router as video_router
 from src.workspaces.workspace_controller import router as workspace_router

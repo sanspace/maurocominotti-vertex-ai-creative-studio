@@ -102,12 +102,16 @@ class FirebaseClient:
                 # You might still consider this a success if credentials exist
                 return credentials is not None
 
-            logger.info(f"ADC found for project: {project_id}. Attempting a test API call...")
+            logger.info(
+                f"ADC found for project: {project_id}. Attempting a test API call..."
+            )
 
             # 2. Make a lightweight, authenticated API call to test the credentials
             client = resourcemanager_v3.ProjectsClient(credentials=credentials)  # type: ignore
             project_name = f"projects/{project_id}"
-            client.get_project(name=project_name) # This call requires 'resourcemanager.projects.get' permission
+            client.get_project(
+                name=project_name
+            )  # This call requires 'resourcemanager.projects.get' permission
 
             logger.info("✅ ADC Authentication successful.")
             return True
