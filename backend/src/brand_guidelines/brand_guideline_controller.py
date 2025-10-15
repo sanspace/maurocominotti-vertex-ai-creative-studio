@@ -18,7 +18,7 @@ from src.brand_guidelines.dto.brand_guideline_response_dto import (
 )
 from src.users.user_model import UserModel, UserRoleEnum
 
-MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024  # 500 MB
+MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 # Define role checkers for convenience
 user_only = Depends(
