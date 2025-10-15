@@ -44,9 +44,14 @@ export class BrandGuidelineService {
   readonly activeBrandGuidelineJob$ =
     this.activeBrandGuidelineJobSubject.asObservable();
 
+  private readonly cachedBrandGuidelineSubject =
+    new BehaviorSubject<BrandGuidelineModel | null>(null);
+
   constructor(private http: HttpClient) {}
 
   createBrandGuideline(formData: FormData): Observable<BrandGuidelineModel> {
+    // Invalidate cache since we are creating a new one.
+    this.clearCache();
     return this.http
       .post<BrandGuidelineModel>(`${this.apiUrl}/upload`, formData)
       .pipe(
@@ -67,10 +72,16 @@ export class BrandGuidelineService {
   getBrandGuidelineForWorkspace(
     workspaceId: string,
   ): Observable<BrandGuidelineModel | null> {
+    const cachedGuideline = this.cachedBrandGuidelineSubject.getValue();
+    if (cachedGuideline && cachedGuideline.workspaceId === workspaceId) {
+      return of(cachedGuideline);
+    }
+
     return this.http
       .get<BrandGuidelineModel>(`${this.apiUrl}/workspace/${workspaceId}`)
       .pipe(
-        catchError(() => of(null)), // Return null if not found (404) or on other errors
+        tap(guideline => this.cachedBrandGuidelineSubject.next(guideline)),
+        catchError(() => of(null)),
       );
   }
 
@@ -79,6 +90,8 @@ export class BrandGuidelineService {
    * @param id The ID of the brand guideline to delete.
    */
   deleteBrandGuideline(id: string): Observable<void> {
+    // Invalidate cache on deletion.
+    this.clearCache();
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
@@ -102,6 +115,8 @@ export class BrandGuidelineService {
             job.status === JobStatus.COMPLETED ||
             job.status === JobStatus.FAILED
           ) {
+            // When the job is done, cache the final result.
+            this.cachedBrandGuidelineSubject.next(job);
             this.stopPolling();
           }
         }),
@@ -139,5 +154,12 @@ export class BrandGuidelineService {
       status: JobStatus.PROCESSING,
       // Cast to BrandGuidelineModel to satisfy the type checker for the temporary state
     } as BrandGuidelineModel);
+  }
+
+  /**
+   * Clears the in-memory cache for the brand guideline.
+   */
+  clearCache() {
+    this.cachedBrandGuidelineSubject.next(null);
   }
 }
