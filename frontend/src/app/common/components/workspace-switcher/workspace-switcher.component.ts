@@ -284,16 +284,26 @@ export class WorkspaceSwitcherComponent implements OnInit {
           formData.append('file', result.file);
           formData.append('workspaceId', workspaceId);
 
-          // Immediately show the spinner in the UI
+          // 1. Immediately show spinner and show initial snackbar
           this.brandGuidelineService.setProcessingState();
+          handleSuccessSnackbar(
+            this.snackBar,
+            'Uploading file, please keep this window open...',
+          );
 
+          // 2. Start the upload process
           this.brandGuidelineService.createBrandGuideline(formData).subscribe({
-            error: error => {
-              handleErrorSnackbar(
+            next: () => {
+              // 3. On success, show the "processing" snackbar
+              handleSuccessSnackbar(
                 this.snackBar,
-                error,
-                'Failed to upload brand guideline.',
+                'File uploaded! We will process it and notify you upon completion. You can close this window or navigate away!',
               );
+            },
+            error: error => {
+              // On error, clear the job so the spinner disappears
+              this.brandGuidelineService.clearActiveJob();
+              handleErrorSnackbar(this.snackBar, error, 'Upload failed');
             },
           });
         }

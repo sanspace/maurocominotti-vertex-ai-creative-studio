@@ -45,7 +45,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UserModel:
             # --- Development/Production: Use Google Identity Platform (OIDC) ---
             # Verifies the Google-issued OIDC ID token. The audience must be the
             # OAuth 2.0 client ID of the Identity Platform-protected resource.
-            logger.info("Verifying token using Google Identity Platform...")
             GOOGLE_TOKEN_AUDIENCE = config_service.GOOGLE_TOKEN_AUDIENCE
             decoded_token = id_token.verify_oauth2_token(
                 token,
