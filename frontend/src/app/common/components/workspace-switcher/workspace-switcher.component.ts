@@ -97,8 +97,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.workspaceService.getWorkspaces().subscribe({
       next: workspaces => {
         this.workspaces = workspaces;
-        this.activeWorkspace =
-          this.workspaces.find(w => w.id === this.activeWorkspaceId) || null;
+        // Now that we have the workspaces, we can determine the initial active one.
         this.initializeActiveWorkspace();
       },
       error: error => {
@@ -108,9 +107,17 @@ export class WorkspaceSwitcherComponent implements OnInit {
   }
 
   initializeActiveWorkspace(): void {
+    const storedWorkspaceId = localStorage.getItem('activeWorkspaceId');
     const queryParamId = this.route.snapshot.queryParamMap.get('workspaceId');
-    if (queryParamId && this.workspaces.some(w => w.id === queryParamId)) {
-      this.setActiveWorkspace(queryParamId);
+
+    // Order of precedence: URL query param > localStorage > default public.
+    const preferredWorkspaceId = queryParamId || storedWorkspaceId;
+
+    if (
+      preferredWorkspaceId &&
+      this.workspaces.some(w => w.id === preferredWorkspaceId)
+    ) {
+      this.setActiveWorkspace(preferredWorkspaceId);
       return;
     }
 
@@ -118,11 +125,10 @@ export class WorkspaceSwitcherComponent implements OnInit {
       w => w.scope === WorkspaceScope.PUBLIC,
     );
     if (googleWorkspace) {
+      // Fallback to public workspace
       this.setActiveWorkspace(googleWorkspace.id);
-      return;
-    }
-
-    if (this.workspaces.length > 0) {
+    } else if (this.workspaces.length > 0) {
+      // Fallback to the first workspace
       this.setActiveWorkspace(this.workspaces[0].id);
     }
   }
@@ -132,6 +138,11 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.activeWorkspace =
       this.workspaces.find(w => w.id === workspaceId) || null;
     this.brandGuidelineService.clearCache();
+    if (workspaceId) {
+      localStorage.setItem('activeWorkspaceId', workspaceId);
+    } else {
+      localStorage.removeItem('activeWorkspaceId');
+    }
   }
 
   openCreateWorkspaceDialog(): void {
