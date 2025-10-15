@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import Optional
 
 from fastapi import (
@@ -18,7 +32,7 @@ from src.brand_guidelines.dto.brand_guideline_response_dto import (
 )
 from src.users.user_model import UserModel, UserRoleEnum
 
-MAX_UPLOAD_SIZE_BYTES = 500 * 1024 * 1024  # 500 MB
+MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 # Define role checkers for convenience
 user_only = Depends(

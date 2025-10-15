@@ -23,7 +23,10 @@ import {WorkspaceService} from '../../../services/workspace/workspace.service';
 import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
 import {CreateWorkspaceModalComponent} from '../create-workspace-modal/create-workspace-modal.component';
 import {ConfirmationDialogComponent} from '../confirmation-dialog/confirmation-dialog.component';
-import {handleErrorSnackbar, handleSuccessSnackbar} from '../../../utils/handleErrorSnackbar';
+import {
+  handleErrorSnackbar,
+  handleSuccessSnackbar,
+} from '../../../utils/handleErrorSnackbar';
 import {
   InviteUserData,
   InviteUserModalComponent,
@@ -97,8 +100,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.workspaceService.getWorkspaces().subscribe({
       next: workspaces => {
         this.workspaces = workspaces;
-        this.activeWorkspace =
-          this.workspaces.find(w => w.id === this.activeWorkspaceId) || null;
+        // Now that we have the workspaces, we can determine the initial active one.
         this.initializeActiveWorkspace();
       },
       error: error => {
@@ -108,9 +110,17 @@ export class WorkspaceSwitcherComponent implements OnInit {
   }
 
   initializeActiveWorkspace(): void {
+    const storedWorkspaceId = localStorage.getItem('activeWorkspaceId');
     const queryParamId = this.route.snapshot.queryParamMap.get('workspaceId');
-    if (queryParamId && this.workspaces.some(w => w.id === queryParamId)) {
-      this.setActiveWorkspace(queryParamId);
+
+    // Order of precedence: URL query param > localStorage > default public.
+    const preferredWorkspaceId = queryParamId || storedWorkspaceId;
+
+    if (
+      preferredWorkspaceId &&
+      this.workspaces.some(w => w.id === preferredWorkspaceId)
+    ) {
+      this.setActiveWorkspace(preferredWorkspaceId);
       return;
     }
 
@@ -118,11 +128,10 @@ export class WorkspaceSwitcherComponent implements OnInit {
       w => w.scope === WorkspaceScope.PUBLIC,
     );
     if (googleWorkspace) {
+      // Fallback to public workspace
       this.setActiveWorkspace(googleWorkspace.id);
-      return;
-    }
-
-    if (this.workspaces.length > 0) {
+    } else if (this.workspaces.length > 0) {
+      // Fallback to the first workspace
       this.setActiveWorkspace(this.workspaces[0].id);
     }
   }
@@ -132,6 +141,11 @@ export class WorkspaceSwitcherComponent implements OnInit {
     this.activeWorkspace =
       this.workspaces.find(w => w.id === workspaceId) || null;
     this.brandGuidelineService.clearCache();
+    if (workspaceId) {
+      localStorage.setItem('activeWorkspaceId', workspaceId);
+    } else {
+      localStorage.removeItem('activeWorkspaceId');
+    }
   }
 
   openCreateWorkspaceDialog(): void {
@@ -174,17 +188,25 @@ export class WorkspaceSwitcherComponent implements OnInit {
     return isOwner || isAdmin;
   }
 
-  get canEditBrandGuidelines(): boolean {
-    if (!this.currentUser || !this.activeWorkspace) {
-      return false;
-    }
+  get canAccessBrandGuidelines(): boolean {
+    if (!this.currentUser || !this.activeWorkspace) return false;
+
+    // Anyone can access guidelines on a public workspace.
+    if (this.activeWorkspace.scope === WorkspaceScope.PUBLIC) return true;
+
+    // For private workspaces, only admins or owners can access.
     const isAdmin = !!this.currentUser.roles?.includes(UserRolesEnum.ADMIN);
-    // An admin can edit any workspace's guidelines.
-    // A non-admin can only edit guidelines for private workspaces they own.
     const isOwnerOfPrivateWorkspace =
       this.activeWorkspace.scope === WorkspaceScope.PRIVATE &&
       this.currentUser.id === this.activeWorkspace.ownerId;
     return isAdmin || isOwnerOfPrivateWorkspace;
+  }
+
+  get canPerformEditActionsOnBrandGuidelines(): boolean {
+    if (!this.currentUser || !this.activeWorkspace) return false;
+    const isAdmin = !!this.currentUser.roles?.includes(UserRolesEnum.ADMIN);
+    const isOwner = this.currentUser.id === this.activeWorkspace.ownerId;
+    return isAdmin || isOwner;
   }
 
   openInviteDialog(event: MouseEvent): void {
@@ -235,7 +257,11 @@ export class WorkspaceSwitcherComponent implements OnInit {
             width: '800px',
             maxWidth: '90vw',
             panelClass: 'brand-guideline-dialog',
-            data: {workspaceId: workspaceId, guideline},
+            data: {
+              workspaceId: workspaceId,
+              guideline,
+              canEdit: this.canPerformEditActionsOnBrandGuidelines,
+            },
           });
           return dialogRef
             .afterClosed()
