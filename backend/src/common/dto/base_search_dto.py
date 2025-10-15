@@ -23,6 +23,7 @@ class BaseSearchDto(BaseDto):
     A base DTO for paginated search queries.
     Provides common fields for limit and cursor-based pagination.
     """
+
     limit: int = Field(
         default=12,
         ge=1,

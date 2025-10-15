@@ -25,6 +25,7 @@ class UserService:
     """
     Handles the business logic for user management.
     """
+
     def __init__(self):
         self.user_repo = UserRepository()
 

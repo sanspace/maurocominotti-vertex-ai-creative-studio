@@ -95,7 +95,9 @@ class WorkspaceService:
 
         # 3. Add the new member to the workspace document
         new_member = WorkspaceMember(
-            user_id=invited_user.id, email=invited_user.email, role=invite_dto.role
+            user_id=invited_user.id,
+            email=invited_user.email,
+            role=invite_dto.role,
         )
         updated_workspace = self.workspace_repo.add_member_to_workspace(
             workspace_id, new_member, invited_user.id

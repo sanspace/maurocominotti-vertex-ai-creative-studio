@@ -18,6 +18,7 @@ from google.genai import types
 
 from src.images.dto.create_imagen_dto import CreateImagenDto
 
+
 class EditImagenDto(CreateImagenDto):
     """
     The refactored request model. Defaults are defined here to make the API

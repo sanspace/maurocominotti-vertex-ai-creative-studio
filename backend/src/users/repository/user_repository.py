@@ -114,7 +114,9 @@ class UserRepository(BaseRepository[UserModel]):
         )
 
         if search_dto.start_after:
-            last_doc_snapshot = self.collection_ref.document(search_dto.start_after).get()
+            last_doc_snapshot = self.collection_ref.document(
+                search_dto.start_after
+            ).get()
             if last_doc_snapshot.exists:
                 # This is the corrected pagination logic
                 data_query = data_query.start_after(last_doc_snapshot)

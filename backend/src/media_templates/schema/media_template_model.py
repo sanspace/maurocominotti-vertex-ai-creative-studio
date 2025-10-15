@@ -26,6 +26,7 @@ from src.common.base_dto import (
 )
 from pydantic.alias_generators import to_camel
 
+
 class IndustryEnum(str, Enum):
     """Enum for categorizing templates by industry."""
 

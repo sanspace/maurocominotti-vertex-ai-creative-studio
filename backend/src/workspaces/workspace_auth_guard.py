@@ -19,7 +19,10 @@ from fastapi import Depends, HTTPException, status
 from src.auth.auth_guard import get_current_user
 from src.users.user_model import UserModel, UserRoleEnum
 from src.workspaces.repository.workspace_repository import WorkspaceRepository
-from src.workspaces.schema.workspace_model import WorkspaceModel, WorkspaceScopeEnum
+from src.workspaces.schema.workspace_model import (
+    WorkspaceModel,
+    WorkspaceScopeEnum,
+)
 
 
 class WorkspaceAuth:
@@ -30,9 +33,7 @@ class WorkspaceAuth:
     def __init__(self):
         self.workspace_repo = WorkspaceRepository()
 
-    def authorize(
-        self, workspace_id: str, user: UserModel
-    ) -> WorkspaceModel:
+    def authorize(self, workspace_id: str, user: UserModel) -> WorkspaceModel:
         """
         The core authorization logic. Checks if a user has rights to a workspace.
 
@@ -67,4 +68,6 @@ class WorkspaceAuth:
 workspace_auth_service = WorkspaceAuth()
 
 # Create an annotated dependency for cleaner use in endpoint signatures
-AuthorizedWorkspace = Annotated[WorkspaceModel, Depends(workspace_auth_service.authorize)]
+AuthorizedWorkspace = Annotated[
+    WorkspaceModel, Depends(workspace_auth_service.authorize)
+]

@@ -36,6 +36,7 @@ class UserModel(BaseDocument):
     Represents a user document in the Firestore database.
     The document ID for this model should be the Firebase Auth UID.
     """
+
     email: str
     roles: List[UserRoleEnum] = Field(default_factory=list)
     name: str

@@ -48,6 +48,7 @@ class SourceAssetModel(BaseDocument):
     It MUST belong to a workspace.
     Its visibility is controlled by its 'scope'.
     """
+
     workspace_id: str = Field(
         description="Foreign key (ID) to the 'workspaces' collection."
     )

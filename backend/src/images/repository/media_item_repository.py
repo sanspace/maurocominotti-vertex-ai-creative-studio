@@ -76,7 +76,9 @@ class MediaRepository(BaseRepository[MediaItemModel]):
         )
 
         if search_dto.start_after:
-            last_doc_snapshot = self.collection_ref.document(search_dto.start_after).get()
+            last_doc_snapshot = self.collection_ref.document(
+                search_dto.start_after
+            ).get()
             if last_doc_snapshot.exists:
                 data_query = data_query.start_after(last_doc_snapshot)
 

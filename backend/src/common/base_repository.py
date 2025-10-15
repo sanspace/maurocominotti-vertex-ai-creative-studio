@@ -42,13 +42,16 @@ class BaseDocument(BaseModel):
         alias_generator=to_camel,
     )
 
+
 # Use this new base document as the bound for your generic type.
 T = TypeVar("T", bound=BaseDocument)
+
 
 class BaseRepository(Generic[T]):
     """
     A generic repository for common Firestore operations.
     """
+
     def __init__(self, collection_name: str, model: type[T]):
         self.db: firestore.Client = firebase_client_service.firestore_db
         self.collection_ref = self.db.collection(collection_name)

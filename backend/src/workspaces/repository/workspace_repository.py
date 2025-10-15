@@ -69,7 +69,12 @@ class WorkspaceRepository(BaseRepository[WorkspaceModel]):
         member_dict = member.model_dump(by_alias=True)
 
         # Perform both updates atomically.
-        workspace_ref.update({"members": firestore.ArrayUnion([member_dict]), "member_ids": firestore.ArrayUnion([user_id])})
+        workspace_ref.update(
+            {
+                "members": firestore.ArrayUnion([member_dict]),
+                "member_ids": firestore.ArrayUnion([user_id]),
+            }
+        )
 
         # Fetch the updated document to return the full object
         updated_doc = workspace_ref.get()

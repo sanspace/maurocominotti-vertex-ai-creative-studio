@@ -36,7 +36,9 @@ class BrandGuidelineRepository(BaseRepository[BrandGuidelineModel]):
 
     def __init__(self):
         """Initializes the repository with the 'brand_guidelines' collection."""
-        super().__init__(collection_name="brand_guidelines", model=BrandGuidelineModel)
+        super().__init__(
+            collection_name="brand_guidelines", model=BrandGuidelineModel
+        )
 
     def query(
         self,

@@ -26,7 +26,9 @@ from src.workspaces.workspace_service import WorkspaceService
 router = APIRouter(
     prefix="/api/workspaces",
     tags=["Workspaces"],
-    dependencies=[Depends(get_current_user)],  # All endpoints require authentication
+    dependencies=[
+        Depends(get_current_user)
+    ],  # All endpoints require authentication
 )
 
 

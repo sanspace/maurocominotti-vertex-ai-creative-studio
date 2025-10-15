@@ -98,6 +98,7 @@ class SourceAssetLink(BaseModel):
         alias_generator=to_camel,
     )
 
+
 class SourceMediaItemLink(BaseModel):
     """
     A linking object within MediaItemModel that connects a generated result
@@ -120,6 +121,7 @@ class SourceMediaItemLink(BaseModel):
         from_attributes=True,
         alias_generator=to_camel,
     )
+
 
 class MediaItemModel(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""

@@ -28,7 +28,9 @@ class MediaTemplateRepository(BaseRepository[MediaTemplateModel]):
 
     def __init__(self):
         """Initializes the repository for the 'media_template_library' collection."""
-        super().__init__(collection_name="media_template_library", model=MediaTemplateModel)
+        super().__init__(
+            collection_name="media_template_library", model=MediaTemplateModel
+        )
 
     def query(
         self, search_dto: TemplateSearchDto
@@ -77,7 +79,9 @@ class MediaTemplateRepository(BaseRepository[MediaTemplateModel]):
         )
 
         if search_dto.start_after:
-            last_doc_snapshot = self.collection_ref.document(search_dto.start_after).get()
+            last_doc_snapshot = self.collection_ref.document(
+                search_dto.start_after
+            ).get()
             if last_doc_snapshot.exists:
                 data_query = data_query.start_after(last_doc_snapshot)
 
