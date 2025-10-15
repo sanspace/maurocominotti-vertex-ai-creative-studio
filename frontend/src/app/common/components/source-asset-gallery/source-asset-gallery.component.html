@@ -15,7 +15,10 @@
 -->
 
 <div *ngIf="isLoading" class="loading-container">
-  <mat-progress-spinner color="primary" mode="indeterminate"></mat-progress-spinner>
+  <mat-progress-spinner
+    color="primary"
+    mode="indeterminate"
+  ></mat-progress-spinner>
   <p class="!mt-5">Loading your assets...</p>
 </div>
 
@@ -34,7 +37,9 @@
       (click)="selectAsset(asset)"
       [class.deleting]="deletingAssetId === asset.id"
     >
-      <div [style.aspect-ratio]="(asset.aspectRatio || '1:1').replace(':', ' / ')"></div>
+      <div
+        [style.aspect-ratio]="(asset.aspectRatio || '1:1').replace(':', ' / ')"
+      ></div>
 
       <img
         class="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
@@ -43,7 +48,10 @@
       />
 
       <div *ngIf="deletingAssetId === asset.id" class="delete-loading-overlay">
-        <mat-progress-spinner mode="indeterminate" [diameter]="40"></mat-progress-spinner>
+        <mat-progress-spinner
+          mode="indeterminate"
+          [diameter]="40"
+        ></mat-progress-spinner>
       </div>
 
       <button
@@ -55,7 +63,10 @@
         <mat-icon>close</mat-icon>
       </button>
 
-      <div *ngIf="asset.mimeType?.startsWith('video/')" class="play-indicator-overlay opacity-50 group-hover:opacity-0 transition-opacity">
+      <div
+        *ngIf="asset.mimeType?.startsWith('video/')"
+        class="play-indicator-overlay opacity-50 group-hover:opacity-0 transition-opacity"
+      >
         <svg
           class="play-indicator-icon"
           fill="currentColor"
@@ -70,7 +81,11 @@
         </svg>
       </div>
 
-      <mat-icon *ngIf="asset.mimeType?.startsWith('video/')" class="video-indicator">videocam</mat-icon>
+      <mat-icon
+        *ngIf="asset.mimeType?.startsWith('video/')"
+        class="video-indicator"
+        >videocam</mat-icon
+      >
     </div>
   </div>
 </div>

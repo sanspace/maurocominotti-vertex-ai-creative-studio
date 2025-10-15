@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { TestBed } from '@angular/core/testing';
-import { CanActivateFn } from '@angular/router';
+import {TestBed} from '@angular/core/testing';
+import {CanActivateFn} from '@angular/router';
 
 import {AdminAuthGuard} from './admin-auth.guard';
 

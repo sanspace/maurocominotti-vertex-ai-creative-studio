@@ -21,7 +21,10 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import {MediaItem} from '../../models/media-item.model';
-import {SourceAssetResponseDto, SourceAssetService} from '../../services/source-asset.service';
+import {
+  SourceAssetResponseDto,
+  SourceAssetService,
+} from '../../services/source-asset.service';
 import {AssetTypeEnum} from '../../../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../image-cropper-dialog/image-cropper-dialog.component';
 import {finalize, Observable} from 'rxjs';

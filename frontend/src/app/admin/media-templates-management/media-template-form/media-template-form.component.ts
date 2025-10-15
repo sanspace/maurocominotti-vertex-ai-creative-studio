@@ -16,7 +16,7 @@
 
 import {Component, Inject, OnDestroy, OnInit} from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
-import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
+import {FormBuilder, FormGroup, Validators, FormArray} from '@angular/forms';
 import {
   MediaTemplate,
   IndustryEnum,

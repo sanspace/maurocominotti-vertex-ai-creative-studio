@@ -60,7 +60,9 @@
     cursor: pointer;
     width: 150px;
     flex-shrink: 0;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition:
+      transform 0.2s ease-in-out,
+      box-shadow 0.2s ease-in-out;
 
     &.selected {
       transform: scale(1.05);
@@ -115,7 +117,9 @@
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.3s, background-color 0.3s;
+  transition:
+    border-color 0.3s,
+    background-color 0.3s;
   display: flex;
   flex-direction: column;
   align-items: center;

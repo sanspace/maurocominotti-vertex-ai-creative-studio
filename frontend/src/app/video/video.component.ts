@@ -252,8 +252,7 @@ export class VideoComponent implements AfterViewInit {
     this.selectedGenerationModel = model.viewValue;
 
     const isVeo2 =
-      model.value.includes('veo-2.0') &&
-      model.value !== 'veo-2.0-generate-exp';
+      model.value.includes('veo-2.0') && model.value !== 'veo-2.0-generate-exp';
     const isVeo2Exp = model.value === 'veo-2.0-generate-exp';
 
     if (isVeo2) {

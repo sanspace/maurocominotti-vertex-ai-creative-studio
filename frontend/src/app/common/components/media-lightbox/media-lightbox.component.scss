@@ -70,7 +70,9 @@
   border-radius: 4px;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   &:hover {
     background-color: #4a4a4a;
@@ -199,7 +201,9 @@
       border: none;
       text-align: left;
       cursor: pointer;
-      transition: background-color 0.2s, color 0.2s;
+      transition:
+        background-color 0.2s,
+        color 0.2s;
 
       &:hover:not([disabled]) {
         background-color: #555;
@@ -242,17 +246,17 @@
       }
     }
 
-      svg,
-      mat-icon {
-        width: 24px;
-        height: 24px;
-        font-size: 24px;
-        flex-shrink: 0;
-      }
+    svg,
+    mat-icon {
+      width: 24px;
+      height: 24px;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
 
-      span {
-        font-weight: 500;
-      }
+    span {
+      font-weight: 500;
+    }
   }
 
   .share-menu-list li.coming-soon.youtube-highlight button {

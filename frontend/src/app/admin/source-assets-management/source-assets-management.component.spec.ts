@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { SourceAssetsManagementComponent } from './source-assets-management.component';
+import {SourceAssetsManagementComponent} from './source-assets-management.component';
 
 describe('SourceAssetsManagementComponent', () => {
   let component: SourceAssetsManagementComponent;
@@ -24,9 +24,8 @@ describe('SourceAssetsManagementComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [SourceAssetsManagementComponent]
-    })
-    .compileComponents();
+      declarations: [SourceAssetsManagementComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(SourceAssetsManagementComponent);
     component = fixture.componentInstance;

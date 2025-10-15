@@ -20,7 +20,10 @@ import {BehaviorSubject, Observable, of} from 'rxjs';
 import {tap, catchError, finalize, shareReplay} from 'rxjs/operators';
 import {environment} from '../../../environments/environment';
 import {WorkspaceStateService} from '../../services/workspace/workspace-state.service';
-import {AssetScopeEnum, AssetTypeEnum} from '../../admin/source-assets-management/source-asset.model';
+import {
+  AssetScopeEnum,
+  AssetTypeEnum,
+} from '../../admin/source-assets-management/source-asset.model';
 
 export interface SourceAssetResponseDto {
   id: string;
@@ -66,7 +69,10 @@ export class SourceAssetService {
     PaginationResponseDto<SourceAssetResponseDto>
   > | null = null;
 
-  constructor(private http: HttpClient, private workspaceStateService: WorkspaceStateService,) {}
+  constructor(
+    private http: HttpClient,
+    private workspaceStateService: WorkspaceStateService,
+  ) {}
 
   get assets(): Observable<SourceAssetResponseDto[]> {
     return this.assets$.asObservable();
@@ -99,7 +105,7 @@ export class SourceAssetService {
       aspectRatio?: string;
       assetType?: AssetTypeEnum;
       scope?: AssetScopeEnum; // 1. Add scope to the options
-    } = {}
+    } = {},
   ): Observable<SourceAssetResponseDto> {
     const formData = new FormData();
     formData.append('file', file);
@@ -123,7 +129,7 @@ export class SourceAssetService {
     return this.http
       .post<SourceAssetResponseDto>(
         `${environment.backendURL}/source_assets/upload`,
-        formData
+        formData,
       )
       .pipe(tap(() => this.refreshAssets()));
   }

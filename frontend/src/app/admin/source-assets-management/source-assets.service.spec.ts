@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { TestBed } from '@angular/core/testing';
+import {TestBed} from '@angular/core/testing';
 
-import { SourceAssetsService } from './source-assets.service';
+import {SourceAssetsService} from './source-assets.service';
 
 describe('SourceAssetsService', () => {
   let service: SourceAssetsService;

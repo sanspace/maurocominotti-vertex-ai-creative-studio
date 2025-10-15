@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 
-import { ImageCropperDialogComponent } from './image-cropper-dialog.component';
+import {ImageCropperDialogComponent} from './image-cropper-dialog.component';
 
 describe('ImageCropperDialogComponent', () => {
   let component: ImageCropperDialogComponent;
@@ -24,9 +24,8 @@ describe('ImageCropperDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ImageCropperDialogComponent]
-    })
-    .compileComponents();
+      declarations: [ImageCropperDialogComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ImageCropperDialogComponent);
     component = fixture.componentInstance;

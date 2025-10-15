@@ -23,7 +23,10 @@ import {WorkspaceService} from '../../../services/workspace/workspace.service';
 import {WorkspaceStateService} from '../../../services/workspace/workspace-state.service';
 import {CreateWorkspaceModalComponent} from '../create-workspace-modal/create-workspace-modal.component';
 import {ConfirmationDialogComponent} from '../confirmation-dialog/confirmation-dialog.component';
-import {handleErrorSnackbar, handleSuccessSnackbar} from '../../../utils/handleErrorSnackbar';
+import {
+  handleErrorSnackbar,
+  handleSuccessSnackbar,
+} from '../../../utils/handleErrorSnackbar';
 import {
   InviteUserData,
   InviteUserModalComponent,
@@ -186,8 +189,7 @@ export class WorkspaceSwitcherComponent implements OnInit {
   }
 
   get canAccessBrandGuidelines(): boolean {
-    if (!this.currentUser || !this.activeWorkspace)
-      return false;
+    if (!this.currentUser || !this.activeWorkspace) return false;
 
     // Anyone can access guidelines on a public workspace.
     if (this.activeWorkspace.scope === WorkspaceScope.PUBLIC) return true;

@@ -31,7 +31,9 @@
       />
       <span class="ml-4" *ngIf="fileName">{{ fileName }}</span>
       <mat-error
-        *ngIf="form.get('file')?.hasError('required') && form.get('file')?.touched"
+        *ngIf="
+          form.get('file')?.hasError('required') && form.get('file')?.touched
+        "
       >
         A file is required.
       </mat-error>
@@ -72,11 +74,7 @@
     (click)="onUpload()"
     [disabled]="!form.valid || isUploading"
   >
-    <mat-spinner
-      *ngIf="isUploading"
-      [diameter]="20"
-      class="mr-2"
-    ></mat-spinner>
+    <mat-spinner *ngIf="isUploading" [diameter]="20" class="mr-2"></mat-spinner>
 
     <span *ngIf="!isUploading">Upload</span>
   </button>

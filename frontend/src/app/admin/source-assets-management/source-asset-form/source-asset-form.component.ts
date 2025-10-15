@@ -17,7 +17,11 @@
 import {Component, Inject, OnInit} from '@angular/core';
 import {MAT_DIALOG_DATA, MatDialogRef} from '@angular/material/dialog';
 import {FormBuilder, FormGroup, Validators} from '@angular/forms';
-import {SourceAsset, AssetTypeEnum, AssetScopeEnum} from '../source-asset.model';
+import {
+  SourceAsset,
+  AssetTypeEnum,
+  AssetScopeEnum,
+} from '../source-asset.model';
 
 @Component({
   selector: 'app-source-asset-form',
