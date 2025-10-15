@@ -47,14 +47,16 @@ export class BrandGuidelineService {
   constructor(private http: HttpClient) {}
 
   createBrandGuideline(formData: FormData): Observable<BrandGuidelineModel> {
-    return this.http.post<BrandGuidelineModel>(this.apiUrl, formData).pipe(
-      tap(initialJob => {
-        this.activeBrandGuidelineJobSubject.next(initialJob);
-        if (initialJob.status === JobStatus.PROCESSING) {
-          this.pollBrandGuidelineJob(initialJob.id);
-        }
-      }),
-    );
+    return this.http
+      .post<BrandGuidelineModel>(`${this.apiUrl}/upload`, formData)
+      .pipe(
+        tap(initialJob => {
+          this.activeBrandGuidelineJobSubject.next(initialJob);
+          if (initialJob.status === JobStatus.PROCESSING) {
+            this.pollBrandGuidelineJob(initialJob.id);
+          }
+        }),
+      );
   }
 
   /**
@@ -81,7 +83,7 @@ export class BrandGuidelineService {
   }
 
   private pollBrandGuidelineJob(jobId: string) {
-    const pollInterval = 10000; // Poll every 5 seconds
+    const pollInterval = 30000; // Poll every 30 seconds
     const maxAttempts = 120; // Poll for up to 10 minutes
 
     this.stopPolling();

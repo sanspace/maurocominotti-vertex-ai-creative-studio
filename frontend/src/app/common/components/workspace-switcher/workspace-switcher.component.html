@@ -52,8 +52,7 @@
         mat-menu-item
         [disabled]="
           !canEditBrandGuidelines ||
-          (brandGuidelineService.activeBrandGuidelineJob$ | async)?.status ===
-            JobStatus.PROCESSING
+          (brandGuidelineService.activeBrandGuidelineJob$ | async)?.status === JobStatus.PROCESSING
         "
         (click)="openBrandGuidelinesDialog($event)"
       >
