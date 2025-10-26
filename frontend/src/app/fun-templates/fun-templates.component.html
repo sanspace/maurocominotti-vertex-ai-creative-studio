@@ -376,7 +376,7 @@
                 <div
                   *ngFor="let sourceAsset of template.enrichedSourceAssets"
                   class="source-asset-item"
-                  [matTooltip]="'Input: ' + sourceAsset.role"
+                  [matTooltip]="'Input Type: ' + sourceAsset.role"
                   (click)="openSourceAssetInLightbox(sourceAsset, $event)"
                 >
                   <img

@@ -210,6 +210,7 @@ export class FunTemplatesComponent implements OnInit, OnDestroy {
       {
         state: {
           templateParams: template.generationParameters,
+          sourceAssets: template.enrichedSourceAssets,
         },
       },
     );
