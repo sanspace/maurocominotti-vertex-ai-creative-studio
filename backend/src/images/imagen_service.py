@@ -44,7 +44,6 @@ from src.common.storage_service import GcsService
 from src.config.config_service import config_service
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
-from src.images.dto.edit_imagen_dto import EditImagenDto
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.dto.vto_dto import VtoDto, VtoInputLink
 from src.images.repository.media_item_repository import MediaRepository
@@ -685,120 +684,6 @@ class ImagenService:
 
         except Exception as e:
             logger.error(f"Image generation API call failed: {e}")
-            raise
-
-    def recontextualize_product_in_scene(
-        self, image_uris_list: list[str], prompt: str, sample_count: int
-    ) -> list[str]:
-        """Recontextualizes a product in a scene and returns a list of GCS URIs."""
-        client_options = {
-            "api_endpoint": f"{self.cfg.LOCATION}-aiplatform.googleapis.com"
-        }
-        client = aiplatform.gapic.PredictionServiceClient(
-            client_options=client_options
-        )
-
-        model_endpoint = f"projects/{self.cfg.PROJECT_ID}/locations/{self.cfg.LOCATION}/publishers/google/models/{self.cfg.MODEL_IMAGEN_PRODUCT_RECONTEXT}"
-
-        instance = {"productImages": []}
-        for product_image_uri in image_uris_list:
-            product_image = {"image": {"gcsUri": product_image_uri}}
-            instance["productImages"].append(product_image)
-
-        if prompt:
-            instance["prompt"] = prompt  # type: ignore
-
-        parameters = {"sampleCount": sample_count}
-
-        response = client.predict(
-            endpoint=model_endpoint, instances=[instance], parameters=parameters  # type: ignore
-        )
-
-        gcs_uris = []
-        for prediction in response.predictions:
-            if prediction.get("bytesBase64Encoded"):  # type: ignore
-                encoded_mask_string = prediction["bytesBase64Encoded"]  # type: ignore
-                mask_bytes = base64.b64decode(encoded_mask_string)
-
-                gcs_uri = self.gcs_service.store_to_gcs(
-                    folder="recontext_results",
-                    file_name=f"recontext_result_{uuid.uuid4()}.png",
-                    mime_type="image/png",
-                    contents=mask_bytes,
-                    decode=False,
-                )
-                gcs_uris.append(gcs_uri)
-
-        return gcs_uris
-
-    def edit_image(
-        self, request_dto: EditImagenDto
-    ) -> list[ImageGenerationResult]:
-        """Edits an image using the Google GenAI client."""
-        client = GenAIModelSetup.init()
-        gcs_output_directory = (
-            f"gs://{self.cfg.IMAGE_BUCKET}/{self.cfg.IMAGEN_EDITED_SUBFOLDER}"
-        )
-
-        raw_ref_image = types.RawReferenceImage(
-            reference_id=1,
-            reference_image=types.Image(
-                image_bytes=request_dto.user_image,
-            ),
-        )
-
-        mask_ref_image = types.MaskReferenceImage(
-            reference_id=2,
-            config=types.MaskReferenceConfig(
-                mask_mode=request_dto.mask_mode,
-                mask_dilation=0,
-            ),
-        )
-
-        try:
-            logger.info(
-                f"models.image_models.edit_image: Requesting {request_dto.number_of_media} edited images for model {request_dto.generation_model} with output to {gcs_output_directory}"
-            )
-            images_imagen_response = client.models.edit_image(
-                model=request_dto.generation_model,
-                prompt=request_dto.prompt,
-                reference_images=[raw_ref_image, mask_ref_image],  # type: ignore
-                config=types.EditImageConfig(
-                    edit_mode=request_dto.edit_mode,
-                    number_of_images=request_dto.number_of_media,
-                    include_rai_reason=True,
-                    output_gcs_uri=gcs_output_directory,
-                    output_mime_type="image/jpeg",
-                ),
-            )
-
-            response_imagen = []
-            for generated_image in (
-                images_imagen_response.generated_images or []
-            ):
-                if generated_image.image:
-                    response_imagen.append(
-                        ImageGenerationResult(
-                            enhanced_prompt=generated_image.enhanced_prompt
-                            or "",
-                            rai_filtered_reason=generated_image.rai_filtered_reason,
-                            image=CustomImagenResult(
-                                gcs_uri=generated_image.image.gcs_uri,
-                                presigned_url=self.iam_signer_credentials.generate_presigned_url(
-                                    generated_image.image.gcs_uri
-                                ),
-                                encoded_image="",
-                                mime_type=generated_image.image.mime_type or "",
-                            ),
-                        )
-                    )
-
-            logger.info(
-                f"Number of images created by Imagen: {len(response_imagen)}"
-            )
-            return response_imagen
-        except Exception as e:
-            logger.error(f"API call failed: {e}")
             raise
 
     async def upscale_image(
