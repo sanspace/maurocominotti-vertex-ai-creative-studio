@@ -21,6 +21,11 @@ from fastapi import APIRouter, Depends
 
 from src.users.user_model import UserRoleEnum
 from src.auth.auth_guard import RoleChecker
+from src.audios.dto.create_lyria_dto import CreateLyriaDto
+from src.audios.lyria_service import LyriaService
+from src.auth.auth_guard import get_current_user
+from src.galleries.dto.gallery_response_dto import MediaItemResponse
+from src.users.user_model import UserModel
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +44,15 @@ router = APIRouter(
         )
     ],
 )
+
+
+@router.post("/lyria", response_model=MediaItemResponse)
+async def generate_audio(
+    create_lyria_dto: CreateLyriaDto,
+    current_user: UserModel = Depends(get_current_user),
+):
+    lyria_service = LyriaService()
+    return await lyria_service.generate_audio(create_lyria_dto, current_user)
 
 
 @router.post("/transcribe")
