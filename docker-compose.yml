@@ -22,6 +22,9 @@ services:
       - "8080:8080"
     restart: unless-stopped
 
+    environment:
+     - GOOGLE_CLOUD_PROJECT=augmented-atom-477109-s5
+
     env_file:
       - ./backend/.env # Update as needed, for ex to './backend/.local.env'
 
