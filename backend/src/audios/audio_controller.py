@@ -27,8 +27,8 @@ from src.users.user_model import UserModel, UserRoleEnum
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/api/audio",
-    tags=["Audio - STT (Chirp)"],
+    prefix="/api/audios",
+    tags=["Audio Generation - Chirp 3 HD, Lyria, Google TTS"],
     responses={404: {"description": "Not found"}},
     dependencies=[
         Depends(
