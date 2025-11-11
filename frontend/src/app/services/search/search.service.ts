@@ -82,6 +82,7 @@ export class SearchService {
    */
   startVeoGeneration(searchRequest: VeoRequest): Observable<MediaItem> {
     const searchURL = `${environment.backendURL}/videos/generate-videos`;
+    console.log(searchRequest)
 
     return this.http.post<MediaItem>(searchURL, searchRequest).pipe(
       // The 'tap' operator lets us perform a side-effect (like starting polling)

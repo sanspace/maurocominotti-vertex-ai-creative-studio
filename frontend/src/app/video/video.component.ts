@@ -20,6 +20,7 @@ import {
   OnDestroy,
   OnInit,
   AfterViewInit,
+  signal,
 } from '@angular/core';
 import {MatIconRegistry} from '@angular/material/icon';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
@@ -1255,5 +1256,83 @@ export class VideoComponent implements AfterViewInit {
       this.handleReferenceImageAdded();
     }
     this.updateModeAndNotify();
+  }
+
+  promptText = signal<string>('');
+  
+  // Menu open/close states
+  isModeMenuOpen = signal<boolean>(false);
+  isSettingsMenuOpen = signal<boolean>(false);
+  isExpandMenuOpen = signal<boolean>(false);
+  isSettingsDropdownOpen = signal<'aspect' | 'outputs' | 'model' | null>(null);
+
+  // Selected values
+  selectedMode = signal<string>('Text to Video');
+  selectedNewAspectRatio = signal<string>('Landscape (16:9)');
+  selectedOutputs = signal<number>(2);
+  selectedModel = signal<string>('Veo 3.1 - Fast');
+  selectedPreset = signal<string>('');
+
+
+  // --- Event Handlers ---
+
+  onPromptInput(event: Event) {
+    const target = event.target as HTMLTextAreaElement;
+    this.promptText.set(target.value);
+  }
+
+  // --- Menu Toggles ---
+  
+  toggleModeMenu() {
+    this.isModeMenuOpen.set(!this.isModeMenuOpen());
+    this.isSettingsMenuOpen.set(false);
+    this.isExpandMenuOpen.set(false);
+  }
+  
+  toggleSettingsMenu() {
+    this.isSettingsMenuOpen.set(!this.isSettingsMenuOpen());
+    this.isModeMenuOpen.set(false);
+    this.isExpandMenuOpen.set(false);
+    this.isSettingsDropdownOpen.set(null); // Close inner dropdowns
+  }
+
+  toggleExpandMenu() {
+    this.isExpandMenuOpen.set(!this.isExpandMenuOpen());
+    this.isModeMenuOpen.set(false);
+    this.isSettingsMenuOpen.set(false);
+  }
+
+  // --- Select Handlers ---
+
+  selectMode(mode: string) {
+    this.selectedMode.set(mode);
+    this.isModeMenuOpen.set(false);
+    console.log('Selected Mode:', mode);
+  }
+
+  selectNewAspectRatio(ratio: string) {
+    this.selectedNewAspectRatio.set(ratio);
+    this.isSettingsDropdownOpen.set(null);
+    console.log('Selected Aspect Ratio:', ratio);
+  }
+
+  selectOutputs(count: number) {
+    this.selectedOutputs.set(count);
+    this.isSettingsDropdownOpen.set(null);
+    console.log('Selected Outputs:', count);
+  }
+
+  selectNewModel(model: string) {
+    this.selectedModel.set(model);
+    this.isSettingsDropdownOpen.set(null);
+    console.log('Selected Model:', model);
+  }
+
+  selectPreset(preset: string) {
+    this.selectedPreset.set(preset);
+    this.isExpandMenuOpen.set(false);
+    console.log('Selected Preset:', preset);
+    // You could also append this to the prompt, e.g.:
+    // this.promptText.set(this.promptText() + ' ' + preset);
   }
 }
