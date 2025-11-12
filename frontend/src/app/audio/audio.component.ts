@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { AudioService, CreateAudioDto, GenerationModelEnum } from '../services/audio/audio.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -38,6 +38,13 @@ export class AudioComponent {
   // TTS & Chirp Specific Inputs
   selectedLanguage = 'en-US';
   selectedVoice = 'en-US-Studio-M'; // Default valid voice
+
+  // --- Audio Player State ---
+  @ViewChild('audioPlayer') audioPlayerRef!: ElementRef<HTMLAudioElement>;
+  isPlaying = false;
+  currentTime = '0:00';
+  duration = '0:00';
+  progressValue = 0;
 
   languages = [
     { code: 'ar-XA', name: 'Arabic' },
@@ -230,5 +237,51 @@ export class AudioComponent {
           console.error('Generation failed:', error);
         },
       });
+  }
+
+  // --- Player Logic ---
+  togglePlay() {
+    const audio = this.audioPlayerRef.nativeElement;
+    if (audio.paused) {
+      audio.play();
+      this.isPlaying = true;
+    } else {
+      audio.pause();
+      this.isPlaying = false;
+    }
+  }
+
+  onTimeUpdate() {
+    const audio = this.audioPlayerRef.nativeElement;
+    if (audio.duration) {
+      this.progressValue = (audio.currentTime / audio.duration) * 100;
+      this.currentTime = this.formatTime(audio.currentTime);
+    }
+  }
+
+  seek(value: number) {
+    const audio = this.audioPlayerRef.nativeElement;
+    if (audio.duration) {
+      audio.currentTime = (value / 100) * audio.duration;
+    }
+  }
+
+  onAudioLoaded() {
+    const audio = this.audioPlayerRef.nativeElement;
+    this.isPlaying = false;
+    this.duration = this.formatTime(audio.duration);
+  }
+
+  onAudioEnded() {
+    this.isPlaying = false;
+    this.progressValue = 0;
+    this.currentTime = '0:00';
+  }
+
+  private formatTime(seconds: number): string {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   }
 }

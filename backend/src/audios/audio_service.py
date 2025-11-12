@@ -18,7 +18,7 @@ import io
 import logging
 import time
 import wave
-from typing import Any, Dict, List, MutableSequence
+from typing import Any, Dict, List, MutableSequence, cast
 
 import vertexai
 from google.cloud import aiplatform, texttospeech
@@ -64,12 +64,14 @@ class AudioService:
         self.media_repo = MediaRepository()
         self.gcs_service = GcsService()
         self.cfg = config_service
+
+        # Client for Gemini (GenAI)
         self.client = GenAIModelSetup.init()
 
-        # Initialize Standard TTS Client
+        # Client for Standard TTS
         self.tts_client = texttospeech.TextToSpeechClient()
 
-        # Initialize Vertex AI for Gemini
+        # Initialize Vertex AI (Global)
         vertexai.init(project=self.cfg.PROJECT_ID, location=self.cfg.LOCATION)
 
     async def generate_audio(
@@ -98,16 +100,17 @@ class AudioService:
         self, request_dto: CreateAudioDto, user: UserModel
     ) -> MediaItemResponse | None:
         """
-        Handles logic for Gemini Models which generate audio natively via LLM prompts.
-        Ref: https://ai.google.dev/gemini-api/docs/speech-generation
+        Handles logic for Gemini Models (LLM Audio Generation).
+        Fixes the "0 second duration" bug by adding a WAV header.
         """
         start_time = time.monotonic()
-
-        # Map the Enum to the actual Model ID string (e.g., "gemini-2.0-flash-exp")
         model_id = request_dto.model.value
+        logger.info(
+            f"Generating Gemini Audio. Model: {model_id}, Voice: {request_dto.voice_name}"
+        )
 
         try:
-            # 1. Call the API
+            # 1. Call GenAI API
             response = self.client.models.generate_content(
                 model=model_id,
                 contents=[f"Please read the following text: \n{request_dto.prompt}"],
@@ -124,16 +127,16 @@ class AudioService:
                 )
             )
 
-            # 2. Extract Raw PCM Bytes
+            # 2. Validate Response
             if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
                 raise ValueError("Gemini did not return any content.")
 
             part = response.candidates[0].content.parts[0]
 
+            # 3. Extract Raw PCM
             pcm_bytes = None
             if hasattr(part, 'inline_data') and part.inline_data:
                 pcm_bytes = part.inline_data.data
-                # Decode if it comes base64 encoded (common in JSON responses)
                 if isinstance(pcm_bytes, str):
                     pcm_bytes = base64.b64decode(pcm_bytes)
             else:
@@ -142,31 +145,29 @@ class AudioService:
             if not pcm_bytes:
                 raise ValueError("No audio content generated.")
 
-            # 3. Convert Raw PCM to WAV (Add Header)
+            # 4. Convert Raw PCM to WAV (Add RIFF Header)
             # Gemini returns "audio/L16;codec=pcm;rate=24000"
-            # L16 = 16-bit (2 bytes), rate=24000 Hz, Mono (1 channel)
             wav_buffer = io.BytesIO()
             with wave.open(wav_buffer, 'wb') as wav_file:
                 wav_file.setnchannels(1)      # Mono
-                wav_file.setsampwidth(2)      # 16-bit = 2 bytes
+                wav_file.setsampwidth(2)  # 16-bit
                 wav_file.setframerate(24000)  # 24kHz
                 wav_file.writeframes(pcm_bytes)
 
             final_wav_bytes = wav_buffer.getvalue()
 
-            # 4. Save and Finalize
+            # 5. Save to GCS
             file_name = f"gemini_audio_{request_dto.model.value}_{int(time.time())}_{user.id[:4]}.wav"
-
             gcs_uri = self.gcs_service.store_to_gcs(
                 folder="gemini_audio",
                 file_name=file_name,
                 mime_type=MimeTypeEnum.AUDIO_WAV,
-                contents=final_wav_bytes, # Pass the WAV bytes, not raw PCM
+                contents=final_wav_bytes,
                 decode=False,
             )
 
             if not gcs_uri:
-                raise ValueError("GCS URI not generated for Audio.")
+                raise ValueError("Failed to generate or upload Gemini audio.")
 
             return await self._finalize_response(
                 user, request_dto, [gcs_uri], start_time, MimeTypeEnum.AUDIO_WAV
@@ -183,15 +184,18 @@ class AudioService:
         Handles logic for Chirp and Standard Google Cloud TTS voices.
         """
         start_time = time.monotonic()
+        logger.info(
+            f"Generating Standard TTS. Model: {request_dto.model}, Voice: {request_dto.voice_name}"
+        )
 
         try:
-            synthesis_input = texttospeech.SynthesisInput(text=request_dto.prompt)
-
+            synthesis_input = texttospeech.SynthesisInput(
+                text=request_dto.prompt
+            )
             voice_params = texttospeech.VoiceSelectionParams(
                 language_code=request_dto.language_code,
-                name=request_dto.voice_name
+                name=request_dto.voice_name,
             )
-
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.LINEAR16,
             )
@@ -203,10 +207,6 @@ class AudioService:
                 audio_config=audio_config
             )
 
-            # Note: Standard TTS API returns a WAV header automatically if format is LINEAR16
-            # However, sometimes it is raw linear. Usually 'audio_content' contains the header
-            # if you asked for MP3, but for LINEAR16 it might be raw.
-            # Google Cloud TTS usually returns valid WAV files for LINEAR16 requests.
             audio_bytes = response.audio_content
             file_name = f"tts_{request_dto.model.value}_{int(time.time())}_{user.id[:4]}.wav"
 
@@ -219,7 +219,7 @@ class AudioService:
             )
 
             if not gcs_uri:
-                raise ValueError("GCS URI not generated for Audio.")
+                raise ValueError("Failed to generate or upload Gemini audio.")
 
             return await self._finalize_response(
                 user, request_dto, [gcs_uri], start_time, MimeTypeEnum.AUDIO_WAV
@@ -233,22 +233,29 @@ class AudioService:
         self, request_dto: CreateAudioDto, user: UserModel
     ) -> MediaItemResponse | None:
         """
-        Handles logic specifically for Google DeepMind Lyria (Music).
+        Handles logic for Lyria using the PredictionService (Request/Response).
         """
         start_time = time.monotonic()
 
+        # FIX: Lyria is typically hosted in us-central1.
+        # Even if your config is different, we force this for the Lyria client.
+        lyria_location = "us-central1"
+
         client_options = {
-            "api_endpoint": f"{self.cfg.LOCATION}-aiplatform.googleapis.com"
+            "api_endpoint": f"{lyria_location}-aiplatform.googleapis.com"
         }
+
+        # Create specific client for Lyria
         client = aiplatform.gapic.PredictionServiceClient(
             client_options=client_options
         )
 
-        # Strong Typing for Lyria (Vertex Prediction)
+        # 1. Prepare Parameters
         parameters_dict = {"sampleCount": request_dto.sample_count}
         parameters_value = struct_pb2.Value()
         json_format.ParseDict(parameters_dict, parameters_value)
 
+        # 2. Prepare Instance
         instance_dict: Dict[str, Any] = {"prompt": request_dto.prompt}
         if request_dto.negative_prompt:
             instance_dict["negative_prompt"] = request_dto.negative_prompt
@@ -260,38 +267,53 @@ class AudioService:
         instances: MutableSequence[struct_pb2.Value] = [instance_value]
 
         try:
+            # 3. Call Prediction API
+            # FIX: Used 'global' in the resource path, but 'us-central1' in the api_endpoint
             response = await asyncio.to_thread(
                 client.predict,
-                endpoint=f"projects/{self.cfg.PROJECT_ID}/locations/{self.cfg.LOCATION}/publishers/google/models/lyria-002",
+                endpoint=f"projects/{self.cfg.PROJECT_ID}/locations/global/publishers/google/models/lyria-002",
                 instances=instances,
                 parameters=parameters_value,
             )
 
             if not response.predictions:
-                return None
+                raise ValueError("Lyria returned no predictions.")
 
             permanent_gcs_uris: List[str] = []
+
             for prediction in response.predictions:
-                # FIX 1: Convert Protobuf Value to Python Dict to fix 'get' error
-                prediction_dict = json_format.MessageToDict(prediction)
+                # --- FIX: STRICT TYPING ---
+                # Use cast to satisfy Pylance that 'prediction' is a dictionary-like object.
+                # At runtime, Vertex AI returns a MapComposite which is valid to cast to Dict.
+                prediction_map = cast(Dict[str, Any], prediction)
 
-                audio_content = prediction_dict.get("bytesBase64Encoded")
+                audio_b64 = prediction_map.get("bytesBase64Encoded")
 
-                if audio_content:
-                    audio_bytes = base64.b64decode(audio_content)
-                    file_name = f"lyria_audio_{int(time.time())}_{user.id[:4]}.wav"
+                if not audio_b64:
+                    # Error handling if the payload contains an error structure
+                    if prediction_map.get("error"):
+                        logger.error(
+                            f"Lyria Payload Error: {prediction_map.get('error')}"
+                        )
+                    continue
 
-                    gcs_uri = self.gcs_service.store_to_gcs(
-                        folder="lyria_audio",
-                        file_name=file_name,
-                        mime_type=MimeTypeEnum.AUDIO_WAV,
-                        contents=audio_bytes,
-                        decode=False,
-                    )
+                audio_bytes = base64.b64decode(audio_b64)
+                file_name = f"lyria_music_{int(time.time())}_{user.id[:4]}.wav"
 
-                    # FIX 2: Check if gcs_uri is not None before appending to fix type error
-                    if gcs_uri is not None:
-                        permanent_gcs_uris.append(gcs_uri)
+                # 5. Save to GCS
+                gcs_uri = self.gcs_service.store_to_gcs(
+                    folder="lyria_audio",
+                    file_name=file_name,
+                    mime_type=MimeTypeEnum.AUDIO_WAV,
+                    contents=audio_bytes,
+                    decode=False,
+                )
+
+                if gcs_uri:
+                    permanent_gcs_uris.append(gcs_uri)
+
+            if not permanent_gcs_uris:
+                raise ValueError("Failed to generate or upload Lyria audio.")
 
             return await self._finalize_response(
                 user, request_dto, permanent_gcs_uris, start_time, MimeTypeEnum.AUDIO_WAV

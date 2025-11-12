@@ -1,33 +1,3 @@
-.lyria-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 600px;
-}
-
-mat-form-field {
-  width: 100%;
-}
-
-button {
-  margin-top: 20px;
-}
-
-.audio-player {
-  margin-top: 20px;
-  width: 100%;
-  max-width: 600px;
-}
-
-
-
 // 1. Video Background Setup
 .video-background {
     position: fixed;
@@ -50,7 +20,7 @@ button {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.5); // Darken video so text is readable
+        background: rgba(0, 0, 0, 0.5);
     }
 }
 
@@ -59,7 +29,7 @@ button {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; // Push controls to bottom
+    justify-content: flex-end;
     padding: 2rem;
     box-sizing: border-box;
     color: white;
@@ -67,7 +37,7 @@ button {
 
 .header-section {
     position: absolute;
-    top: 30%;
+    top: 20%;
     left: 50%;
     transform: translateX(-50%);
     text-align: center;
@@ -79,29 +49,81 @@ button {
     h1 {
         font-size: 3rem;
         font-weight: 400;
-        margin-bottom: 0.5rem;
+        margin: 0;
         text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    }
-
-    p {
-        font-size: 1.2rem;
-        opacity: 0.9;
     }
 }
 
+// 3. CUSTOM AUDIO PLAYER STYLES
 .result-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 2rem;
+    margin-bottom: 20vh;
+    width: 100%;
+    z-index: 10;
+}
 
-    .generated-player {
-        width: 500px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        border-radius: 30px;
+.custom-player {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 30px;
+    border-radius: 50px; // Pill shape
+    width: 600px;
+
+    // Glassmorphism
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+
+    .play-btn {
+        color: white;
+        transform: scale(1.1);
+        transition: transform 0.2s, color 0.2s;
+        padding: 0;
+
+        &:hover {
+            transform: scale(1.2);
+            color: #a0c4ff; // Light blue hover
+        }
+
+        mat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 40px;
+        }
+    }
+
+    .time-text {
+        color: rgba(255, 255, 255, 0.9);
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.9rem;
+        min-width: 45px;
+        text-align: center;
+    }
+
+    .custom-slider {
+        flex: 1;
+
+        // Force slider to look white/glassy
+        ::ng-deep {
+            .mdc-slider__track--active_fill {
+                border-color: white !important;
+            }
+            .mdc-slider__track--inactive {
+                background-color: rgba(255, 255, 255, 0.3) !important;
+            }
+            .mdc-slider__thumb-knob {
+                background-color: white !important;
+                border-color: white !important;
+            }
+        }
     }
 }
 
-// 3. Control Panel (Glassmorphism)
+// 4. Control Panel (Glassmorphism)
 .control-panel {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(15px);
@@ -118,12 +140,10 @@ button {
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 
     &.glass-effect {
-        // Ensures inputs inside look good on dark bg
         ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-            display: none; // Hide hint space for compact design
+            display: none;
         }
 
-        // Customize Material Inputs for dark theme overlay
         ::ng-deep .mat-mdc-form-field {
             background: rgba(0,0,0,0.3);
             border-radius: 4px;
@@ -176,74 +196,9 @@ button {
     height: 48px;
 }
 
-// Style for the "Add Voice" dropdown item
 .add-voice-option {
-    color: #4285f4; // Google Blue
+    color: #4285f4;
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-
-
-// Audio Media Player Custom Style
-.result-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 2rem;
-    width: 100%;
-    z-index: 10; // Ensure it sits above video
-}
-
-.custom-player {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    padding: 12px 24px;
-    border-radius: 50px; // Pill shape
-    width: 600px;
-
-    // Glassmorphism (reusing your glass-effect or defining specific one)
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-
-    .play-btn {
-        color: white;
-        transform: scale(1.2);
-        transition: transform 0.2s;
-
-        &:hover {
-            transform: scale(1.3);
-            color: #aecbfa; // Light blue accent on hover
-        }
-    }
-
-    .time-text {
-        color: rgba(255, 255, 255, 0.9);
-        font-family: 'Roboto Mono', monospace; // Tech feel for numbers
-        font-size: 0.9rem;
-        min-width: 45px;
-        text-align: center;
-    }
-
-    .custom-slider {
-        flex: 1; // Take remaining space
-
-        // Override Angular Material Slider colors to be White
-        ::ng-deep {
-            .mdc-slider__track--active_fill {
-                border-color: white !important;
-            }
-            .mdc-slider__track--inactive {
-                background-color: rgba(255, 255, 255, 0.3) !important;
-            }
-            .mdc-slider__thumb-knob {
-                background-color: white !important;
-                border-color: white !important;
-            }
-        }
-    }
 }
