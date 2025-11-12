@@ -18,7 +18,7 @@ import io
 import logging
 import time
 import wave
-from typing import Any, Dict, List, MutableSequence, cast
+from typing import Any, Dict, List, MutableSequence, Optional, cast
 
 import vertexai
 from google.cloud import aiplatform, texttospeech
@@ -233,72 +233,68 @@ class AudioService:
         self, request_dto: CreateAudioDto, user: UserModel
     ) -> MediaItemResponse | None:
         """
-        Handles logic for Lyria using the PredictionService (Request/Response).
+        Handles logic for Lyria.
+        Implements manual parallelism to support sample_count > 1.
         """
         start_time = time.monotonic()
 
-        # FIX: Lyria is typically hosted in us-central1.
-        # Even if your config is different, we force this for the Lyria client.
+        # Force us-central1 for Lyria client
         lyria_location = "us-central1"
-
         client_options = {
             "api_endpoint": f"{lyria_location}-aiplatform.googleapis.com"
         }
-
-        # Create specific client for Lyria
         client = aiplatform.gapic.PredictionServiceClient(
             client_options=client_options
         )
 
-        # 1. Prepare Parameters
-        parameters_dict = {"sampleCount": request_dto.sample_count}
-        parameters_value = struct_pb2.Value()
-        json_format.ParseDict(parameters_dict, parameters_value)
+        # Define the single generation task
+        async def generate_single_sample(index: int) -> Optional[str]:
+            try:
+                # 1. Prepare Parameters (Force count=1 for individual call)
+                parameters_dict = {"sample_count": 1}
+                parameters_value = struct_pb2.Value()
+                json_format.ParseDict(parameters_dict, parameters_value)
 
-        # 2. Prepare Instance
-        instance_dict: Dict[str, Any] = {"prompt": request_dto.prompt}
-        if request_dto.negative_prompt:
-            instance_dict["negative_prompt"] = request_dto.negative_prompt
-        if request_dto.seed:
-            instance_dict["seed"] = request_dto.seed
+                # 2. Prepare Instance
+                instance_dict: Dict[str, Any] = {"prompt": request_dto.prompt}
+                if request_dto.negative_prompt:
+                    instance_dict["negative_prompt"] = (
+                        request_dto.negative_prompt
+                    )
+                # Pass seed if provided, otherwise let API randomize
+                if request_dto.seed:
+                    instance_dict["seed"] = request_dto.seed
 
-        instance_value = struct_pb2.Value()
-        json_format.ParseDict(instance_dict, instance_value)
-        instances: MutableSequence[struct_pb2.Value] = [instance_value]
+                instance_value = struct_pb2.Value()
+                json_format.ParseDict(instance_dict, instance_value)
+                instances: MutableSequence[struct_pb2.Value] = [instance_value]
 
-        try:
-            # 3. Call Prediction API
-            # FIX: Used 'global' in the resource path, but 'us-central1' in the api_endpoint
-            response = await asyncio.to_thread(
-                client.predict,
-                endpoint=f"projects/{self.cfg.PROJECT_ID}/locations/global/publishers/google/models/lyria-002",
-                instances=instances,
-                parameters=parameters_value,
-            )
+                # 3. Call API
+                response = await asyncio.to_thread(
+                    client.predict,
+                    endpoint=f"projects/{self.cfg.PROJECT_ID}/locations/global/publishers/google/models/lyria-002",
+                    instances=instances,
+                    parameters=parameters_value,
+                )
 
-            if not response.predictions:
-                raise ValueError("Lyria returned no predictions.")
+                if not response.predictions:
+                    return None
 
-            permanent_gcs_uris: List[str] = []
-
-            for prediction in response.predictions:
-                # --- FIX: STRICT TYPING ---
-                # Use cast to satisfy Pylance that 'prediction' is a dictionary-like object.
-                # At runtime, Vertex AI returns a MapComposite which is valid to cast to Dict.
+                # 4. Process Prediction
+                # We take the first one because we requested sample_count=1
+                prediction = response.predictions[0]
                 prediction_map = cast(Dict[str, Any], prediction)
-
                 audio_b64 = prediction_map.get("bytesBase64Encoded")
 
                 if not audio_b64:
-                    # Error handling if the payload contains an error structure
-                    if prediction_map.get("error"):
-                        logger.error(
-                            f"Lyria Payload Error: {prediction_map.get('error')}"
-                        )
-                    continue
+                    return None
 
                 audio_bytes = base64.b64decode(audio_b64)
-                file_name = f"lyria_music_{int(time.time())}_{user.id[:4]}.wav"
+
+                # Unique filename per sample
+                file_name = (
+                    f"lyria_music_{int(time.time())}_{user.id[:4]}_{index}.wav"
+                )
 
                 # 5. Save to GCS
                 gcs_uri = self.gcs_service.store_to_gcs(
@@ -308,20 +304,38 @@ class AudioService:
                     contents=audio_bytes,
                     decode=False,
                 )
+                return gcs_uri
 
-                if gcs_uri:
-                    permanent_gcs_uris.append(gcs_uri)
+            except Exception as e:
+                logger.error(f"Lyria generation attempt {index} failed: {e}")
+                return None
 
-            if not permanent_gcs_uris:
-                raise ValueError("Failed to generate or upload Lyria audio.")
+        # --- PARALLEL EXECUTION ---
+        logger.info(
+            f"Starting {request_dto.sample_count} parallel Lyria generations..."
+        )
 
-            return await self._finalize_response(
-                user, request_dto, permanent_gcs_uris, start_time, MimeTypeEnum.AUDIO_WAV
-            )
+        # Create a task for each requested sample
+        tasks = [
+            generate_single_sample(i) for i in range(request_dto.sample_count)
+        ]
 
-        except Exception as e:
-            logger.error(f"Lyria API call failed: {e}")
-            raise
+        # Run all tasks concurrently
+        results = await asyncio.gather(*tasks)
+
+        # Filter out failed attempts (None results)
+        permanent_gcs_uris = [uri for uri in results if uri is not None]
+
+        if not permanent_gcs_uris:
+            raise ValueError("Failed to generate any Lyria audio samples.")
+
+        return await self._finalize_response(
+            user,
+            request_dto,
+            permanent_gcs_uris,
+            start_time,
+            MimeTypeEnum.AUDIO_WAV,
+        )
 
     async def _finalize_response(
         self,

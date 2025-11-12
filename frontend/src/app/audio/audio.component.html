@@ -20,30 +20,17 @@
         </h1>
     </div>
 
-    <div class="result-container" *ngIf="audioUrl">
-        <div class="custom-player glass-effect">
-            <audio #audioPlayer
-                   [src]="audioUrl"
-                   (timeupdate)="onTimeUpdate()"
-                   (loadedmetadata)="onAudioLoaded()"
-                   (ended)="onAudioEnded()"
-                   hidden>
-            </audio>
-
-            <button mat-icon-button class="play-btn" (click)="togglePlay()">
-                <mat-icon class="!w-10 !h-10 !text-[40px] leading-[40px]">
-                    {{ isPlaying ? 'pause_circle' : 'play_circle' }}
-                </mat-icon>
-            </button>
-
-            <span class="time-text">{{ currentTime }}</span>
-
-            <mat-slider class="custom-slider" min="0" max="100" step="0.1">
-                <input matSliderThumb [value]="progressValue" (valueChange)="seek($event)">
-            </mat-slider>
-
-            <span class="time-text">{{ duration }}</span>
-        </div>
+    <div class="result-container" *ngIf="mediaItem">
+        <app-media-lightbox
+            [mediaItem]="mediaItem"
+            [initialIndex]="0"
+            [showDownloadButton]="true"
+            [showShareButton]="false"
+            [showEditButton]="false"
+            [showGenerateVideoButton]="false"
+            [showVtoButton]="false"
+            [showSeeMoreInfoButton]="false"
+        ></app-media-lightbox>
     </div>
 
     <div class="control-panel glass-effect">
@@ -78,7 +65,11 @@
 
                 <mat-form-field appearance="outline" class="short-field">
                     <mat-label>Results</mat-label>
-                    <input matInput type="number" [(ngModel)]="sampleCount" min="1" max="4">
+                    <mat-select [(ngModel)]="sampleCount">
+                        <mat-option *ngFor="let count of [1, 2, 3, 4]" [value]="count">
+                            {{ count }}
+                        </mat-option>
+                    </mat-select>
                 </mat-form-field>
             </ng-container>
 

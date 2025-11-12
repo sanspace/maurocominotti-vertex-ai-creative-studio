@@ -37,7 +37,7 @@
 
 .header-section {
     position: absolute;
-    top: 20%;
+    top: 25vh;
     left: 50%;
     transform: translateX(-50%);
     text-align: center;
@@ -58,7 +58,7 @@
 .result-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 20vh;
+    margin-bottom: 10vh;
     width: 100%;
     z-index: 10;
 }
