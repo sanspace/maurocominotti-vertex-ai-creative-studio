@@ -23,7 +23,7 @@ import {
   inject,
 } from '@angular/core';
 import {FormBuilder, Validators, FormGroup} from '@angular/forms';
-import {MediaItem} from '../common/models/media-item.model';
+import {JobStatus, MediaItem} from '../common/models/media-item.model';
 import {HttpClient} from '@angular/common/http';
 import {VtoInputLink, VtoRequest, VtoSourceMediaItemLink} from './vto.model';
 import {environment} from '../../environments/environment';
@@ -40,6 +40,7 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {finalize, Observable} from 'rxjs';
 import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
 import {NavigationExtras, Router} from '@angular/router';
+import {SearchService} from '../services/search/search.service';
 import {MatStepper} from '@angular/material/stepper';
 import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
@@ -85,6 +86,9 @@ export class VtoComponent implements OnInit, AfterViewInit {
   secondFormGroup: FormGroup;
 
   @ViewChild('stepper') stepper!: MatStepper;
+
+  activeVtoJob$: Observable<MediaItem | null>;
+  public readonly JobStatus = JobStatus; // Expose enum to template
 
   isLoading = false;
   imagenDocuments: MediaItem | null = null;
@@ -136,7 +140,9 @@ export class VtoComponent implements OnInit, AfterViewInit {
     public matIconRegistry: MatIconRegistry,
     private workspaceStateService: WorkspaceStateService,
     private sourceAssetService: SourceAssetService,
+    private searchService: SearchService,
   ) {
+    this.activeVtoJob$ = this.searchService.activeVtoJob$;
     this.matIconRegistry.addSvgIcon(
       'mobile-white-gemini-spark-icon',
       this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
@@ -236,6 +242,14 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadVtoAssets();
+
+    // Subscribe to activeVtoJob$ to keep imagenDocuments in sync
+    this.activeVtoJob$.subscribe(vtoJob => {
+      if (vtoJob && vtoJob.status === JobStatus.COMPLETED) {
+        this.previousResult = this.imagenDocuments;
+        this.imagenDocuments = vtoJob;
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -441,16 +455,13 @@ export class VtoComponent implements OnInit, AfterViewInit {
     if (this.selectedDress) payload.dressImage = this.selectedDress.inputLink;
     if (this.selectedShoes) payload.shoeImage = this.selectedShoes.inputLink;
 
-    this.http
-      .post<MediaItem>(
-        `${environment.backendURL}/images/generate-images-for-vto`,
-        payload,
-      )
+    this.searchService
+      .startVtoGeneration(payload)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: response => {
-          this.previousResult = this.imagenDocuments;
-          this.imagenDocuments = response;
+        next: (initialResponse: MediaItem) => {
+          console.log('VTO job started successfully:', initialResponse);
+          // UI will update via activeVtoJob$ observable
         },
         error: err => {
           handleErrorSnackbar(this._snackBar, err, 'Virtual Try-On');

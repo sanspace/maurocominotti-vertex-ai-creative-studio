@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi import status as Status
 
 from src.auth.auth_guard import RoleChecker, get_current_user
@@ -72,14 +72,25 @@ async def generate_images(
 @router.post("/generate-images-for-vto")
 async def generate_images_vto(
     image_request: VtoDto,
+    request: Request,
     service: ImagenService = Depends(),
     current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
-
+    """Start an async VTO generation job. Returns immediately with a placeholder."""
     try:
-        return await service.generate_image_for_vto(
-            request_dto=image_request, user=current_user
+        workspace_auth_service.authorize(
+            workspace_id=image_request.workspace_id, user=current_user
         )
+
+        # Get the process pool from the application state
+        executor = request.app.state.process_pool
+
+        placeholder_item = service.start_vto_generation_job(
+            request_dto=image_request,
+            user=current_user,
+            executor=executor,
+        )
+        return placeholder_item
     except HTTPException as http_exception:
         raise http_exception
     except ValueError as value_error:
@@ -142,3 +153,29 @@ async def upscale_image(
             status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         )
+
+
+@router.get(
+    "/{media_id}",
+    response_model=MediaItemResponse,
+    summary="Get Media Item by ID",
+)
+async def get_media_item_by_id(
+    media_id: str,
+    imagen_service: ImagenService = Depends(),
+):
+    """
+    Retrieves a single media item by its unique ID, including its current status
+    and presigned URLs for viewing. This is the endpoint to use for polling.
+    """
+    media_item_response = (
+        await imagen_service.get_media_item_with_presigned_urls(media_id)
+    )
+
+    if not media_item_response:
+        raise HTTPException(
+            status_code=Status.HTTP_404_NOT_FOUND,
+            detail="Media item not found.",
+        )
+
+    return media_item_response
