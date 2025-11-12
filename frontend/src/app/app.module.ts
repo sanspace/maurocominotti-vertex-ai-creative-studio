@@ -82,7 +82,9 @@ import {SharedModule} from './common/shared.module';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import {ImageCropperComponent} from 'ngx-image-cropper';
 import {ImageCropperDialogComponent} from './common/components/image-cropper-dialog/image-cropper-dialog.component';
-import { LyriaComponent } from './lyria/lyria.component';
+import {AudioComponent} from './audio/audio.component';
+import {AddVoiceDialogComponent} from './components/add-voice-dialog/add-voice-dialog.component';
+import {MatButtonToggleModule} from '@angular/material/button-toggle';
 
 @NgModule({
   declarations: [
@@ -103,7 +105,8 @@ import { LyriaComponent } from './lyria/lyria.component';
     ImageSelectorComponent,
     SourceAssetGalleryComponent,
     ImageCropperDialogComponent,
-    LyriaComponent,
+    AudioComponent,
+    AddVoiceDialogComponent,
   ],
   imports: [
     BrowserModule,
@@ -136,6 +139,7 @@ import { LyriaComponent } from './lyria/lyria.component';
     SharedModule,
     MatSlideToggleModule,
     ImageCropperComponent,
+    MatButtonToggleModule,
   ],
   providers: [
     provideClientHydration(),
