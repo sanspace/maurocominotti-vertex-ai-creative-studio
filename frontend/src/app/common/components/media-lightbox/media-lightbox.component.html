@@ -104,8 +104,9 @@
 
     <!-- Actions Toolbar on the right -->
     <div class="media-actions-toolbar" *ngIf="mediaItem">
+
       <button
-        *ngIf="showEditButton"
+        *ngIf="showEditButton && !isAudio"
         type="button"
         class="action-button"
         (click)="onEditClick()"
@@ -138,7 +139,7 @@
       </mat-menu>
 
       <button
-        *ngIf="showVtoButton"
+        *ngIf="showVtoButton && !isAudio"
         type="button"
         class="action-button"
         (click)="onSendToVtoClick()"
