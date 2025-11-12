@@ -85,7 +85,7 @@ class AudioService:
         if request_dto.model in self.MUSIC_MODELS:
             return await self._generate_music_lyria(request_dto, user)
 
-        # 2. Route to Gemini Native Speech (Generate Content API)
+        # 2. Route to Gemini TTS Native Speech (Generate Content API)
         elif request_dto.model in self.GEMINI_MODELS:
             return await self._generate_gemini_speech(request_dto, user)
 
@@ -94,140 +94,186 @@ class AudioService:
             return await self._generate_standard_speech(request_dto, user)
 
         else:
-            raise ValueError(f"Model '{request_dto.model}' is not supported by AudioService.")
+            raise ValueError(
+                f"Model '{request_dto.model}' is not supported by AudioService."
+            )
 
     async def _generate_gemini_speech(
         self, request_dto: CreateAudioDto, user: UserModel
     ) -> MediaItemResponse | None:
         """
         Handles logic for Gemini Models (LLM Audio Generation).
-        Fixes the "0 second duration" bug by adding a WAV header.
+        Implements Parallel Execution for multiple samples.
         """
         start_time = time.monotonic()
         model_id = request_dto.model.value
         logger.info(
-            f"Generating Gemini Audio. Model: {model_id}, Voice: {request_dto.voice_name}"
+            f"Generating Gemini Audio. Model: {model_id}, Voice: {request_dto.voice_name}, Count: {request_dto.sample_count}"
         )
 
-        try:
-            # 1. Call GenAI API
-            response = self.client.models.generate_content(
-                model=model_id,
-                contents=[f"Please read the following text: \n{request_dto.prompt}"],
-                config=types.GenerateContentConfig(
-                    response_modalities=["AUDIO"],
-                    audio_timestamp=False,
-                    speech_config=types.SpeechConfig(
-                      voice_config=types.VoiceConfig(
-                          prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=request_dto.voice_name or "Puck"
-                          )
-                      )
+        # Define the single generation task
+        async def generate_single_sample(index: int) -> Optional[str]:
+            try:
+                # 1. Call GenAI API
+                response = self.client.models.generate_content(
+                    model=model_id,
+                    contents=[
+                        f"Please read the following text: \n{request_dto.prompt}"
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_modalities=["AUDIO"],
+                        audio_timestamp=False,
+                        speech_config=types.SpeechConfig(
+                            voice_config=types.VoiceConfig(
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                    voice_name=request_dto.voice_name or "Puck"
+                                )
+                            )
+                        ),
                     ),
                 )
-            )
 
-            # 2. Validate Response
-            if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
-                raise ValueError("Gemini did not return any content.")
+                # 2. Validate Response
+                if (
+                    not response.candidates
+                    or not response.candidates[0].content
+                    or not response.candidates[0].content.parts
+                ):
+                    logger.warning(
+                        f"Gemini attempt {index} returned no content."
+                    )
+                    return None
 
-            part = response.candidates[0].content.parts[0]
+                part = response.candidates[0].content.parts[0]
 
-            # 3. Extract Raw PCM
-            pcm_bytes = None
-            if hasattr(part, 'inline_data') and part.inline_data:
-                pcm_bytes = part.inline_data.data
-                if isinstance(pcm_bytes, str):
-                    pcm_bytes = base64.b64decode(pcm_bytes)
-            else:
-                raise ValueError(f"Unexpected response format from Gemini: {part}")
+                # 3. Extract Raw PCM
+                pcm_bytes = None
+                if hasattr(part, "inline_data") and part.inline_data:
+                    pcm_bytes = part.inline_data.data
+                    if isinstance(pcm_bytes, str):
+                        pcm_bytes = base64.b64decode(pcm_bytes)
+                else:
+                    logger.warning(
+                        f"Gemini attempt {index} had no inline data."
+                    )
+                    return None
 
-            if not pcm_bytes:
-                raise ValueError("No audio content generated.")
+                if not pcm_bytes:
+                    return None
 
-            # 4. Convert Raw PCM to WAV (Add RIFF Header)
-            # Gemini returns "audio/L16;codec=pcm;rate=24000"
-            wav_buffer = io.BytesIO()
-            with wave.open(wav_buffer, 'wb') as wav_file:
-                wav_file.setnchannels(1)      # Mono
-                wav_file.setsampwidth(2)  # 16-bit
-                wav_file.setframerate(24000)  # 24kHz
-                wav_file.writeframes(pcm_bytes)
+                # 4. Convert Raw PCM to WAV (Add RIFF Header)
+                wav_buffer = io.BytesIO()
+                with wave.open(wav_buffer, "wb") as wav_file:
+                    wav_file.setnchannels(1)  # Mono
+                    wav_file.setsampwidth(2)  # 16-bit
+                    wav_file.setframerate(24000)  # 24kHz
+                    wav_file.writeframes(pcm_bytes)
 
-            final_wav_bytes = wav_buffer.getvalue()
+                final_wav_bytes = wav_buffer.getvalue()
 
-            # 5. Save to GCS
-            file_name = f"gemini_audio_{request_dto.model.value}_{int(time.time())}_{user.id[:4]}.wav"
-            gcs_uri = self.gcs_service.store_to_gcs(
-                folder="gemini_audio",
-                file_name=file_name,
-                mime_type=MimeTypeEnum.AUDIO_WAV,
-                contents=final_wav_bytes,
-                decode=False,
-            )
+                # 5. Save to GCS
+                file_name = f"gemini_audio_{request_dto.model.value}_{int(time.time())}_{user.id[:4]}_{index}.wav"
+                gcs_uri = self.gcs_service.store_to_gcs(
+                    folder="gemini_audio",
+                    file_name=file_name,
+                    mime_type=MimeTypeEnum.AUDIO_WAV,
+                    contents=final_wav_bytes,
+                    decode=False,
+                )
+                return gcs_uri
 
-            if not gcs_uri:
-                raise ValueError("Failed to generate or upload Gemini audio.")
+            except Exception as e:
+                logger.error(f"Gemini generation attempt {index} failed: {e}")
+                return None
 
-            return await self._finalize_response(
-                user, request_dto, [gcs_uri], start_time, MimeTypeEnum.AUDIO_WAV
-            )
+        # --- PARALLEL EXECUTION ---
+        tasks = [
+            generate_single_sample(i) for i in range(request_dto.sample_count)
+        ]
+        results = await asyncio.gather(*tasks)
+        permanent_gcs_uris = [uri for uri in results if uri is not None]
 
-        except Exception as e:
-            logger.error(f"Gemini Audio Generation failed: {e}")
-            raise
+        if not permanent_gcs_uris:
+            raise ValueError("Failed to generate any Gemini audio samples.")
+
+        return await self._finalize_response(
+            user,
+            request_dto,
+            permanent_gcs_uris,
+            start_time,
+            MimeTypeEnum.AUDIO_WAV,
+        )
 
     async def _generate_standard_speech(
         self, request_dto: CreateAudioDto, user: UserModel
     ) -> MediaItemResponse | None:
         """
         Handles logic for Chirp and Standard Google Cloud TTS voices.
+        Implements Parallel Execution for multiple samples.
         """
         start_time = time.monotonic()
         logger.info(
-            f"Generating Standard TTS. Model: {request_dto.model}, Voice: {request_dto.voice_name}"
+            f"Generating Standard TTS. Model: {request_dto.model}, Voice: {request_dto.voice_name}, Count: {request_dto.sample_count}"
         )
 
-        try:
-            synthesis_input = texttospeech.SynthesisInput(
-                text=request_dto.prompt
-            )
-            voice_params = texttospeech.VoiceSelectionParams(
-                language_code=request_dto.language_code,
-                name=request_dto.voice_name,
-            )
-            audio_config = texttospeech.AudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+        # Define the single generation task
+        async def generate_single_sample(index: int) -> Optional[str]:
+            try:
+                synthesis_input = texttospeech.SynthesisInput(
+                    text=request_dto.prompt
+                )
+                voice_params = texttospeech.VoiceSelectionParams(
+                    language_code=request_dto.language_code,
+                    name=request_dto.voice_name,
+                )
+                audio_config = texttospeech.AudioConfig(
+                    audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                )
+
+                # Run blocking call in thread
+                response = await asyncio.to_thread(
+                    self.tts_client.synthesize_speech,
+                    input=synthesis_input,
+                    voice=voice_params,
+                    audio_config=audio_config,
+                )
+
+                audio_bytes = response.audio_content
+
+                file_name = f"tts_{request_dto.model.value}_{int(time.time())}_{user.id[:4]}_{index}.wav"
+
+                gcs_uri = self.gcs_service.store_to_gcs(
+                    folder="tts_audio",
+                    file_name=file_name,
+                    mime_type=MimeTypeEnum.AUDIO_WAV,
+                    contents=audio_bytes,
+                    decode=False,
+                )
+                return gcs_uri
+
+            except Exception as e:
+                logger.error(f"Standard TTS attempt {index} failed: {e}")
+                return None
+
+        # --- PARALLEL EXECUTION ---
+        tasks = [
+            generate_single_sample(i) for i in range(request_dto.sample_count)
+        ]
+        results = await asyncio.gather(*tasks)
+        permanent_gcs_uris = [uri for uri in results if uri is not None]
+
+        if not permanent_gcs_uris:
+            raise ValueError(
+                "Failed to generate any Standard TTS audio samples."
             )
 
-            response = await asyncio.to_thread(
-                self.tts_client.synthesize_speech,
-                input=synthesis_input,
-                voice=voice_params,
-                audio_config=audio_config
-            )
-
-            audio_bytes = response.audio_content
-            file_name = f"tts_{request_dto.model.value}_{int(time.time())}_{user.id[:4]}.wav"
-
-            gcs_uri = self.gcs_service.store_to_gcs(
-                folder="tts_audio",
-                file_name=file_name,
-                mime_type=MimeTypeEnum.AUDIO_WAV,
-                contents=audio_bytes,
-                decode=False,
-            )
-
-            if not gcs_uri:
-                raise ValueError("Failed to generate or upload Gemini audio.")
-
-            return await self._finalize_response(
-                user, request_dto, [gcs_uri], start_time, MimeTypeEnum.AUDIO_WAV
-            )
-
-        except Exception as e:
-            logger.error(f"Standard TTS API call failed: {e}")
-            raise
+        return await self._finalize_response(
+            user,
+            request_dto,
+            permanent_gcs_uris,
+            start_time,
+            MimeTypeEnum.AUDIO_WAV,
+        )
 
     async def _generate_music_lyria(
         self, request_dto: CreateAudioDto, user: UserModel

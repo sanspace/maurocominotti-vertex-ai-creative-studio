@@ -37,7 +37,7 @@ export class AudioComponent {
 
   // TTS & Chirp Specific Inputs
   selectedLanguage = 'en-US';
-  selectedVoice = 'en-US-Studio-M'; // Default valid voice
+  selectedVoice = 'Puck'; // Default valid voice
 
   // --- Audio Player State ---
   @ViewChild('audioPlayer') audioPlayerRef!: ElementRef<HTMLAudioElement>;
@@ -215,7 +215,7 @@ export class AudioComponent {
       negativePrompt:
         this.selectedModel === 'lyria' ? this.negativePrompt : undefined,
       seed: this.selectedModel === 'lyria' ? this.seed : undefined,
-      sampleCount: this.selectedModel === 'lyria' ? this.sampleCount : 1,
+      sampleCount: this.sampleCount,
       languageCode:
         this.selectedModel !== 'lyria' ? this.selectedLanguage : undefined,
       voiceName:

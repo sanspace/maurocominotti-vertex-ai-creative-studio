@@ -102,6 +102,15 @@
                         </mat-option>
                     </mat-select>
                 </mat-form-field>
+
+                <mat-form-field appearance="outline" class="short-field">
+                    <mat-label>Results</mat-label>
+                    <mat-select [(ngModel)]="sampleCount">
+                        <mat-option *ngFor="let count of [1, 2, 3, 4]" [value]="count">
+                            {{ count }}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
             </ng-container>
         </div>
 
