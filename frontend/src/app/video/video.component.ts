@@ -58,6 +58,7 @@ import {ToastMessageComponent} from '../common/components/toast-message/toast-me
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
+import { PromptBoxComponent } from '../common/components/prompt-box/prompt-box.component';
 
 @Component({
   selector: 'app-video',

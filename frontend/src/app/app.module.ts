@@ -82,6 +82,7 @@ import {SharedModule} from './common/shared.module';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import {ImageCropperComponent} from 'ngx-image-cropper';
 import {ImageCropperDialogComponent} from './common/components/image-cropper-dialog/image-cropper-dialog.component';
+import { PromptBoxComponent } from "./common/components/prompt-box/prompt-box.component";
 
 @NgModule({
   declarations: [
@@ -134,7 +135,8 @@ import {ImageCropperDialogComponent} from './common/components/image-cropper-dia
     SharedModule,
     MatSlideToggleModule,
     ImageCropperComponent,
-  ],
+    PromptBoxComponent
+],
   providers: [
     provideClientHydration(),
     provideHttpClient(withInterceptorsFromDi()),
