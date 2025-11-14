@@ -435,6 +435,11 @@ class AudioService:
             gcs_uris=gcs_uris,
             status=JobStatusEnum.COMPLETED,
             negative_prompt=request_dto.negative_prompt,
+            voice_name=request_dto.voice_name,
+            language_code=request_dto.language_code,
+            seed=request_dto.seed,  # Lyria uses seed
+            # TODO: Deduce the duration and add it to the model
+            # duration_seconds=None,
         )
         self.media_repo.save(media_post_to_save)
 

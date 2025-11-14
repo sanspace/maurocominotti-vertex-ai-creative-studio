@@ -8,14 +8,20 @@ import { WorkspaceStateService } from '../services/workspace/workspace-state.ser
 import { MediaItem } from '../common/models/media-item.model';
 import { AddVoiceDialogComponent } from '../components/add-voice-dialog/add-voice-dialog.component';
 import { MatIconRegistry } from '@angular/material/icon';
+import {LanguageEnum, VoiceEnum} from './audio.constants';
 
 // UI Helper type
 type UiModelType = 'lyria' | 'chirp' | 'gemini-tts';
 
 interface VoiceOption {
-  id: string;
+  id: VoiceEnum | string; // Allow string for custom cloned voices later
   name: string;
   type: 'preset' | 'custom';
+}
+
+interface LanguageOption {
+  code: LanguageEnum;
+  name: string;
 }
 
 @Component({
@@ -36,8 +42,8 @@ export class AudioComponent {
   sampleCount = 4;
 
   // TTS & Chirp Specific Inputs
-  selectedLanguage = 'en-US';
-  selectedVoice = 'Puck'; // Default valid voice
+  selectedLanguage: LanguageEnum = LanguageEnum.EN_US;
+  selectedVoice: VoiceEnum | string = VoiceEnum.PUCK;
 
   // --- Audio Player State ---
   @ViewChild('audioPlayer') audioPlayerRef!: ElementRef<HTMLAudioElement>;
@@ -48,92 +54,91 @@ export class AudioComponent {
 
   mediaItem: MediaItem | null = null;
 
-  languages = [
-    {code: 'ar-XA', name: 'Arabic'},
-    {code: 'bg-BG', name: 'Bulgarian (Bulgaria)'},
-    {code: 'bn-IN', name: 'Bengali (India)'},
-    {code: 'cmn-CN', name: 'Mandarin Chinese'},
-    {code: 'cs-CZ', name: 'Czech (Czech Republic)'},
-    {code: 'da-DK', name: 'Danish (Denmark)'},
-    {code: 'de-DE', name: 'German (Germany)'},
-    {code: 'el-GR', name: 'Greek (Greece)'},
-    {code: 'en-AU', name: 'English (Australia)'},
-    {code: 'en-GB', name: 'English (UK)'},
-    {code: 'en-IN', name: 'English (India)'},
-    {code: 'en-US', name: 'English (United States)'},
-    {code: 'es-ES', name: 'Spanish (Spain)'},
-    {code: 'es-US', name: 'Spanish (US)'},
-    {code: 'fi-FI', name: 'Finnish (Finland)'},
-    {code: 'fr-CA', name: 'French (Canada)'},
-    {code: 'fr-FR', name: 'French (France)'},
-    {code: 'gu-IN', name: 'Gujarati (India)'},
-    {code: 'he-IL', name: 'Hebrew (Israel)'},
-    {code: 'hi-IN', name: 'Hindi (India)'},
-    {code: 'hu-HU', name: 'Hungarian (Hungary)'},
-    {code: 'id-ID', name: 'Indonesian (Indonesia)'},
-    {code: 'it-IT', name: 'Italian (Italy)'},
-    {code: 'ja-JP', name: 'Japanese (Japan)'},
-    {code: 'kn-IN', name: 'Kannada (India)'},
-    {code: 'ko-KR', name: 'Korean (South Korea)'},
-    {code: 'lt-LT', name: 'Lithuanian (Lithuania)'},
-    {code: 'lv-LV', name: 'Latvian (Latvia)'},
-    {code: 'ml-IN', name: 'Malayalam (India)'},
-    {code: 'mr-IN', name: 'Marathi (India)'},
-    {code: 'nb-NO', name: 'Norwegian (Norway)'},
-    {code: 'nl-BE', name: 'Dutch (Belgium)'},
-    {code: 'nl-NL', name: 'Dutch (Netherlands)'},
-    {code: 'pl-PL', name: 'Polish (Poland)'},
-    {code: 'pt-BR', name: 'Portuguese (Brazil)'},
-    {code: 'ro-RO', name: 'Romanian (Romania)'},
-    {code: 'ru-RU', name: 'Russian (Russia)'},
-    {code: 'sk-SK', name: 'Slovak (Slovakia)'},
-    {code: 'sr-RS', name: 'Serbian (Serbia)'},
-    {code: 'sv-SE', name: 'Swedish (Sweden)'},
-    {code: 'ta-IN', name: 'Tamil (India)'},
-    {code: 'te-IN', name: 'Telugu (India)'},
-    {code: 'th-TH', name: 'Thai (Thailand)'},
-    {code: 'tr-TR', name: 'Turkish (Turkey)'},
-    {code: 'uk-UA', name: 'Ukrainian (Ukraine)'},
-    {code: 'vi-VN', name: 'Vietnamese (Vietnam)'},
+  languages: LanguageOption[] = [
+    {code: LanguageEnum.AR_XA, name: 'Arabic'},
+    {code: LanguageEnum.BG_BG, name: 'Bulgarian (Bulgaria)'},
+    {code: LanguageEnum.BN_IN, name: 'Bengali (India)'},
+    {code: LanguageEnum.CMN_CN, name: 'Mandarin Chinese'},
+    {code: LanguageEnum.CS_CZ, name: 'Czech (Czech Republic)'},
+    {code: LanguageEnum.DA_DK, name: 'Danish (Denmark)'},
+    {code: LanguageEnum.DE_DE, name: 'German (Germany)'},
+    {code: LanguageEnum.EL_GR, name: 'Greek (Greece)'},
+    {code: LanguageEnum.EN_AU, name: 'English (Australia)'},
+    {code: LanguageEnum.EN_GB, name: 'English (UK)'},
+    {code: LanguageEnum.EN_IN, name: 'English (India)'},
+    {code: LanguageEnum.EN_US, name: 'English (United States)'},
+    {code: LanguageEnum.ES_ES, name: 'Spanish (Spain)'},
+    {code: LanguageEnum.ES_US, name: 'Spanish (US)'},
+    {code: LanguageEnum.FI_FI, name: 'Finnish (Finland)'},
+    {code: LanguageEnum.FR_CA, name: 'French (Canada)'},
+    {code: LanguageEnum.FR_FR, name: 'French (France)'},
+    {code: LanguageEnum.GU_IN, name: 'Gujarati (India)'},
+    {code: LanguageEnum.HE_IL, name: 'Hebrew (Israel)'},
+    {code: LanguageEnum.HI_IN, name: 'Hindi (India)'},
+    {code: LanguageEnum.HU_HU, name: 'Hungarian (Hungary)'},
+    {code: LanguageEnum.ID_ID, name: 'Indonesian (Indonesia)'},
+    {code: LanguageEnum.IT_IT, name: 'Italian (Italy)'},
+    {code: LanguageEnum.JA_JP, name: 'Japanese (Japan)'},
+    {code: LanguageEnum.KN_IN, name: 'Kannada (India)'},
+    {code: LanguageEnum.KO_KR, name: 'Korean (South Korea)'},
+    {code: LanguageEnum.LT_LT, name: 'Lithuanian (Lithuania)'},
+    {code: LanguageEnum.LV_LV, name: 'Latvian (Latvia)'},
+    {code: LanguageEnum.ML_IN, name: 'Malayalam (India)'},
+    {code: LanguageEnum.MR_IN, name: 'Marathi (India)'},
+    {code: LanguageEnum.NB_NO, name: 'Norwegian (Norway)'},
+    {code: LanguageEnum.NL_BE, name: 'Dutch (Belgium)'},
+    {code: LanguageEnum.NL_NL, name: 'Dutch (Netherlands)'},
+    {code: LanguageEnum.PL_PL, name: 'Polish (Poland)'},
+    {code: LanguageEnum.PT_BR, name: 'Portuguese (Brazil)'},
+    {code: LanguageEnum.RO_RO, name: 'Romanian (Romania)'},
+    {code: LanguageEnum.RU_RU, name: 'Russian (Russia)'},
+    {code: LanguageEnum.SK_SK, name: 'Slovak (Slovakia)'},
+    {code: LanguageEnum.SR_RS, name: 'Serbian (Serbia)'},
+    {code: LanguageEnum.SV_SE, name: 'Swedish (Sweden)'},
+    {code: LanguageEnum.TA_IN, name: 'Tamil (India)'},
+    {code: LanguageEnum.TE_IN, name: 'Telugu (India)'},
+    {code: LanguageEnum.TH_TH, name: 'Thai (Thailand)'},
+    {code: LanguageEnum.TR_TR, name: 'Turkish (Turkey)'},
+    {code: LanguageEnum.UK_UA, name: 'Ukrainian (Ukraine)'},
+    {code: LanguageEnum.VI_VN, name: 'Vietnamese (Vietnam)'},
   ];
 
-  // FULL GEMINI VOICE LIST
-  // Note: These names match the "voice_name" parameter in Gemini API
+  // Map Enums to Voice Options
   voices: VoiceOption[] = [
-    {id: 'Achernar', name: 'Achernar (Female)', type: 'preset'},
-    {id: 'Achird', name: 'Achird (Male)', type: 'preset'},
-    {id: 'Algenib', name: 'Algenib (Male)', type: 'preset'},
-    {id: 'Algieba', name: 'Algieba (Male)', type: 'preset'},
-    {id: 'Alnilam', name: 'Alnilam (Male)', type: 'preset'},
-    {id: 'Aoede', name: 'Aoede (Female)', type: 'preset'},
-    {id: 'Autonoe', name: 'Autonoe (Female)', type: 'preset'},
-    {id: 'Callirrhoe', name: 'Callirrhoe (Female)', type: 'preset'},
-    {id: 'Charon', name: 'Charon (Male)', type: 'preset'},
-    {id: 'Despina', name: 'Despina (Female)', type: 'preset'},
-    {id: 'Enceladus', name: 'Enceladus (Male)', type: 'preset'},
-    {id: 'Erinome', name: 'Erinome (Female)', type: 'preset'},
-    {id: 'Fenrir', name: 'Fenrir (Male)', type: 'preset'},
-    {id: 'Gacrux', name: 'Gacrux (Female)', type: 'preset'},
-    {id: 'Iapetus', name: 'Iapetus (Male)', type: 'preset'},
-    {id: 'Kore', name: 'Kore (Female)', type: 'preset'},
-    {id: 'Laomedeia', name: 'Laomedeia (Female)', type: 'preset'},
-    {id: 'Leda', name: 'Leda (Female)', type: 'preset'},
-    {id: 'Orus', name: 'Orus (Male)', type: 'preset'},
-    {id: 'Puck', name: 'Puck (Male)', type: 'preset'},
-    {id: 'Pulcherrima', name: 'Pulcherrima (Female)', type: 'preset'},
-    {id: 'Rasalgethi', name: 'Rasalgethi (Male)', type: 'preset'},
-    {id: 'Sadachbia', name: 'Sadachbia (Male)', type: 'preset'},
-    {id: 'Sadaltager', name: 'Sadaltager (Male)', type: 'preset'},
-    {id: 'Schedar', name: 'Schedar (Male)', type: 'preset'},
-    {id: 'Sulafat', name: 'Sulafat (Female)', type: 'preset'},
-    {id: 'Umbriel', name: 'Umbriel (Male)', type: 'preset'},
-    {id: 'Vindemiatrix', name: 'Vindemiatrix (Female)', type: 'preset'},
-    {id: 'Zephyr', name: 'Zephyr (Female)', type: 'preset'},
-    {id: 'Zubenelgenubi', name: 'Zubenelgenubi (Male)', type: 'preset'},
+    {id: VoiceEnum.ACHERNAR, name: 'Achernar (Female)', type: 'preset'},
+    {id: VoiceEnum.ACHIRD, name: 'Achird (Male)', type: 'preset'},
+    {id: VoiceEnum.ALGENIB, name: 'Algenib (Male)', type: 'preset'},
+    {id: VoiceEnum.ALGIEBA, name: 'Algieba (Male)', type: 'preset'},
+    {id: VoiceEnum.ALNILAM, name: 'Alnilam (Male)', type: 'preset'},
+    {id: VoiceEnum.AOEDE, name: 'Aoede (Female)', type: 'preset'},
+    {id: VoiceEnum.AUTONOE, name: 'Autonoe (Female)', type: 'preset'},
+    {id: VoiceEnum.CALLIRRHOE, name: 'Callirrhoe (Female)', type: 'preset'},
+    {id: VoiceEnum.CHARON, name: 'Charon (Male)', type: 'preset'},
+    {id: VoiceEnum.DESPINA, name: 'Despina (Female)', type: 'preset'},
+    {id: VoiceEnum.ENCELADUS, name: 'Enceladus (Male)', type: 'preset'},
+    {id: VoiceEnum.ERINOME, name: 'Erinome (Female)', type: 'preset'},
+    {id: VoiceEnum.FENRIR, name: 'Fenrir (Male)', type: 'preset'},
+    {id: VoiceEnum.GACRUX, name: 'Gacrux (Female)', type: 'preset'},
+    {id: VoiceEnum.IAPETUS, name: 'Iapetus (Male)', type: 'preset'},
+    {id: VoiceEnum.KORE, name: 'Kore (Female)', type: 'preset'},
+    {id: VoiceEnum.LAOMEDEIA, name: 'Laomedeia (Female)', type: 'preset'},
+    {id: VoiceEnum.LEDA, name: 'Leda (Female)', type: 'preset'},
+    {id: VoiceEnum.ORUS, name: 'Orus (Male)', type: 'preset'},
+    {id: VoiceEnum.PUCK, name: 'Puck (Male)', type: 'preset'},
+    {id: VoiceEnum.PULCHERRIMA, name: 'Pulcherrima (Female)', type: 'preset'},
+    {id: VoiceEnum.RASALGETHI, name: 'Rasalgethi (Male)', type: 'preset'},
+    {id: VoiceEnum.SADACHBIA, name: 'Sadachbia (Male)', type: 'preset'},
+    {id: VoiceEnum.SADALTAGER, name: 'Sadaltager (Male)', type: 'preset'},
+    {id: VoiceEnum.SCHEDAR, name: 'Schedar (Male)', type: 'preset'},
+    {id: VoiceEnum.SULAFAT, name: 'Sulafat (Female)', type: 'preset'},
+    {id: VoiceEnum.UMBRIEL, name: 'Umbriel (Male)', type: 'preset'},
+    {id: VoiceEnum.VINDEMIATRIX, name: 'Vindemiatrix (Female)', type: 'preset'},
+    {id: VoiceEnum.ZEPHYR, name: 'Zephyr (Female)', type: 'preset'},
+    {id: VoiceEnum.ZUBENELGENUBI, name: 'Zubenelgenubi (Male)', type: 'preset'},
   ];
 
   constructor(
-    private audioService: AudioService, // Renamed for clarity
+    private audioService: AudioService,
     private snackBar: MatSnackBar,
     private workspaceStateService: WorkspaceStateService,
     private dialog: MatDialog,
@@ -217,9 +222,13 @@ export class AudioComponent {
       seed: this.selectedModel === 'lyria' ? this.seed : undefined,
       sampleCount: this.sampleCount,
       languageCode:
-        this.selectedModel !== 'lyria' ? this.selectedLanguage : undefined,
+        this.selectedModel !== 'lyria'
+          ? (this.selectedLanguage as LanguageEnum)
+          : undefined,
       voiceName:
-        this.selectedModel !== 'lyria' ? this.selectedVoice : undefined,
+        this.selectedModel !== 'lyria'
+          ? (this.selectedVoice as VoiceEnum)
+          : undefined,
     };
 
     this.isLoading = true;

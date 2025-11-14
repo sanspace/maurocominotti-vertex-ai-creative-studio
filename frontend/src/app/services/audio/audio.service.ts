@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { MediaItem } from '../../common/models/media-item.model';
 import {environment} from '../../../environments/environment';
+import {LanguageEnum, VoiceEnum} from '../../audio/audio.constants';
 
 // 1. Define the Enum to match Backend exactly
 export enum GenerationModelEnum {
@@ -28,8 +29,8 @@ export interface CreateAudioDto {
   seed?: number;
 
   // TTS Specific
-  languageCode?: string;
-  voiceName?: string;
+  languageCode?: LanguageEnum;
+  voiceName?: VoiceEnum;
 }
 
 @Injectable({
