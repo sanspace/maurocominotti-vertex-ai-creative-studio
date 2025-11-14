@@ -3,7 +3,7 @@ from typing import Annotated, Optional
 from fastapi import Query
 from pydantic import Field, field_validator, model_validator
 
-from src.audios.audio_constants import GeminiVoiceEnum, LanguageEnum
+from src.audios.audio_constants import LanguageEnum, VoiceEnum
 from src.common.base_dto import BaseDto, GenerationModelEnum
 
 
@@ -54,9 +54,9 @@ class CreateAudioDto(BaseDto):
     )
 
     # 2. FLEXIBLE TYPING (Validated conditionally below):
-    voice_name: Optional[str] = Field(
-        default=None,
-        description="The specific voice ID. For Gemini, must be a valid GeminiVoiceEnum value."
+    voice_name: Optional[VoiceEnum] = Field(
+        default=VoiceEnum.PUCK,
+        description="The specific voice ID. For Gemini, must be a valid GeminiVoiceEnum value.",
     )
 
     @field_validator("model")
@@ -81,23 +81,10 @@ class CreateAudioDto(BaseDto):
         model_str = str(self.model).lower()
 
         is_music_model = "lyria" in model_str
-        is_gemini_tts = "gemini" in model_str and "tts" in model_str
 
         if not is_music_model:
             # TTS Check
             if not self.language_code:
                 raise ValueError("language_code is required for Text-to-Speech models.")
-
-            # Strict Validator for Gemini Voices
-            if is_gemini_tts and self.voice_name:
-                # Check if the string provided exists in our Gemini Voice Enum values
-                # We create a set of allowed values for fast lookup
-                allowed_gemini_voices = set(item.value for item in GeminiVoiceEnum)
-
-                if self.voice_name not in allowed_gemini_voices:
-                    raise ValueError(
-                        f"Invalid Voice for Gemini Model: '{self.voice_name}'. "
-                        f"Must be one of: {', '.join(allowed_gemini_voices)}"
-                    )
 
         return self

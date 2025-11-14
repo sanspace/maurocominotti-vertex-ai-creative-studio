@@ -21,11 +21,13 @@ import wave
 from typing import Any, Dict, List, MutableSequence, Optional, cast
 
 import vertexai
-from google.cloud import aiplatform, texttospeech
+from google.cloud import aiplatform
+from google.cloud import texttospeech_v1beta1 as texttospeech
 from google.genai import types
 from google.protobuf import json_format, struct_pb2
 from vertexai.generative_models import GenerationConfig, GenerativeModel
 
+from src.audios.audio_constants import LanguageEnum, VoiceEnum
 from src.audios.dto.create_audio_dto import CreateAudioDto
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
 from src.common.base_dto import AspectRatioEnum, GenerationModelEnum, MimeTypeEnum
@@ -68,7 +70,7 @@ class AudioService:
         # Client for Gemini (GenAI)
         self.client = GenAIModelSetup.init()
 
-        # Client for Standard TTS
+        # Client for Standard TTS (Using v1beta1 for Chirp support)
         self.tts_client = texttospeech.TextToSpeechClient()
 
         # Initialize Vertex AI (Global)
@@ -107,9 +109,6 @@ class AudioService:
         """
         start_time = time.monotonic()
         model_id = request_dto.model.value
-        logger.info(
-            f"Generating Gemini Audio. Model: {model_id}, Voice: {request_dto.voice_name}, Count: {request_dto.sample_count}"
-        )
 
         # Define the single generation task
         async def generate_single_sample(index: int) -> Optional[str]:
@@ -209,12 +208,9 @@ class AudioService:
     ) -> MediaItemResponse | None:
         """
         Handles logic for Chirp and Standard Google Cloud TTS voices.
-        Implements Parallel Execution for multiple samples.
+        INTEGRATION NOTE: Now uses Chirp3 HD logic from working snippet.
         """
         start_time = time.monotonic()
-        logger.info(
-            f"Generating Standard TTS. Model: {request_dto.model}, Voice: {request_dto.voice_name}, Count: {request_dto.sample_count}"
-        )
 
         # Define the single generation task
         async def generate_single_sample(index: int) -> Optional[str]:
@@ -222,12 +218,34 @@ class AudioService:
                 synthesis_input = texttospeech.SynthesisInput(
                     text=request_dto.prompt
                 )
-                voice_params = texttospeech.VoiceSelectionParams(
-                    language_code=request_dto.language_code,
-                    name=request_dto.voice_name,
+
+                # Construct the full voice name string if using Chirp 3
+                # Example: "en-US" + "Chirp3-HD" + "Puck" -> "en-US-Chirp3-HD-Fenrir"
+                voice_name = (
+                    request_dto.voice_name.value
+                    if request_dto.voice_name
+                    else VoiceEnum.PUCK.value
                 )
+                language_code = (
+                    request_dto.language_code.value
+                    if request_dto.language_code
+                    else LanguageEnum.EN_US.value
+                )
+
+                # If it is Chirp 3 and the user passed just the name (e.g., "Fenrir" or "Puck")
+                # we need to format it correctly.
+                if request_dto.model == GenerationModelEnum.CHIRP_3:
+                    voice_name = f"{language_code}-Chirp3-HD-{voice_name}"
+
+                voice_params = texttospeech.VoiceSelectionParams(
+                    language_code=language_code,
+                    name=voice_name,
+                )
+
                 audio_config = texttospeech.AudioConfig(
                     audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                    speaking_rate=1.0,  # Default from snippet
+                    volume_gain_db=0.0,
                 )
 
                 # Run blocking call in thread
@@ -274,7 +292,6 @@ class AudioService:
             start_time,
             MimeTypeEnum.AUDIO_WAV,
         )
-
     async def _generate_music_lyria(
         self, request_dto: CreateAudioDto, user: UserModel
     ) -> MediaItemResponse | None:
@@ -357,10 +374,6 @@ class AudioService:
                 return None
 
         # --- PARALLEL EXECUTION ---
-        logger.info(
-            f"Starting {request_dto.sample_count} parallel Lyria generations..."
-        )
-
         # Create a task for each requested sample
         tasks = [
             generate_single_sample(i) for i in range(request_dto.sample_count)

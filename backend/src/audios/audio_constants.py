@@ -65,7 +65,7 @@ class LanguageEnum(str, Enum):
     VI_VN = "vi-VN"
 
 
-class GeminiVoiceEnum(str, Enum):
+class VoiceEnum(str, Enum):
     """Supported Prebuilt Voices for Gemini 2.5 Flash/Pro."""
     ACHERNAR = "Achernar"
     ACHIRD = "Achird"
