@@ -85,6 +85,8 @@ export class VtoComponent implements OnInit, AfterViewInit {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
 
+  showErrorOverlay = true;
+
   @ViewChild('stepper') stepper!: MatStepper;
 
   activeVtoJob$: Observable<MediaItem | null>;
@@ -467,6 +469,11 @@ export class VtoComponent implements OnInit, AfterViewInit {
           handleErrorSnackbar(this._snackBar, err, 'Virtual Try-On');
         },
       });
+  }
+
+
+  closeErrorOverlay() {
+    this.showErrorOverlay = false;
   }
 
   private applyRemixState(remixState: {
