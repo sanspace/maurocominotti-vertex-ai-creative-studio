@@ -86,6 +86,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
   secondFormGroup: FormGroup;
 
   showErrorOverlay = true;
+  hideProcessingOverlay = false;
 
   @ViewChild('stepper') stepper!: MatStepper;
 
@@ -96,6 +97,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
   imagenDocuments: MediaItem | null = null;
   previousResult: MediaItem | null = null;
   private shouldAdvanceStepperOnLoad = false;
+  private savedStepperIndex: number = 0;
 
   selectedTop: Garment | null = null;
   selectedBottom: Garment | null = null;
@@ -244,12 +246,16 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadVtoAssets();
+    this.restoreVtoState();
 
     // Subscribe to activeVtoJob$ to keep imagenDocuments in sync
     this.activeVtoJob$.subscribe(vtoJob => {
       if (vtoJob && vtoJob.status === JobStatus.COMPLETED) {
         this.previousResult = this.imagenDocuments;
         this.imagenDocuments = vtoJob;
+      } else if (!vtoJob) {
+        // Clear saved state when job is no longer active
+        this.clearVtoState();
       }
     });
   }
@@ -258,6 +264,12 @@ export class VtoComponent implements OnInit, AfterViewInit {
     if (this.shouldAdvanceStepperOnLoad && this.firstFormGroup.valid) {
       this.stepper.next();
       this.cdr.detectChanges(); // To avoid ExpressionChangedAfterItHasBeenCheckedError
+    }
+
+    // Restore stepper index if there's a saved state
+    if (this.savedStepperIndex > 0 && this.stepper) {
+      this.stepper.selectedIndex = this.savedStepperIndex;
+      this.cdr.detectChanges();
     }
   }
 
@@ -443,7 +455,11 @@ export class VtoComponent implements OnInit, AfterViewInit {
       return;
     }
 
+    // Save state before starting generation
+    this.saveVtoState();
+
     this.isLoading = true;
+    this.hideProcessingOverlay = false; // Reset overlay visibility for new job
 
     const payload: VtoRequest = {
       numberOfMedia: 4, // Defaulting to 4 as per DTO
@@ -474,6 +490,10 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   closeErrorOverlay() {
     this.showErrorOverlay = false;
+  }
+
+  minimizeOverlay() {
+    this.hideProcessingOverlay = true;
   }
 
   private applyRemixState(remixState: {
@@ -623,5 +643,66 @@ export class VtoComponent implements OnInit, AfterViewInit {
           this.selectGarment(newGarment, type);
         }
       });
+  }
+
+  private saveVtoState(): void {
+    const state = {
+      stepperIndex: this.stepper?.selectedIndex || 1,
+      modelType: this.firstFormGroup.get('modelType')?.value,
+      model: this.firstFormGroup.get('model')?.value,
+      top: this.secondFormGroup.get('top')?.value,
+      bottom: this.secondFormGroup.get('bottom')?.value,
+      dress: this.secondFormGroup.get('dress')?.value,
+      shoes: this.secondFormGroup.get('shoes')?.value,
+    };
+    sessionStorage.setItem('vtoState', JSON.stringify(state));
+  }
+
+  private restoreVtoState(): void {
+    const savedState = sessionStorage.getItem('vtoState');
+    if (!savedState) {
+      return;
+    }
+
+    try {
+      const state = JSON.parse(savedState);
+      
+      // Restore first form group
+      if (state.modelType) {
+        this.firstFormGroup.get('modelType')?.setValue(state.modelType, {emitEvent: false});
+      }
+      if (state.model) {
+        this.firstFormGroup.get('model')?.setValue(state.model, {emitEvent: false});
+      }
+
+      // Restore second form group
+      if (state.top) {
+        this.secondFormGroup.get('top')?.setValue(state.top, {emitEvent: false});
+        this.selectedTop = state.top;
+      }
+      if (state.bottom) {
+        this.secondFormGroup.get('bottom')?.setValue(state.bottom, {emitEvent: false});
+        this.selectedBottom = state.bottom;
+      }
+      if (state.dress) {
+        this.secondFormGroup.get('dress')?.setValue(state.dress, {emitEvent: false});
+        this.selectedDress = state.dress;
+      }
+      if (state.shoes) {
+        this.secondFormGroup.get('shoes')?.setValue(state.shoes, {emitEvent: false});
+        this.selectedShoes = state.shoes;
+      }
+
+      // Save stepper index to restore after view init
+      this.savedStepperIndex = state.stepperIndex || 0;
+    } catch (error) {
+      console.error('Failed to restore VTO state:', error);
+      this.clearVtoState();
+    }
+  }
+
+  private clearVtoState(): void {
+    sessionStorage.removeItem('vtoState');
+    this.savedStepperIndex = 0;
   }
 }
