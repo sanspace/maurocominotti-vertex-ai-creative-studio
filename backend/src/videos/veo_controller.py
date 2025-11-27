@@ -53,7 +53,7 @@ async def generate_videos(
         # Get the executor from the app state
         executor = request.app.state.executor
 
-        return await service.start_video_generation_job(
+        return service.start_video_generation_job(
             request_dto=video_request,
             user=current_user,
             executor=executor,  # Pass the pool to the service
@@ -91,7 +91,7 @@ async def concatenate_videos(
         workspace_auth_service.authorize(
             workspace_id=concat_request.workspace_id, user=current_user
         )
-        executor = request.app.state.process_pool
+        executor = request.app.state.executor
         placeholder_item = service.start_video_concatenation_job(
             request_dto=concat_request, user=current_user, executor=executor
         )

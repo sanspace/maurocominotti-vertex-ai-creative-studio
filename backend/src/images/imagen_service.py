@@ -58,7 +58,7 @@ from src.source_assets.repository.source_asset_repository import (
     SourceAssetRepository,
 )
 from src.users.user_model import UserModel
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import sys
 
 logger = logging.getLogger(__name__)
@@ -495,7 +495,7 @@ class ImagenService:
         self,
         request_dto: CreateImagenDto,
         user: UserModel,
-        executor: ProcessPoolExecutor,
+        executor: ThreadPoolExecutor,
     ) -> MediaItemResponse:
         """
         Immediately creates a placeholder MediaItem and starts the image generation

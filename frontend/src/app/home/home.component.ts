@@ -38,7 +38,6 @@ import {
   ImageSelectorComponent,
   MediaItemSelection,
 } from '../common/components/image-selector/image-selector.component';
-import { ToastMessageComponent } from '../common/components/toast-message/toast-message.component';
 import { MediaItem } from '../common/models/media-item.model';
 import {
   ImagenRequest,
@@ -52,7 +51,7 @@ import {
 } from '../fun-templates/media-template.model';
 import { SearchService } from '../services/search/search.service';
 import { WorkspaceStateService } from '../services/workspace/workspace-state.service';
-import { handleErrorSnackbar } from '../utils/handleErrorSnackbar';
+import { handleErrorSnackbar, handleSuccessSnackbar } from '../utils/handleMessageSnackbar';
 
 @Component({
   selector: 'app-home',
@@ -585,14 +584,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       );
       if (imagen3Model) {
         this.selectModel(imagen3Model);
-        this._snackBar.openFromComponent(ToastMessageComponent, {
-          panelClass: ['green-toast'],
-          duration: 8000,
-          data: {
-            text: "Imagen 4 doesn't support images as input, so we've switched to Imagen 3 for you!",
-            matIcon: 'info_outline',
-          },
-        });
+        handleSuccessSnackbar(this._snackBar, "Imagen 4 doesn't support images as input, so we've switched to Imagen 3 for you!");
         return;
       }
     }
