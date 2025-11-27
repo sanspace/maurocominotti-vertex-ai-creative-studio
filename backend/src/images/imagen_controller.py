@@ -53,8 +53,8 @@ async def generate_images(
             workspace_id=image_request.workspace_id, user=current_user
         )
 
-        # Get the process pool from the application state
-        executor = request.app.state.process_pool
+        # Get the executor from the app state
+        executor = request.app.state.executor
 
         return await service.start_image_generation_job(
             request_dto=image_request, user=current_user, executor=executor

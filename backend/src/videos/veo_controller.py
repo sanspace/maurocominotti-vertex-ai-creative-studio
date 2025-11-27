@@ -50,15 +50,14 @@ async def generate_videos(
             workspace_id=video_request.workspace_id, user=current_user
         )
 
-        # Get the process pool from the application state
-        executor = request.app.state.process_pool
+        # Get the executor from the app state
+        executor = request.app.state.executor
 
-        placeholder_item = service.start_video_generation_job(
+        return await service.start_video_generation_job(
             request_dto=video_request,
             user=current_user,
             executor=executor,  # Pass the pool to the service
         )
-        return placeholder_item
     except HTTPException as http_exception:
         raise http_exception
     except ValueError as value_error:

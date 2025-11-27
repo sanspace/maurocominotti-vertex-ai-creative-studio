@@ -19,6 +19,7 @@ import io
 import logging
 import os
 import time
+import random
 import uuid
 from typing import List, Optional, Literal
 
@@ -84,83 +85,90 @@ def gemini_flash_image_preview_generate_image(
     Returns:
         A types.GeneratedImage object, or None if failed.
     """
-    # Build the parts for the content, including the prompt and any reference images
-    parts = [types.Part.from_text(text=prompt)]
-    if reference_images:
-        for img in reference_images:
-            # The from_image helper was removed. We now use from_uri for GCS paths.
-            # The mime_type is automatically inferred by the SDK if not provided.
-            if img.gcs_uri:
-                parts.append(
-                    types.Part.from_uri(
-                        file_uri=img.gcs_uri, mime_type=img.mime_type
-                    )
-                )
+    for attempt in range(3):
+        try:
+            # Build the parts for the content, including the prompt and any reference images
+            parts = [types.Part.from_text(text=prompt)]
+            if reference_images:
+                for img in reference_images:
+                    # The from_image helper was removed. We now use from_uri for GCS paths.
+                    # The mime_type is automatically inferred by the SDK if not provided.
+                    if img.gcs_uri:
+                        parts.append(
+                            types.Part.from_uri(
+                                file_uri=img.gcs_uri, mime_type=img.mime_type
+                            )
+                        )
 
-    contents: list[types.ContentUnionDict] = [
-        types.Content(role="user", parts=parts)
-    ]
-    
-    image_config = types.ImageConfig(
-        aspect_ratio=aspect_ratio,
-        image_size=resolution,
-    )
-    
-    tools = []
+            contents: list[types.ContentUnionDict] = [
+                types.Content(role="user", parts=parts)
+            ]
+            
+            image_config = types.ImageConfig(
+                aspect_ratio=aspect_ratio,
+                image_size=resolution,
+            )
+            
+            tools = []
 
-    if google_search:
-        tools.append(
-            types.Tool(
-            google_search=types.GoogleSearch()
-        ))
+            if google_search:
+                tools.append(
+                    types.Tool(
+                    google_search=types.GoogleSearch()
+                ))
 
-    generate_content_config = types.GenerateContentConfig(
-        response_modalities=["Text", "Image"],
-        image_config=image_config,
-        tools=tools if tools else None,
-    )
-    response: types.GenerateContentResponse = vertexai_client.models.generate_content(
-        model=model,
-        contents=contents,
-        config=generate_content_config,
-    )
+            generate_content_config = types.GenerateContentConfig(
+                response_modalities=["Text", "Image"],
+                image_config=image_config,
+                tools=tools if tools else None,
+            )
+            response: types.GenerateContentResponse = vertexai_client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=generate_content_config,
+            )
 
-    grounding_metadata = None
+            grounding_metadata = None
 
-    for candidate in response.candidates:
-        if candidate.grounding_metadata and candidate.grounding_metadata.grounding_chunks:
-            # Capture grounding metadata if present
-            grounding_metadata = candidate.grounding_metadata.model_dump()
+            for candidate in response.candidates:
+                if candidate.grounding_metadata and candidate.grounding_metadata.grounding_chunks:
+                    # Capture grounding metadata if present
+                    grounding_metadata = candidate.grounding_metadata.model_dump()
 
-        if candidate.content and candidate.content.parts:
-            for part in candidate.content.parts:
-                if part.inline_data:
-                    # The API returns image data as a base64 encoded string
-                    image_data_base64 = part.inline_data.data or ""
-                    content_type = part.inline_data.mime_type or "image/png"
+                if candidate.content and candidate.content.parts:
+                    for part in candidate.content.parts:
+                        if part.inline_data:
+                            # The API returns image data as a base64 encoded string
+                            image_data_base64 = part.inline_data.data or ""
+                            content_type = part.inline_data.mime_type or "image/png"
 
-                    # Upload using our GCS service
-                    image_url = gcs_service.store_to_gcs(
-                        folder="gemini_images",
-                        file_name=str(uuid.uuid4()),
-                        mime_type=content_type,
-                        contents=image_data_base64,
-                        bucket_name=bucket_name,
-                    )
-                    if not image_url:
-                        logger.debug("Error: image url not generated ")
-                        return None, None
+                            # Upload using our GCS service
+                            image_url = gcs_service.store_to_gcs(
+                                folder="gemini_images",
+                                file_name=str(uuid.uuid4()),
+                                mime_type=content_type,
+                                contents=image_data_base64,
+                                bucket_name=bucket_name,
+                            )
+                            if not image_url:
+                                logger.debug("Error: image url not generated ")
+                                return None, None
 
-                    # Create a standard types.Image object
-                    image_object = types.Image(
-                        gcs_uri=image_url,
-                        mime_type=content_type,
-                    )
-                    # Wrap it in a types.GeneratedImage and return along with grounding metadata
-                    return types.GeneratedImage(image=image_object), grounding_metadata
+                            # Create a standard types.Image object
+                            image_object = types.Image(
+                                gcs_uri=image_url,
+                                mime_type=content_type,
+                            )
+                            # Wrap it in a types.GeneratedImage and return along with grounding metadata
+                            return types.GeneratedImage(image=image_object), grounding_metadata
 
-    logger.debug("No image data found in the API response stream.")
-    return None, None  # Return None if no image was found
+            logger.debug("No image data found in the API response stream.")
+            return None, None  # Return None if no image was found
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                time.sleep(2**attempt + random.random())
+                continue
+            raise e
 
 
 # --- STANDALONE WORKER FUNCTION ---
@@ -197,19 +205,17 @@ def _process_image_in_background(
         gemini_service = GeminiService()
         gcs_service = GcsService()
         source_asset_repo = SourceAssetRepository()
-        iam_signer_credentials = IamSignerCredentials()
         cfg = config_service
         
         # Initialize GenAI client in the worker process
-        GenAIModelSetup.init()
+        client = GenAIModelSetup.init()
 
         # Create a new event loop for this process
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        # --- RE-IMPLEMENTED GENERATION LOGIC ---
+        # --- GENERATION LOGIC ---
         start_time = time.monotonic()
-        client = GenAIModelSetup.init()
         gcs_output_directory = f"gs://{cfg.GENMEDIA_BUCKET}"
 
         original_prompt = request_dto.prompt
@@ -299,18 +305,26 @@ def _process_image_in_background(
                 else:
                     # --- OTHER IMAGEN MODELS (TEXT-TO-IMAGE): Single Batch API Call ---
                     # Using loop.run_until_complete for synchronous-like call in worker
-                    images_imagen_response = client.models.generate_images(
-                        model=request_dto.generation_model,
-                        prompt=request_dto.prompt,
-                        config=types.GenerateImagesConfig(
-                            number_of_images=request_dto.number_of_media,
-                            output_gcs_uri=gcs_output_directory,
-                            aspect_ratio=request_dto.aspect_ratio,
-                            negative_prompt=request_dto.negative_prompt,
-                            add_watermark=request_dto.add_watermark,
-                            image_size="2K",
-                        ),
-                    )
+                    for attempt in range(3):
+                        try:
+                            images_imagen_response = client.models.generate_images(
+                                model=request_dto.generation_model,
+                                prompt=request_dto.prompt,
+                                config=types.GenerateImagesConfig(
+                                    number_of_images=request_dto.number_of_media,
+                                    output_gcs_uri=gcs_output_directory,
+                                    aspect_ratio=request_dto.aspect_ratio,
+                                    negative_prompt=request_dto.negative_prompt,
+                                    add_watermark=request_dto.add_watermark,
+                                    image_size="2K",
+                                ),
+                            )
+                            break
+                        except Exception as e:
+                            if "429" in str(e) and attempt < 2:
+                                time.sleep(2**attempt + random.random())
+                                continue
+                            raise e
                     all_generated_images = (
                         images_imagen_response.generated_images or []
                     )
@@ -353,16 +367,24 @@ def _process_image_in_background(
                         reference_id=1,
                         reference_image=reference_images_for_api[0],
                     )
-                    response = client.models.edit_image(
-                        model=request_dto.generation_model,
-                        prompt=request_dto.prompt,
-                        reference_images=[raw_ref_image],
-                        config=types.EditImageConfig(
-                            edit_mode=types.EditMode.EDIT_MODE_DEFAULT,
-                            number_of_images=request_dto.number_of_media,
-                            output_gcs_uri=gcs_output_directory,
-                        ),
-                    )
+                    for attempt in range(3):
+                        try:
+                            response = client.models.edit_image(
+                                model=request_dto.generation_model,
+                                prompt=request_dto.prompt,
+                                reference_images=[raw_ref_image],
+                                config=types.EditImageConfig(
+                                    edit_mode=types.EditMode.EDIT_MODE_DEFAULT,
+                                    number_of_images=request_dto.number_of_media,
+                                    output_gcs_uri=gcs_output_directory,
+                                ),
+                            )
+                            break
+                        except Exception as e:
+                            if "429" in str(e) and attempt < 2:
+                                time.sleep(2**attempt + random.random())
+                                continue
+                            raise e
                     all_generated_images.extend(response.generated_images or [])
 
             if not all_generated_images:
