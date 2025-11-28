@@ -35,11 +35,10 @@ import {environment} from '../../../environments/environment';
 import {ImagenRequest, VeoRequest} from '../../common/models/search.model';
 import {JobStatus, MediaItem} from '../../common/models/media-item.model';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
 import {
   handleErrorSnackbar,
   handleSuccessSnackbar,
-} from '../../utils/handleErrorSnackbar';
+} from '../../utils/handleMessageSnackbar';
 
 export interface RewritePromptRequest {
   targetType: 'image' | 'video';
