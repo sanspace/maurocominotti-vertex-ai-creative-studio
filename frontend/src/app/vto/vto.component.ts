@@ -23,7 +23,7 @@ import {
   inject,
 } from '@angular/core';
 import {FormBuilder, Validators, FormGroup} from '@angular/forms';
-import {MediaItem} from '../common/models/media-item.model';
+import {JobStatus, MediaItem} from '../common/models/media-item.model';
 import {HttpClient} from '@angular/common/http';
 import {VtoInputLink, VtoRequest, VtoSourceMediaItemLink} from './vto.model';
 import {environment} from '../../environments/environment';
@@ -40,10 +40,12 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {finalize, Observable} from 'rxjs';
 import {handleErrorSnackbar, handleSuccessSnackbar} from '../utils/handleMessageSnackbar';
 import {NavigationExtras, Router} from '@angular/router';
+import {SearchService} from '../services/search/search.service';
 import {MatStepper} from '@angular/material/stepper';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import {VtoStateService} from '../services/vto-state.service';
 import {
   AssetScopeEnum,
   AssetTypeEnum,
@@ -83,12 +85,18 @@ export class VtoComponent implements OnInit, AfterViewInit {
   firstFormGroup: FormGroup;
   secondFormGroup: FormGroup;
 
+  showErrorOverlay = true;
+
   @ViewChild('stepper') stepper!: MatStepper;
+
+  activeVtoJob$: Observable<MediaItem | null>;
+  public readonly JobStatus = JobStatus; // Expose enum to template
 
   isLoading = false;
   imagenDocuments: MediaItem | null = null;
   previousResult: MediaItem | null = null;
   private shouldAdvanceStepperOnLoad = false;
+  private savedStepperIndex: number = 0;
 
   selectedTop: Garment | null = null;
   selectedBottom: Garment | null = null;
@@ -135,7 +143,10 @@ export class VtoComponent implements OnInit, AfterViewInit {
     public matIconRegistry: MatIconRegistry,
     private workspaceStateService: WorkspaceStateService,
     private sourceAssetService: SourceAssetService,
+    private searchService: SearchService,
+    private vtoStateService: VtoStateService,
   ) {
+    this.activeVtoJob$ = this.searchService.activeVtoJob$;
     this.matIconRegistry.addSvgIcon(
       'mobile-white-gemini-spark-icon',
       this.setPath(`${this.path}/mobile-white-gemini-spark-icon.svg`),
@@ -227,12 +238,30 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.loadVtoAssets();
+    this.restoreVtoState();
+
+    // Subscribe to activeVtoJob$ to keep imagenDocuments in sync
+    this.activeVtoJob$.subscribe(vtoJob => {
+      if (vtoJob && vtoJob.status === JobStatus.COMPLETED) {
+        this.previousResult = this.imagenDocuments;
+        this.imagenDocuments = vtoJob;
+      } else if (!vtoJob) {
+        // Clear saved state when job is no longer active
+        this.clearVtoState();
+      }
+    });
   }
 
   ngAfterViewInit(): void {
     if (this.shouldAdvanceStepperOnLoad && this.firstFormGroup.valid) {
       this.stepper.next();
       this.cdr.detectChanges(); // To avoid ExpressionChangedAfterItHasBeenCheckedError
+    }
+
+    // Restore stepper index if there's a saved state
+    if (this.savedStepperIndex > 0 && this.stepper) {
+      this.stepper.selectedIndex = this.savedStepperIndex;
+      this.cdr.detectChanges();
     }
   }
 
@@ -409,6 +438,9 @@ export class VtoComponent implements OnInit, AfterViewInit {
       return;
     }
 
+    // Save state before starting generation
+    this.saveVtoState();
+
     this.isLoading = true;
 
     const payload: VtoRequest = {
@@ -423,21 +455,23 @@ export class VtoComponent implements OnInit, AfterViewInit {
     if (this.selectedDress) payload.dressImage = this.selectedDress.inputLink;
     if (this.selectedShoes) payload.shoeImage = this.selectedShoes.inputLink;
 
-    this.http
-      .post<MediaItem>(
-        `${environment.backendURL}/images/generate-images-for-vto`,
-        payload,
-      )
+    this.searchService
+      .startVtoGeneration(payload)
       .pipe(finalize(() => (this.isLoading = false)))
       .subscribe({
-        next: response => {
-          this.previousResult = this.imagenDocuments;
-          this.imagenDocuments = response;
+        next: (initialResponse: MediaItem) => {
+          console.log('VTO job started successfully:', initialResponse);
+          // UI will update via activeVtoJob$ observable
         },
         error: err => {
           handleErrorSnackbar(this._snackBar, err, 'Virtual Try-On');
         },
       });
+  }
+
+
+  closeErrorOverlay() {
+    this.showErrorOverlay = false;
   }
 
   private applyRemixState(remixState: {
@@ -587,5 +621,64 @@ export class VtoComponent implements OnInit, AfterViewInit {
           this.selectGarment(newGarment, type);
         }
       });
+  }
+
+  private saveVtoState(): void {
+    const state = {
+      stepperIndex: this.stepper?.selectedIndex || 1,
+      modelType: this.firstFormGroup.get('modelType')?.value,
+      model: this.firstFormGroup.get('model')?.value,
+      top: this.secondFormGroup.get('top')?.value,
+      bottom: this.secondFormGroup.get('bottom')?.value,
+      dress: this.secondFormGroup.get('dress')?.value,
+      shoes: this.secondFormGroup.get('shoes')?.value,
+    };
+    this.vtoStateService.updateState(state);
+  }
+
+  private restoreVtoState(): void {
+    const state = this.vtoStateService.getState();
+    if (!state.modelType && !state.model) {
+      return;
+    }
+
+    try {
+      // Restore first form group
+      if (state.modelType) {
+        this.firstFormGroup.get('modelType')?.setValue(state.modelType, {emitEvent: false});
+      }
+      if (state.model) {
+        this.firstFormGroup.get('model')?.setValue(state.model, {emitEvent: false});
+      }
+
+      // Restore second form group
+      if (state.top) {
+        this.secondFormGroup.get('top')?.setValue(state.top, {emitEvent: false});
+        this.selectedTop = state.top;
+      }
+      if (state.bottom) {
+        this.secondFormGroup.get('bottom')?.setValue(state.bottom, {emitEvent: false});
+        this.selectedBottom = state.bottom;
+      }
+      if (state.dress) {
+        this.secondFormGroup.get('dress')?.setValue(state.dress, {emitEvent: false});
+        this.selectedDress = state.dress;
+      }
+      if (state.shoes) {
+        this.secondFormGroup.get('shoes')?.setValue(state.shoes, {emitEvent: false});
+        this.selectedShoes = state.shoes;
+      }
+
+      // Save stepper index to restore after view init
+      this.savedStepperIndex = state.stepperIndex || 0;
+    } catch (error) {
+      console.error('Failed to restore VTO state:', error);
+      this.clearVtoState();
+    }
+  }
+
+  private clearVtoState(): void {
+    this.vtoStateService.resetState();
+    this.savedStepperIndex = 0;
   }
 }

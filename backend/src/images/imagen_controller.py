@@ -75,14 +75,25 @@ async def generate_images(
 @router.post("/generate-images-for-vto")
 async def generate_images_vto(
     image_request: VtoDto,
+    request: Request,
     service: ImagenService = Depends(),
     current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
-
+    """Start an async VTO generation job. Returns immediately with a placeholder."""
     try:
-        return await service.generate_image_for_vto(
-            request_dto=image_request, user=current_user
+        workspace_auth_service.authorize(
+            workspace_id=image_request.workspace_id, user=current_user
         )
+
+        # Get the process pool from the application state
+        executor = request.app.state.executor
+
+        placeholder_item = service.start_vto_generation_job(
+            request_dto=image_request,
+            user=current_user,
+            executor=executor,
+        )
+        return placeholder_item
     except HTTPException as http_exception:
         raise http_exception
     except ValueError as value_error:

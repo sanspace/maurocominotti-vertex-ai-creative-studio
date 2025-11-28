@@ -63,6 +63,242 @@ import sys
 logger = logging.getLogger(__name__)
 
 
+# --- STANDALONE WORKER FUNCTION FOR VTO ---
+def _process_vto_in_background(
+    media_item_id: str, request_dto: VtoDto, current_user: UserModel
+):  # type: ignore
+    """
+    Long-running worker task for VTO generation. Creates its own service instances
+    because it runs in a completely separate process.
+    """
+    import os
+    import sys
+    from google.cloud.logging import Client as LoggerClient
+    from google.cloud.logging.handlers import CloudLoggingHandler
+
+    worker_logger = logging.getLogger(f"vto_worker.{media_item_id}")
+    worker_logger.setLevel(logging.INFO)
+
+    try:
+        # Clear any handlers that might be inherited from the parent process
+        if worker_logger.hasHandlers():
+            worker_logger.handlers.clear()
+
+        if os.getenv("ENVIRONMENT") == "production":
+            log_client = LoggerClient()
+            handler = CloudLoggingHandler(
+                log_client, name=f"vto_worker.{media_item_id}"
+            )
+            worker_logger.addHandler(handler)
+        else:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                "%(asctime)s - [VTO_WORKER] - %(levelname)s - %(message)s"
+            )
+            handler.setFormatter(formatter)
+            worker_logger.addHandler(handler)
+
+        # Create new instances of dependencies within this process
+        media_repo = MediaRepository()
+        iam_signer_credentials = IamSignerCredentials()
+        source_asset_repo = SourceAssetRepository()
+        cfg = config_service
+
+        try:
+            start_time = time.monotonic()
+            client = GenAIModelSetup.init()
+            gcs_output_directory = f"gs://{cfg.IMAGE_BUCKET}/{cfg.IMAGEN_RECONTEXT_SUBFOLDER}"
+
+            source_media_items: List[SourceMediaItemLink] = []  # type: ignore
+            source_assets: List[SourceAssetLink] = []
+
+            def get_gcs_uri_from_input(
+                vto_input: VtoInputLink, role: AssetRoleEnum
+            ) -> str:
+                """Helper to get GCS URI from either source asset or media item."""
+                if vto_input.source_asset_id:
+                    asset = source_asset_repo.get_by_id(vto_input.source_asset_id)
+                    if not asset:
+                        raise ValueError(
+                            f"Source asset {vto_input.source_asset_id} not found."
+                        )
+                    source_assets.append(
+                        SourceAssetLink(asset_id=asset.id, role=role)
+                    )
+                    return asset.gcs_uri
+
+                elif vto_input.source_media_item:
+                    media_item_link = vto_input.source_media_item
+                    parent_item = media_repo.get_by_id(
+                        media_item_link.media_item_id
+                    )
+                    if (
+                        not parent_item
+                        or not parent_item.gcs_uris
+                        or not (
+                            0
+                            <= media_item_link.media_index
+                            < len(parent_item.gcs_uris)
+                        )
+                    ):
+                        raise ValueError(
+                            f"Source media item {media_item_link.media_item_id} not found or index is invalid."
+                        )
+
+                    source_media_items.append(
+                        SourceMediaItemLink(
+                            media_item_id=media_item_link.media_item_id,
+                            media_index=media_item_link.media_index,
+                            role=role,
+                        )
+                    )
+                    return parent_item.gcs_uris[media_item_link.media_index]
+
+                raise ValueError("Invalid VTO input provided.")
+
+            # --- Set up the iterative VTO process ---
+            current_person_gcs_uri = get_gcs_uri_from_input(
+                request_dto.person_image, AssetRoleEnum.VTO_PERSON
+            )
+
+            # Define the order of garment application
+            garment_inputs = [
+                (request_dto.top_image, AssetRoleEnum.VTO_TOP),
+                (request_dto.bottom_image, AssetRoleEnum.VTO_BOTTOM),
+                (request_dto.dress_image, AssetRoleEnum.VTO_DRESS),
+                (request_dto.shoe_image, AssetRoleEnum.VTO_SHOE),
+            ]
+            active_garments = [
+                (inp, role) for inp, role in garment_inputs if inp is not None
+            ]
+
+            final_response = None
+
+            # --- Loop through each garment and apply it sequentially ---
+            for i, (garment_input, role) in enumerate(active_garments):
+                if garment_input:
+                    garment_gcs_uri = get_gcs_uri_from_input(garment_input, role)
+                    person_image_part = types.Image(gcs_uri=current_person_gcs_uri)
+                    product_image_part = types.ProductImage(
+                        product_image=types.Image(gcs_uri=garment_gcs_uri)
+                    )
+
+                    worker_logger.info(
+                        f"Applying garment {i+1}/{len(active_garments)} with role {role}"
+                    )
+
+                    response = client.models.recontext_image(
+                        model=cfg.VTO_MODEL_ID,
+                        source=types.RecontextImageSource(
+                            person_image=person_image_part,
+                            product_images=[product_image_part],
+                        ),
+                        config=types.RecontextImageConfig(
+                            output_gcs_uri=gcs_output_directory,
+                            number_of_images=request_dto.number_of_media,
+                        ),
+                    )
+
+                    if i == len(active_garments) - 1:
+                        final_response = response
+                    elif (
+                        response.generated_images
+                        and response.generated_images[0].image
+                    ):
+                        current_person_gcs_uri = response.generated_images[
+                            0
+                        ].image.gcs_uri
+
+            if not final_response:
+                raise ValueError(
+                    "VTO generation failed to produce a final result."
+                )
+
+            all_generated_images = final_response.generated_images or []
+
+            if not all_generated_images:
+                raise ValueError("No images generated from VTO process.")
+
+            # Process results
+            valid_generated_images = [
+                img
+                for img in all_generated_images
+                if img.image and img.image.gcs_uri
+            ]
+            mime_type: MimeTypeEnum = (
+                MimeTypeEnum.IMAGE_PNG
+                if valid_generated_images[0].image
+                and valid_generated_images[0].image.mime_type
+                == MimeTypeEnum.IMAGE_PNG
+                else MimeTypeEnum.IMAGE_JPEG
+            )
+
+            permanent_gcs_uris = [
+                img.image.gcs_uri
+                for img in valid_generated_images
+                if img.image and img.image.gcs_uri
+            ]
+
+            # Generate presigned URLs
+            presigned_urls = [
+                iam_signer_credentials.generate_presigned_url(uri)
+                for uri in permanent_gcs_uris
+            ]
+
+            end_time = time.monotonic()
+            generation_time = end_time - start_time
+
+            # Update the document with completed status
+            update_data = {
+                "status": JobStatusEnum.COMPLETED,
+                "gcs_uris": permanent_gcs_uris,
+                "generation_time": generation_time,
+                "num_media": len(permanent_gcs_uris),
+                "mime_type": mime_type,
+                "source_assets": (
+                    [item.model_dump() for item in source_assets]
+                    if source_assets
+                    else None
+                ),
+                "source_media_items": (
+                    [item.model_dump() for item in source_media_items]
+                    if source_media_items
+                    else None
+                ),
+            }
+            media_repo.update(media_item_id, update_data)
+            worker_logger.info(
+                "Successfully processed VTO job.",
+                extra={
+                    "json_fields": {
+                        "media_id": media_item_id,
+                        "generation_time_seconds": generation_time,
+                        "images_generated": len(permanent_gcs_uris),
+                    }
+                },
+            )
+
+        except Exception as e:
+            worker_logger.error(
+                "VTO generation task failed.",
+                extra={
+                    "json_fields": {"media_id": media_item_id, "error": str(e)}
+                },
+                exc_info=True,
+            )
+            error_update_data = {
+                "status": JobStatusEnum.FAILED,
+                "error_message": str(e),
+            }
+            media_repo.update(media_item_id, error_update_data)
+    except Exception as e:
+        worker_logger.error(
+            "VTO worker failed to initialize.",
+            extra={"json_fields": {"media_id": media_item_id, "error": str(e)}},
+            exc_info=True,
+        )
+
+
 def gemini_flash_image_preview_generate_image(
     gcs_service: GcsService,
     vertexai_client: Client,
@@ -551,6 +787,100 @@ class ImagenService:
             presigned_thumbnail_urls=[],
         )
 
+
+    def start_vto_generation_job(
+        self,
+        request_dto: VtoDto,
+        user: UserModel,
+        executor: ThreadPoolExecutor,
+    ) -> MediaItemResponse:
+        """
+        Immediately creates a placeholder MediaItem and starts the VTO generation
+        in the background.
+
+        Returns:
+            The initial MediaItem with a 'processing' status and a pre-generated ID.
+        """
+        # 1. Generate an ID beforehand
+        media_item_id = str(uuid.uuid4())
+
+        # 2. Create a placeholder document
+        placeholder_item = MediaItemModel(
+            id=media_item_id,
+            workspace_id=request_dto.workspace_id,
+            user_email=user.email,
+            user_id=user.id,
+            mime_type=MimeTypeEnum.IMAGE_PNG,
+            model=GenerationModelEnum.VTO,
+            aspect_ratio=AspectRatioEnum.RATIO_9_16,
+            original_prompt="",
+            prompt="",
+            status=JobStatusEnum.PROCESSING,
+            gcs_uris=[],
+        )
+
+        # 3. Save the placeholder to the database immediately
+        self.media_repo.save(placeholder_item)
+
+        # 4. Submit the long-running function to the process pool
+        executor.submit(
+            _process_vto_in_background,
+            media_item_id=placeholder_item.id,
+            request_dto=request_dto,
+            current_user=user,
+        )
+
+        logger.info(
+            "VTO generation job successfully queued.",
+            extra={
+                "json_fields": {
+                    "message": "VTO generation job successfully queued.",
+                    "media_id": placeholder_item.id,
+                    "user_email": user.email,
+                    "user_id": user.id,
+                }
+            },
+        )
+
+        # 5. Return the placeholder to the frontend
+        return MediaItemResponse(
+            **placeholder_item.model_dump(),
+            presigned_urls=[],
+        )
+
+    async def get_media_item_with_presigned_urls(
+        self, media_id: str
+    ) -> Optional[MediaItemResponse]:
+        """
+        Fetches a MediaItem by its ID and enriches it with presigned URLs.
+
+        Args:
+            media_id: The unique ID of the media item.
+
+        Returns:
+            A MediaItemResponse object with presigned URLs, or None if not found.
+        """
+        # 1. Fetch the base document from Firestore
+        media_item = self.media_repo.get_by_id(media_id)
+        if not media_item:
+            return None
+
+        # 2. Create tasks to generate all presigned URLs in parallel
+        presigned_url_tasks = [
+            asyncio.to_thread(
+                self.iam_signer_credentials.generate_presigned_url, uri
+            )
+            for uri in media_item.gcs_uris
+        ]
+
+        # 3. Execute all URL generation tasks concurrently
+        presigned_urls = await asyncio.gather(*presigned_url_tasks)
+
+        # 4. Construct the final response DTO
+        return MediaItemResponse(
+            **media_item.model_dump(),
+            presigned_urls=presigned_urls,
+        )
 
     async def generate_image_for_vto(
         self, request_dto: VtoDto, user: UserModel
