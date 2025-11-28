@@ -45,15 +45,13 @@ import {
   EnrichedSourceAsset,
   GenerationParameters,
 } from '../fun-templates/media-template.model';
-import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import { handleErrorSnackbar, handleSuccessSnackbar } from '../utils/handleMessageSnackbar';
 import {JobStatus, MediaItem} from '../common/models/media-item.model';
 import {
   SourceAssetResponseDto,
   SourceAssetService,
 } from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
-import {environment} from '../../environments/environment';
-import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
@@ -199,7 +197,7 @@ export class VideoComponent implements AfterViewInit {
   constructor(
     private sanitizer: DomSanitizer,
     public matIconRegistry: MatIconRegistry,
-    private service: SearchService,
+    public service: SearchService,
     public router: Router,
     private _snackBar: MatSnackBar,
     public dialog: MatDialog,
@@ -244,6 +242,9 @@ export class VideoComponent implements AfterViewInit {
     if (sourceAssets) {
       this.applySourceAssets(sourceAssets);
     }
+
+    // Load persisted prompt
+    this.searchRequest.prompt = this.service.videoPrompt;
   }
 
   ngAfterViewInit(): void {
@@ -435,14 +436,7 @@ export class VideoComponent implements AfterViewInit {
       );
       if (veo31Model) {
         this.selectModel(veo31Model);
-        this._snackBar.openFromComponent(ToastMessageComponent, {
-          panelClass: ['green-toast'],
-          duration: 8000,
-          data: {
-            text: "Veo 3 doesn't support images as input, so we've switched to Veo 3.1 for you.",
-            matIcon: 'info_outline',
-          },
-        });
+        handleSuccessSnackbar(this._snackBar, "Veo 3 doesn't support images as input, so we've switched to Veo 3.1 for you.");
         return;
       }
     }
@@ -510,17 +504,7 @@ export class VideoComponent implements AfterViewInit {
         error: error => {
           // This block will now execute correctly if the POST request fails.
           console.error('Search error:', error);
-          const errorMessage =
-            error?.error?.detail?.[0]?.msg ||
-            error?.message ||
-            'Something went wrong';
-          this._snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['red-toast'],
-            verticalPosition: 'top',
-            horizontalPosition: 'right',
-            duration: 6000,
-            data: {text: errorMessage, icon: 'cross-in-circle-white'},
-          });
+          handleErrorSnackbar(this._snackBar, error, 'Search');
         },
       });
   }
@@ -691,14 +675,7 @@ export class VideoComponent implements AfterViewInit {
         );
         if (veo2Model) {
           this.selectModel(veo2Model);
-          this._snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['green-toast'],
-            duration: 8000,
-            data: {
-              text: "Veo 3 doesn't support video as input, so we've switched to Veo 2 for you.",
-              matIcon: 'info_outline',
-            },
-          });
+          handleSuccessSnackbar(this._snackBar, "Veo 3 doesn't support video as input, so we've switched to Veo 2 for you.");
         }
       }
     }
@@ -902,14 +879,7 @@ export class VideoComponent implements AfterViewInit {
         this.sourceMediaItems[1] = null;
       }
 
-      this._snackBar.openFromComponent(ToastMessageComponent, {
-        panelClass: ['green-toast'],
-        duration: 8000,
-        data: {
-          text: "Veo 3 doesn't support 2 images as input, so we've cleared the other one for you.",
-          matIcon: 'info_outline',
-        },
-      });
+      handleSuccessSnackbar(this._snackBar, "Veo 3 doesn't support 2 images as input, so we've cleared the other one for you.");
     }
   }
 
@@ -949,11 +919,7 @@ export class VideoComponent implements AfterViewInit {
           );
           if (veo2Model) {
             this.selectModel(veo2Model);
-            this._snackBar.open(
-              "Switched to Veo 2.0, as it's required for video extension.",
-              'OK',
-              {duration: 6000, panelClass: ['green-toast']},
-            );
+            handleSuccessSnackbar(this._snackBar, "Switched to Veo 2.0, as it's required for video extension.");
           }
         }
         this._showModeNotification('extend');
@@ -974,10 +940,7 @@ export class VideoComponent implements AfterViewInit {
         'Concatenate Mode: The prompt is disabled. Click "Concatenate" to join the videos.';
     }
 
-    this._snackBar.open(message, 'OK', {
-      duration: 6000,
-      panelClass: ['green-toast'],
-    });
+    handleSuccessSnackbar(this._snackBar, message);
   }
 
   private getMimeTypeForSelector():
@@ -1198,14 +1161,7 @@ export class VideoComponent implements AfterViewInit {
       );
       if (veo31Model) {
         this.selectModel(veo31Model);
-        this._snackBar.openFromComponent(ToastMessageComponent, {
-          panelClass: ['green-toast'],
-          duration: 8000,
-          data: {
-            text: "We've switched to the Veo 3.1 model for you, as this one supports reference images.",
-            matIcon: 'info_outline',
-          },
-        });
+        handleSuccessSnackbar(this._snackBar, "We've switched to the Veo 3.1 model for you, as this one supports reference images.");
       }
     }
   }

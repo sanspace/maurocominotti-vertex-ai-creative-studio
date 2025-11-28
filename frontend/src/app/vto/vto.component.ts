@@ -38,11 +38,10 @@ import {
 } from '../common/services/source-asset.service';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {finalize, Observable} from 'rxjs';
-import {handleErrorSnackbar} from '../utils/handleErrorSnackbar';
+import {handleErrorSnackbar, handleSuccessSnackbar} from '../utils/handleMessageSnackbar';
 import {NavigationExtras, Router} from '@angular/router';
 import {SearchService} from '../services/search/search.service';
 import {MatStepper} from '@angular/material/stepper';
-import {ToastMessageComponent} from '../common/components/toast-message/toast-message.component';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
@@ -189,11 +188,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
       this.selectedTop = top;
       if (top) {
         if (this.secondFormGroup.get('dress')?.value) {
-          this._snackBar.open(
-            'A dress cannot be worn with a top. The dress has been unselected.',
-            'OK',
-            {duration: 5000},
-          );
+          handleErrorSnackbar(this._snackBar, { message: 'A dress cannot be worn with a top. The dress has been unselected.' }, 'Garment Conflict');
         }
         this.selectedDress = null;
         this.secondFormGroup.get('dress')?.reset(null, {emitEvent: false});
@@ -203,11 +198,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
       this.selectedBottom = bottom;
       if (bottom) {
         if (this.secondFormGroup.get('dress')?.value) {
-          this._snackBar.open(
-            'A dress cannot be worn with a bottom. The dress has been unselected.',
-            'OK',
-            {duration: 5000},
-          );
+          handleErrorSnackbar(this._snackBar, { message: 'A dress cannot be worn with a bottom. The dress has been unselected.' }, 'Garment Conflict');
         }
         this.selectedDress = null;
         this.secondFormGroup.get('dress')?.reset(null, {emitEvent: false});
@@ -231,7 +222,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
             'A bottom cannot be worn with a dress. The bottom has been unselected.';
         }
         if (message) {
-          this._snackBar.open(message, 'OK', {duration: 5000});
+          handleErrorSnackbar(this._snackBar, { message: message }, 'Garment Conflict');
         }
         this.selectedTop = null;
         this.selectedBottom = null;
@@ -442,16 +433,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
       !this.selectedDress &&
       !this.selectedShoes
     ) {
-      this._snackBar.openFromComponent(ToastMessageComponent, {
-        panelClass: ['red-toast'],
-        verticalPosition: 'top',
-        horizontalPosition: 'right',
-        duration: 6000,
-        data: {
-          text: 'You need to select at least 1 garment!',
-          matIcon: 'error',
-        },
-      });
+      handleErrorSnackbar(this._snackBar, { message: 'You need to select at least 1 garment!' }, 'Virtual Try-On');
       return;
     }
 

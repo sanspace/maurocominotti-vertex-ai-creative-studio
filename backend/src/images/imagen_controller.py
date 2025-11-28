@@ -18,7 +18,6 @@ from fastapi import status as Status
 from src.auth.auth_guard import RoleChecker, get_current_user
 from src.galleries.dto.gallery_response_dto import MediaItemResponse
 from src.images.dto.create_imagen_dto import CreateImagenDto
-from src.images.dto.edit_imagen_dto import EditImagenDto
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.dto.vto_dto import VtoDto
 from src.images.imagen_service import ImagenService
@@ -42,6 +41,7 @@ router = APIRouter(
 @router.post("/generate-images")
 async def generate_images(
     image_request: CreateImagenDto,
+    request: Request,
     service: ImagenService = Depends(),
     current_user: UserModel = Depends(get_current_user),
 ) -> MediaItemResponse | None:
@@ -52,8 +52,11 @@ async def generate_images(
             workspace_id=image_request.workspace_id, user=current_user
         )
 
-        return await service.generate_images(
-            request_dto=image_request, user=current_user
+        # Get the executor from the app state
+        executor = request.app.state.executor
+
+        return await service.start_image_generation_job(
+            request_dto=image_request, user=current_user, executor=executor
         )
     except HTTPException as http_exception:
         raise http_exception
@@ -105,35 +108,6 @@ async def generate_images_vto(
         )
 
 
-@router.post("/recontextualize-product-in-scene")
-def recontextualize_product_in_scene(
-    image_uris_list: list[str],
-    prompt: str,
-    sample_count: int,
-    service: ImagenService = Depends(),
-) -> list[str]:
-    try:
-        return service.recontextualize_product_in_scene(
-            image_uris_list, prompt, sample_count
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-
-@router.post("/edit-image")
-def edit_image(
-    image_request: EditImagenDto, service: ImagenService = Depends()
-) -> list[ImageGenerationResult]:
-    try:
-        return service.edit_image(image_request)
-    except Exception as e:
-        raise HTTPException(
-            status_code=Status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-
 @router.post("/upscale-image")
 async def upscale_image(
     image_request: UpscaleImagenDto,
@@ -155,27 +129,3 @@ async def upscale_image(
         )
 
 
-@router.get(
-    "/{media_id}",
-    response_model=MediaItemResponse,
-    summary="Get Media Item by ID",
-)
-async def get_media_item_by_id(
-    media_id: str,
-    imagen_service: ImagenService = Depends(),
-):
-    """
-    Retrieves a single media item by its unique ID, including its current status
-    and presigned URLs for viewing. This is the endpoint to use for polling.
-    """
-    media_item_response = (
-        await imagen_service.get_media_item_with_presigned_urls(media_id)
-    )
-
-    if not media_item_response:
-        raise HTTPException(
-            status_code=Status.HTTP_404_NOT_FOUND,
-            detail="Media item not found.",
-        )
-
-    return media_item_response
