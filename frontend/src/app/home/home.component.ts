@@ -804,18 +804,18 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (state.sourceAssetIds && state.sourceAssetIds.length > 0) {
       // This is a simplification, we might need to fetch the actual assets to get preview URLs
       // For now, we just set the IDs, but preview won't work until we have URLs
-      state.sourceAssetIds.forEach((id: string) => {
+      state.sourceAssetIds.forEach((id: string, index: number) => {
         this.referenceImages.push({
-          previewUrl: '', // Need to handle this
+          previewUrl: (state.previewUrls && state.previewUrls[index]) || state.previewUrl || '',
           sourceAssetId: id,
         });
       });
     }
 
     if (state.sourceMediaItems && state.sourceMediaItems.length > 0) {
-      state.sourceMediaItems.forEach((item: SourceMediaItemLink) => {
+      state.sourceMediaItems.forEach((item: SourceMediaItemLink, index: number) => {
         this.referenceImages.push({
-          previewUrl: '', // Need to handle this
+          previewUrl: (state.previewUrls && state.previewUrls[index]) || state.previewUrl || '',
           sourceMediaItem: item,
         });
       });

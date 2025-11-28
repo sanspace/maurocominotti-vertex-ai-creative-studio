@@ -148,6 +148,12 @@
                   />
                 </mat-card>
               </div>
+              <div class="flex justify-start mt-6">
+                <button mat-raised-button class="!bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 !text-white font-bold"
+                  matStepperNext>
+                  Next
+                </button>
+              </div>
             </div>
 
             <!-- Right Column: Upload your own -->
@@ -201,14 +207,6 @@
               </div>
             </div>
           </div>
-
-          <button mat-raised-button class="!bg-white" matStepperNext>
-            <span
-              class="font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent"
-            >
-              Next
-            </span>
-          </button>
         </form>
       </mat-step>
 
@@ -296,15 +294,11 @@
                     </button>
                     <button
                       mat-raised-button
-                      class="!bg-white"
+                      class="!bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 !text-white font-bold"
                       (click)="tryOn()"
                       [disabled]="!firstFormGroup.valid"
                     >
-                      <span
-                        class="font-bold bg-gradient-to-r from-blue-500 via-violet-500 to-red-400 bg-clip-text text-transparent"
-                      >
-                        Try on!
-                      </span>
+                      Try on!
                     </button>
                   </div>
                 </div>
