@@ -322,7 +322,7 @@ export class SearchService {
    * @returns An Observable of the MediaItem.
    */
   getVtoMediaItem(mediaId: string): Observable<MediaItem> {
-    const url = `${environment.backendURL}/images/${mediaId}`;
+    const url = `${environment.backendURL}/gallery/item/${mediaId}`;
     return this.http.get<MediaItem>(url);
   }
 

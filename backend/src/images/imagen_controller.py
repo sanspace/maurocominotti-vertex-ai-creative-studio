@@ -86,7 +86,7 @@ async def generate_images_vto(
         )
 
         # Get the process pool from the application state
-        executor = request.app.state.process_pool
+        executor = request.app.state.executor
 
         placeholder_item = service.start_vto_generation_job(
             request_dto=image_request,

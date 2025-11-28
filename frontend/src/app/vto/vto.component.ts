@@ -45,6 +45,7 @@ import {MatStepper} from '@angular/material/stepper';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {MatIconRegistry} from '@angular/material/icon';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import {VtoStateService} from '../services/vto-state.service';
 import {
   AssetScopeEnum,
   AssetTypeEnum,
@@ -85,7 +86,6 @@ export class VtoComponent implements OnInit, AfterViewInit {
   secondFormGroup: FormGroup;
 
   showErrorOverlay = true;
-  hideProcessingOverlay = false;
 
   @ViewChild('stepper') stepper!: MatStepper;
 
@@ -144,6 +144,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
     private workspaceStateService: WorkspaceStateService,
     private sourceAssetService: SourceAssetService,
     private searchService: SearchService,
+    private vtoStateService: VtoStateService,
   ) {
     this.activeVtoJob$ = this.searchService.activeVtoJob$;
     this.matIconRegistry.addSvgIcon(
@@ -441,7 +442,6 @@ export class VtoComponent implements OnInit, AfterViewInit {
     this.saveVtoState();
 
     this.isLoading = true;
-    this.hideProcessingOverlay = false; // Reset overlay visibility for new job
 
     const payload: VtoRequest = {
       numberOfMedia: 4, // Defaulting to 4 as per DTO
@@ -472,10 +472,6 @@ export class VtoComponent implements OnInit, AfterViewInit {
 
   closeErrorOverlay() {
     this.showErrorOverlay = false;
-  }
-
-  minimizeOverlay() {
-    this.hideProcessingOverlay = true;
   }
 
   private applyRemixState(remixState: {
@@ -637,18 +633,16 @@ export class VtoComponent implements OnInit, AfterViewInit {
       dress: this.secondFormGroup.get('dress')?.value,
       shoes: this.secondFormGroup.get('shoes')?.value,
     };
-    sessionStorage.setItem('vtoState', JSON.stringify(state));
+    this.vtoStateService.updateState(state);
   }
 
   private restoreVtoState(): void {
-    const savedState = sessionStorage.getItem('vtoState');
-    if (!savedState) {
+    const state = this.vtoStateService.getState();
+    if (!state.modelType && !state.model) {
       return;
     }
 
     try {
-      const state = JSON.parse(savedState);
-      
       // Restore first form group
       if (state.modelType) {
         this.firstFormGroup.get('modelType')?.setValue(state.modelType, {emitEvent: false});
@@ -684,7 +678,7 @@ export class VtoComponent implements OnInit, AfterViewInit {
   }
 
   private clearVtoState(): void {
-    sessionStorage.removeItem('vtoState');
+    this.vtoStateService.resetState();
     this.savedStepperIndex = 0;
   }
 }

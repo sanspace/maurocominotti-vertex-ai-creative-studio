@@ -792,7 +792,7 @@ class ImagenService:
         self,
         request_dto: VtoDto,
         user: UserModel,
-        executor,
+        executor: ThreadPoolExecutor,
     ) -> MediaItemResponse:
         """
         Immediately creates a placeholder MediaItem and starts the VTO generation

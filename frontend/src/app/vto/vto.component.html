@@ -88,15 +88,12 @@
     <ng-container *ngIf="activeVtoJob$ | async as job">
       <!-- Processing Overlay -->
       <div
-        *ngIf="job.status === JobStatus.PROCESSING && !hideProcessingOverlay"
+        *ngIf="job.status === JobStatus.PROCESSING"
         class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-70 text-center p-4"
       >
         <mat-progress-spinner color="primary" mode="indeterminate" [diameter]="50"></mat-progress-spinner>
-        <p class="mt-4 text-white text-lg">Your virtual try-on is being generated...</p>
+        <p class="!mt-6 text-white text-lg">Your virtual try-on is being generated...</p>
         <p class="text-gray-400 text-sm">This may take a few moments. You can safely navigate away.</p>
-        <button mat-stroked-button color="primary" class="mt-4" (click)="minimizeOverlay()">
-          Run in background
-        </button>
       </div>
 
       <!-- Failed Overlay -->
