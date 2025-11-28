@@ -14,13 +14,13 @@
   pointer-events: auto;
   box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12);
   border-radius: 4px;
-  overflow: hidden;
+  overflow: auto;
   min-width: 300px;
   max-width: 400px;
   padding: 14px 16px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-around !important;
 
   &.green-toast {
     background-color: #06865e !important;
