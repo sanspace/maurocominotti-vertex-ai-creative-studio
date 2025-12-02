@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal, HostListener, ElementRef } from '@angular/core';
 import { VeoRequest } from '../../models/search.model';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
@@ -22,13 +22,12 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-// Note: Adjust imports based on your actual folder structure if needed
 
 @Component({
-    standalone: true,
-  selector: 'app-prompt-box',
-  templateUrl: './prompt-box.component.html',
-  styleUrls: ['./prompt-box.component.scss'], // Assuming you might want styles here later
+  standalone: true,
+  selector: 'app-flow-prompt-box',
+  templateUrl: './flow-prompt-box.component.html',
+  styleUrls: ['./flow-prompt-box.component.scss'],
   imports:[CommonModule,
     FormsModule,
     MatIconModule,
@@ -36,15 +35,44 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     MatMenuModule,
     MatTooltipModule]
 })
-export class PromptBoxComponent {
-  @Input() searchRequest!: VeoRequest; // Using any to match flexible context, or use VeoRequest
+export class FlowPromptBoxComponent {
+  @Input() searchRequest!: any; // Keep for now, but prefer individual inputs
   @Input() generationModels: any[] = [];
   @Input() isLoading = false;
   @Input() selectedGenerationModel = '';
+  @Input() prompt = '';
+  @Input() aspectRatio = '16:9';
+  @Input() outputs = 4;
+  @Input() mode = 'Text to Video';
 
   @Output() generateClicked = new EventEmitter<void>();
   @Output() rewriteClicked = new EventEmitter<void>();
   @Output() modelSelected = new EventEmitter<any>();
+  @Output() promptChanged = new EventEmitter<string>();
+  @Output() aspectRatioChanged = new EventEmitter<string>();
+  @Output() outputsChanged = new EventEmitter<number>();
+  @Output() modeChanged = new EventEmitter<string>();
+  @Output() openImageSelector = new EventEmitter<1 | 2>();
+  @Output() clearImage = new EventEmitter<{num: 1 | 2, event: Event}>();
+  @Output() openImageSelectorForReference = new EventEmitter<void>();
+  @Output() onReferenceImageDrop = new EventEmitter<DragEvent>();
+  @Output() clearReferenceImage = new EventEmitter<{index: number, event: Event}>();
+  @Output() toggleReferenceImagesType = new EventEmitter<boolean>();
+
+  @Input() image1Preview: string | null = null;
+  @Input() image2Preview: string | null = null;
+  @Input() referenceImages: any[] = [];
+  @Input() referenceImagesType: 'ASSET' | 'STYLE' = 'ASSET';
+
+  constructor(private eRef: ElementRef) {}
+
+  @HostListener('document:click', ['$event'])
+  clickout(event: any) {
+    if (!this.eRef.nativeElement.contains(event.target)) {
+      this.isModeMenuOpen.set(false);
+      this.isSettingsMenuOpen.set(false);
+    }
+  }
 
   // --- Logic moved from VideoComponent ---
 
@@ -53,21 +81,15 @@ export class PromptBoxComponent {
   // Menu open/close states
   isModeMenuOpen = signal<boolean>(false);
   isSettingsMenuOpen = signal<boolean>(false);
-  isExpandMenuOpen = signal<boolean>(false);
   isSettingsDropdownOpen = signal<'aspect' | 'outputs' | 'model' | null>(null);
-
-  // Selected values
   selectedMode = signal<string>('Text to Video');
-  selectedNewAspectRatio = signal<string>('Landscape (16:9)');
-  selectedOutputs = signal<number>(2);
-  // selectedModel = signal<string>('Veo 3.1 - Fast'); // Redundant, using input selectedGenerationModel
   selectedPreset = signal<string>('');
 
   // --- Event Handlers ---
 
   onPromptInput(event: Event) {
     const target = event.target as HTMLTextAreaElement;
-    this.promptText.set(target.value);
+    this.promptChanged.emit(target.value);
   }
 
   // --- Menu Toggles ---
@@ -75,38 +97,31 @@ export class PromptBoxComponent {
   toggleModeMenu() {
     this.isModeMenuOpen.set(!this.isModeMenuOpen());
     this.isSettingsMenuOpen.set(false);
-    this.isExpandMenuOpen.set(false);
   }
 
   toggleSettingsMenu() {
     this.isSettingsMenuOpen.set(!this.isSettingsMenuOpen());
     this.isModeMenuOpen.set(false);
-    this.isExpandMenuOpen.set(false);
     this.isSettingsDropdownOpen.set(null); // Close inner dropdowns
-  }
-
-  toggleExpandMenu() {
-    this.isExpandMenuOpen.set(!this.isExpandMenuOpen());
-    this.isModeMenuOpen.set(false);
-    this.isSettingsMenuOpen.set(false);
   }
 
   // --- Select Handlers ---
 
   selectMode(mode: string) {
     this.selectedMode.set(mode);
+    this.modeChanged.emit(mode);
     this.isModeMenuOpen.set(false);
     console.log('Selected Mode:', mode);
   }
 
   selectNewAspectRatio(ratio: string) {
-    this.selectedNewAspectRatio.set(ratio);
+    this.aspectRatioChanged.emit(ratio);
     this.isSettingsDropdownOpen.set(null);
     console.log('Selected Aspect Ratio:', ratio);
   }
 
   selectOutputs(count: number) {
-    this.selectedOutputs.set(count);
+    this.outputsChanged.emit(count);
     this.isSettingsDropdownOpen.set(null);
     console.log('Selected Outputs:', count);
   }
@@ -119,7 +134,6 @@ export class PromptBoxComponent {
 
   selectPreset(preset: string) {
     this.selectedPreset.set(preset);
-    this.isExpandMenuOpen.set(false);
     console.log('Selected Preset:', preset);
   }
 }

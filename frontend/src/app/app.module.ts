@@ -88,7 +88,7 @@ import {ImageCropperDialogComponent} from './common/components/image-cropper-dia
 import {AudioComponent} from './audio/audio.component';
 import {AddVoiceDialogComponent} from './components/add-voice-dialog/add-voice-dialog.component';
 import {MatButtonToggleModule} from '@angular/material/button-toggle';
-import { PromptBoxComponent } from "./common/components/prompt-box/prompt-box.component";
+import { FlowPromptBoxComponent } from "./common/components/flow-prompt-box/flow-prompt-box.component";
 
 @NgModule({
   declarations: [
@@ -145,7 +145,7 @@ import { PromptBoxComponent } from "./common/components/prompt-box/prompt-box.co
     MatButtonToggleModule,
     MatSliderModule,
     NotificationContainerComponent,
-    PromptBoxComponent
+    FlowPromptBoxComponent
 ],
   providers: [
     provideClientHydration(),

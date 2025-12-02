@@ -57,7 +57,6 @@ import {WorkspaceStateService} from '../services/workspace/workspace-state.servi
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
 import {VideoStateService} from '../services/video-state.service';
-import { PromptBoxComponent } from '../common/components/prompt-box/prompt-box.component';
 
 @Component({
   selector: 'app-video',
@@ -94,6 +93,7 @@ export class VideoComponent implements OnInit, AfterViewInit {
   isExtensionMode = false;
   referenceImages: ReferenceImage[] = [];
   referenceImagesType: 'ASSET' | 'STYLE' = 'ASSET';
+  currentMode = 'Text to Video';
 
   // Internal state to track input types
   private _input1IsVideo = false;
@@ -269,6 +269,7 @@ export class VideoComponent implements OnInit, AfterViewInit {
       generateAudio: this.searchRequest.generateAudio,
       negativePrompt: this.searchRequest.negativePrompt || '',
       useBrandGuidelines: this.searchRequest.useBrandGuidelines,
+      mode: this.currentMode,
     });
   }
 
@@ -286,6 +287,7 @@ export class VideoComponent implements OnInit, AfterViewInit {
     this.searchRequest.generateAudio = state.generateAudio;
     this.searchRequest.negativePrompt = state.negativePrompt;
     this.searchRequest.useBrandGuidelines = state.useBrandGuidelines;
+    this.currentMode = state.mode || 'Text to Video';
 
     this.negativePhrases = state.negativePrompt
       ? state.negativePrompt.split(', ').filter(Boolean)
@@ -343,6 +345,7 @@ export class VideoComponent implements OnInit, AfterViewInit {
 
       // Veo 3 models support audio.
       this.isAudioGenerationDisabled = false;
+      this.searchRequest.generateAudio = true;
 
       // Veo 3 only supports 16:9 and 9:16 aspect ratios.
       const supportedRatios = ['16:9', '9:16'];
@@ -360,9 +363,19 @@ export class VideoComponent implements OnInit, AfterViewInit {
     }
   }
 
-  selectAspectRatio(ratio: {value: string; viewValue: string}): void {
-    this.searchRequest.aspectRatio = ratio.value;
-    this.selectedAspectRatio = ratio.viewValue;
+  selectAspectRatio(ratio: string | {value: string; viewValue: string}): void {
+    if (typeof ratio === 'string') {
+      this.searchRequest.aspectRatio = ratio;
+      const option = this.aspectRatioOptions.find(
+        opt => opt.value === ratio || opt.viewValue.includes(ratio),
+      );
+      if (option) {
+        this.selectedAspectRatio = option.viewValue;
+      }
+    } else {
+      this.searchRequest.aspectRatio = ratio.value;
+      this.selectedAspectRatio = ratio.viewValue;
+    }
     this.saveState();
   }
 
@@ -426,6 +439,26 @@ export class VideoComponent implements OnInit, AfterViewInit {
     if (index >= 0) this.negativePhrases.splice(index, 1);
     this.searchRequest.negativePrompt = this.negativePhrases.join(', ');
     this.saveState();
+  }
+  onPromptChanged(prompt: string) {
+    this.searchRequest.prompt = prompt;
+    this.service.videoPrompt = prompt;
+    this.saveState();
+  }
+
+  onModeChanged(mode: string) {
+    console.log('Mode changed to:', mode);
+    this.currentMode = mode;
+    this.saveState();
+    // Handle mode change if needed, e.g., switch between text-to-video and image-to-video
+  }
+
+  onClearImage(data: {num: 1 | 2, event: Event}) {
+    this.clearImage(data.num, data.event as MouseEvent);
+  }
+
+  onClearReferenceImage(data: {index: number, event: Event}) {
+    this.clearReferenceImage(data.index, data.event as MouseEvent);
   }
 
   searchTerm() {
