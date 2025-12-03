@@ -54,6 +54,7 @@ import {
 } from '../common/services/source-asset.service';
 import {HttpClient} from '@angular/common/http';
 import {WorkspaceStateService} from '../services/workspace/workspace-state.service';
+import { MODEL_CONFIGS, GenerationModelConfig } from '../common/config/model-config';
 import {AssetTypeEnum} from '../admin/source-assets-management/source-asset.model';
 import {ImageCropperDialogComponent} from '../common/components/image-cropper-dialog/image-cropper-dialog.component';
 import {VideoStateService} from '../services/video-state.service';
@@ -94,6 +95,11 @@ export class VideoComponent implements OnInit, AfterViewInit {
   referenceImages: ReferenceImage[] = [];
   referenceImagesType: 'ASSET' | 'STYLE' = 'ASSET';
   currentMode = 'Text to Video';
+  modes = [
+    { value: 'Text to Video', icon: 'description', label: 'Text to Video' },
+    { value: 'Frames to Video', icon: 'image', label: 'Frames to Video' },
+    { value: 'Ingredients to Video', icon: 'layers', label: 'Ingredients to Video' },
+  ];
 
   // Internal state to track input types
   private _input1IsVideo = false;
@@ -121,26 +127,7 @@ export class VideoComponent implements OnInit, AfterViewInit {
   negativePhrases: string[] = [];
 
   // --- Dropdown Options ---
-  generationModels = [
-    {
-      value: 'veo-3.1-generate-preview',
-      viewValue: 'Veo 3.1 \n (Beta Audio)',
-    },
-    {
-      value: 'veo-3.0-generate-001',
-      viewValue: 'Veo 3 Quality \n (Beta Audio)',
-    },
-    {
-      value: 'veo-3.0-fast-generate-001',
-      viewValue: 'Veo 3 Fast \n (Beta Audio)',
-    },
-    {value: 'veo-2.0-generate-001', viewValue: 'Veo 2 Quality \n (No Audio)'},
-    {value: 'veo-2.0-fast-generate-001', viewValue: 'Veo 2 Fast \n (No Audio)'},
-    {
-      value: 'veo-2.0-generate-exp',
-      viewValue: 'Veo 2 Exp \n (Reference Image)',
-    },
-  ];
+  generationModels: GenerationModelConfig[] = MODEL_CONFIGS.filter(m => m.type === 'VIDEO');
   selectedGenerationModel = this.generationModels[0].viewValue;
   aspectRatioOptions: {value: string; viewValue: string; disabled: boolean}[] =
     [
