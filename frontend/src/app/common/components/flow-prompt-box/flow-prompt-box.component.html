@@ -82,9 +82,9 @@
     </div>
 
     <!-- Bottom Row: Images & Submit -->
-    <div class="flex items-end justify-between">
+    <div class="flex flex-wrap items-end justify-between gap-y-4">
       <!-- Left: Drag-and-drop areas -->
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <!-- Frames to Video Inputs -->
         <ng-container *ngIf="mode === 'Frames to Video'">
           <div
@@ -145,7 +145,7 @@
                 model.capabilities.maxReferenceImages }}</span>
               </div>
               <!-- Show small previews of reference images -->
-            <div class="flex gap-1 max-w-[200px]">
+            <div class="flex flex-wrap gap-1">
               <div *ngFor="let ref of referenceImages; let i = index" class="relative h-12 w-12 flex-shrink-0">
                 <img [src]="ref.previewUrl" class="h-full w-full rounded-lg object-cover" />
                 <button (click)="$event.stopPropagation(); clearReferenceImage.emit({index: i, event: $event})"

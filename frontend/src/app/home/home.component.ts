@@ -52,7 +52,7 @@ import {
 import { SearchService } from '../services/search/search.service';
 import { WorkspaceStateService } from '../services/workspace/workspace-state.service';
 import { ImageStateService } from '../services/image-state.service';
-import { handleErrorSnackbar, handleSuccessSnackbar } from '../utils/handleMessageSnackbar';
+import { handleErrorSnackbar, handleSuccessSnackbar, handleInfoSnackbar } from '../utils/handleMessageSnackbar';
 import { MODEL_CONFIGS, GenerationModelConfig } from '../common/config/model-config';
 
 @Component({
@@ -346,8 +346,42 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (typeof window !== 'undefined')
       window.addEventListener('mousemove', this.onMouseMove);
 
-    // Load persisted state
-    this.restoreState();
+    // Restore state from service
+    this.imageStateService.state$.subscribe(state => {
+      this.searchRequest.prompt = state.prompt;
+      this.searchRequest.negativePrompt = state.negativePrompt;
+      this.searchRequest.aspectRatio = state.aspectRatio;
+      this.searchRequest.generationModel = state.model;
+      this.searchRequest.lighting = state.lighting;
+      this.searchRequest.addWatermark = state.watermark;
+      this.searchRequest.googleSearch = state.googleSearch;
+      this.searchRequest.resolution = state.resolution as '4K' | '1K' | '2K' | undefined;
+      this.searchRequest.style = state.style;
+      this.searchRequest.colorAndTone = state.colorAndTone;
+      this.searchRequest.numberOfMedia = state.numberOfMedia;
+      this.searchRequest.composition = state.composition;
+      this.searchRequest.useBrandGuidelines = state.useBrandGuidelines;
+      this.currentMode = state.mode;
+
+      // Update local variables to reflect state
+      this.selectedGenerationModel = this.generationModels.find(
+        m => m.value === state.model
+      )?.viewValue || this.generationModels[0].viewValue;
+      
+      this.selectedGenerationModelObject = this.generationModels.find(
+        m => m.value === state.model
+      ) || this.generationModels[0];
+
+      this.selectedAspectRatio = this.aspectRatioOptions.find(
+        r => r.value === state.aspectRatio
+      )?.viewValue || '1:1 \n Square';
+
+      this.selectedWatermark = this.watermarkOptions.find(
+        o => o.value === state.watermark
+      )?.viewValue || 'No';
+      
+      this.service.imagePrompt = state.prompt;
+    });
   }
 
   public saveState() {
@@ -356,15 +390,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       negativePrompt: this.searchRequest.negativePrompt || '',
       aspectRatio: this.searchRequest.aspectRatio,
       model: this.searchRequest.generationModel,
-      lighting: this.searchRequest.lighting,
+      lighting: this.searchRequest.lighting || null,
       watermark: this.searchRequest.addWatermark,
       googleSearch: this.searchRequest.googleSearch,
       resolution: this.searchRequest.resolution,
-      style: this.searchRequest.style,
-      colorAndTone: this.searchRequest.colorAndTone,
+      style: this.searchRequest.style || null,
+      colorAndTone: this.searchRequest.colorAndTone || null,
       numberOfMedia: this.searchRequest.numberOfMedia,
-      composition: this.searchRequest.composition,
+      composition: this.searchRequest.composition || null,
       useBrandGuidelines: this.searchRequest.useBrandGuidelines,
+      mode: this.currentMode
     });
   }
 
@@ -558,6 +593,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.saveState();
   }
 
+  onModeChanged(mode: string) {
+    this.currentMode = mode;
+    this.saveState();
+  }
+
   onModelSelected(model: any) {
     this.selectModel(model);
   }
@@ -668,10 +708,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const payload: ImagenRequest = {
       ...this.searchRequest,
       negativePrompt: this.negativePhrases.join(', '),
-      sourceMediaItems: validSourceMediaItems.length
-        ? validSourceMediaItems
-        : undefined,
-      sourceAssetIds: sourceAssetIds.length ? sourceAssetIds : undefined,
+      sourceMediaItems:
+        this.currentMode === 'Ingredients to Image' &&
+        validSourceMediaItems.length
+          ? validSourceMediaItems
+          : undefined,
+      sourceAssetIds:
+        this.currentMode === 'Ingredients to Image' && sourceAssetIds.length
+          ? sourceAssetIds
+          : undefined,
       workspaceId: activeWorkspaceId ?? undefined,
     };
 
@@ -761,6 +806,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const imageUrl = this.imagenDocuments.presignedUrls[index];
     const mediaItemId = this.imagenDocuments.id;
 
+    // Check if we reached the limit
+    if (this.referenceImages.length >= this.selectedGenerationModelObject.capabilities.maxReferenceImages) {
+      handleInfoSnackbar(this._snackBar, `You can only add up to ${this.selectedGenerationModelObject.capabilities.maxReferenceImages} reference images for this model.`);
+      return;
+    }
+
+    // Switch to Ingredients to Image mode
+    this.currentMode = 'Ingredients to Image';
+    this.saveState();
+
     // Add to reference images
     const refImage: ReferenceImage = {
       previewUrl: imageUrl,
@@ -816,6 +871,12 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedAspectRatio =
       this.aspectRatioOptions.find(r => r.value === state.aspectRatio)
         ?.viewValue || this.aspectRatioOptions[0].viewValue;
+
+    // Switch to Ingredients to Image mode if we have reference images
+    if (this.referenceImages.length > 0) {
+      this.currentMode = 'Ingredients to Image';
+      this.saveState();
+    }
   }
 
   private onMouseMove = (event: MouseEvent) => {
@@ -968,13 +1029,14 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         remixState: {
           modelImageAssetId: this.imagenDocuments.id,
           modelImagePreviewUrl: this.imagenDocuments.presignedUrls?.[index],
-          modelImageGcsUri: this.imagenDocuments.gcsUris?.[index],
           modelImageMediaIndex: index,
+          modelImageGcsUri: this.imagenDocuments.gcsUris?.[index],
         },
       },
     };
     this.router.navigate(['/vto'], navigationExtras);
   }
+
 
   private applySourceAssets(sourceAssets: EnrichedSourceAsset[]): void {
     if (!sourceAssets || sourceAssets.length === 0) {

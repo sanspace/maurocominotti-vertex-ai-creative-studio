@@ -562,19 +562,29 @@ export class VideoComponent implements OnInit, AfterViewInit {
 
     const payload: VeoRequest = {
       ...this.searchRequest,
-      startImageAssetId: !this._input1IsVideo
-        ? (this.startImageAssetId ?? undefined)
-        : undefined,
-      sourceVideoAssetId: this._input1IsVideo
-        ? (this.startImageAssetId ?? undefined)
-        : undefined,
-      endImageAssetId: this.endImageAssetId ?? undefined,
+      startImageAssetId:
+        this.currentMode === 'Frames to Video' && !this._input1IsVideo
+          ? (this.startImageAssetId ?? undefined)
+          : undefined,
+      sourceVideoAssetId:
+        this.currentMode === 'Frames to Video' && this._input1IsVideo
+          ? (this.startImageAssetId ?? undefined)
+          : undefined,
+      endImageAssetId:
+        this.currentMode === 'Frames to Video'
+          ? (this.endImageAssetId ?? undefined)
+          : undefined,
       referenceImages:
-        referenceImagesPayload.length > 0 ? referenceImagesPayload : undefined,
-      sourceMediaItems: [
-        ...validSourceMediaItems,
-        ...sourceMediaItemsForReference,
-      ],
+        this.currentMode === 'Ingredients to Video' &&
+        referenceImagesPayload.length > 0
+          ? referenceImagesPayload
+          : undefined,
+      sourceMediaItems:
+        this.currentMode === 'Ingredients to Video'
+          ? sourceMediaItemsForReference
+          : this.currentMode === 'Frames to Video'
+            ? validSourceMediaItems
+            : undefined,
     };
 
     // TODO: Add notification when video is completed after the pooling
@@ -1081,10 +1091,16 @@ export class VideoComponent implements OnInit, AfterViewInit {
           this.sourceMediaItems[0] = item;
           this.startImageAssetId = null;
           this.image1Preview = remixState.startImagePreviewUrl || null;
+          // Switch to Ingredients to Video mode if we have start or end frames
+          this.currentMode = 'Frames to Video';
+          this.saveState();
         } else if (item.role === 'end_frame') {
           this.sourceMediaItems[1] = item;
           this.endImageAssetId = null;
           this.image2Preview = remixState.endImagePreviewUrl || null;
+          // Switch to Ingredients to Video mode if we have start or end frames
+          this.currentMode = 'Frames to Video';
+          this.saveState();
         } else if (item.role === 'video_extension_source') {
           // This is the case for extending a video
           this.sourceMediaItems[0] = item;
