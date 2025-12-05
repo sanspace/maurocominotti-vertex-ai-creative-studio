@@ -1,6 +1,21 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import List, Optional
 
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from src.common.base_repository import BaseRepository
 from src.workspaces.schema.workspace_model import (
@@ -25,7 +40,7 @@ class WorkspaceRepository(BaseRepository[WorkspaceModel]):
         This is typically used for the main homepage gallery.
         """
         query = self.collection_ref.where(
-            "scope", "==", WorkspaceScopeEnum.PUBLIC
+            filter=FieldFilter("scope", "==", WorkspaceScopeEnum.PUBLIC.value)
         ).limit(1)
         docs = query.stream()
         for doc in docs:
@@ -36,7 +51,7 @@ class WorkspaceRepository(BaseRepository[WorkspaceModel]):
     def get_all_public_workspaces(self) -> List[WorkspaceModel]:
         """Finds all workspaces that are marked as 'public'."""
         query = self.collection_ref.where(
-            "scope", "==", WorkspaceScopeEnum.PUBLIC
+            filter=FieldFilter("scope", "==", WorkspaceScopeEnum.PUBLIC)
         )
         docs = query.stream()
         return [
@@ -55,7 +70,12 @@ class WorkspaceRepository(BaseRepository[WorkspaceModel]):
         member_dict = member.model_dump(by_alias=True)
 
         # Perform both updates atomically.
-        workspace_ref.update({"members": firestore.ArrayUnion([member_dict]), "member_ids": firestore.ArrayUnion([user_id])})
+        workspace_ref.update(
+            {
+                "members": firestore.ArrayUnion([member_dict]),
+                "member_ids": firestore.ArrayUnion([user_id]),
+            }
+        )
 
         # Fetch the updated document to return the full object
         updated_doc = workspace_ref.get()

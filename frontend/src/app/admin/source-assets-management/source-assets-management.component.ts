@@ -1,3 +1,19 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import {Component, OnInit, ViewChild} from '@angular/core';
 import {MatTableDataSource} from '@angular/material/table';
 import {MatPaginator, PageEvent} from '@angular/material/paginator';
@@ -8,7 +24,7 @@ import {firstValueFrom} from 'rxjs';
 import {SourceAssetsService as SourceAssetAdminService} from './source-assets.service';
 import {AssetScopeEnum, AssetTypeEnum} from './source-asset.model';
 import {SourceAssetFormComponent} from './source-asset-form/source-asset-form.component';
-import {ToastMessageComponent} from '../../common/components/toast-message/toast-message.component';
+import { handleErrorSnackbar, handleSuccessSnackbar } from '../../utils/handleMessageSnackbar';
 import {SourceAssetResponseDto} from '../../common/services/source-asset.service';
 import {SourceAssetUploadFormComponent} from './source-asset-upload-form/source-asset-upload-form.component';
 
@@ -153,14 +169,7 @@ export class SourceAssetsManagementComponent implements OnInit {
       .subscribe((result: SourceAssetResponseDto | null) => {
         if (result) {
           this.fetchAssets();
-          this.snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['green-toast'],
-            duration: 3000,
-            data: {
-              text: `Asset "${result.originalFilename}" uploaded successfully`,
-              matIcon: 'check_circle',
-            },
-          });
+          handleSuccessSnackbar(this.snackBar, `Asset "${result.originalFilename}" uploaded successfully`);
         }
       });
   }
@@ -177,21 +186,10 @@ export class SourceAssetsManagementComponent implements OnInit {
         this.sourceAssetService.updateSourceAsset(result).subscribe({
           next: () => {
             this.fetchAssets();
-            this.snackBar.openFromComponent(ToastMessageComponent, {
-              panelClass: ['green-toast'],
-              duration: 3000,
-              data: {
-                text: 'Asset updated successfully',
-                matIcon: 'check_circle',
-              },
-            });
+            handleSuccessSnackbar(this.snackBar, 'Asset updated successfully');
           },
           error: (err: Error) => {
-            this.snackBar.openFromComponent(ToastMessageComponent, {
-              panelClass: ['red-toast'],
-              duration: 5000,
-              data: {text: 'Error updating asset', matIcon: 'error'},
-            });
+            handleErrorSnackbar(this.snackBar, err, 'Update asset');
           },
         });
       }
@@ -208,18 +206,10 @@ export class SourceAssetsManagementComponent implements OnInit {
       this.sourceAssetService.deleteSourceAsset(asset.id).subscribe({
         next: () => {
           this.fetchAssets();
-          this.snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['green-toast'],
-            duration: 3000,
-            data: {text: 'Asset deleted successfully', matIcon: 'check_circle'},
-          });
+          handleSuccessSnackbar(this.snackBar, 'Asset deleted successfully');
         },
         error: (err: Error) => {
-          this.snackBar.openFromComponent(ToastMessageComponent, {
-            panelClass: ['red-toast'],
-            duration: 5000,
-            data: {text: 'Error deleting asset', matIcon: 'error'},
-          });
+          handleErrorSnackbar(this.snackBar, err, 'Delete asset');
         },
       });
     }

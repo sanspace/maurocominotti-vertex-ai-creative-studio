@@ -1,10 +1,26 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import datetime
 from enum import Enum
 from typing import Annotated, Dict, List, Optional
 
+from google.genai import types
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from pydantic.alias_generators import to_camel
 
+from src.audios.audio_constants import LanguageEnum, VoiceEnum
 from src.common.base_dto import (
     AspectRatioEnum,
     ColorAndToneEnum,
@@ -12,6 +28,7 @@ from src.common.base_dto import (
     GenerationModelEnum,
     LightingEnum,
     MimeTypeEnum,
+    ReferenceImageTypeEnum,
     StyleEnum,
 )
 from src.common.base_repository import BaseDocument
@@ -49,6 +66,12 @@ class AssetRoleEnum(str, Enum):
     CONCATENATION_SOURCE = (
         "concatenation_source"  # An input video in a concatenation job
     )
+    IMAGE_REFERENCE_STYLE = (
+        "image_reference_style"  # An input for R2V with style type
+    )
+    IMAGE_REFERENCE_ASSET = (
+        "image_reference_asset"  # An input for R2V with asset type
+    )
 
 
 class SourceAssetLink(BaseModel):
@@ -76,6 +99,7 @@ class SourceAssetLink(BaseModel):
         alias_generator=to_camel,
     )
 
+
 class SourceMediaItemLink(BaseModel):
     """
     A linking object within MediaItemModel that connects a generated result
@@ -98,6 +122,7 @@ class SourceMediaItemLink(BaseModel):
         from_attributes=True,
         alias_generator=to_camel,
     )
+
 
 class MediaItemModel(BaseDocument):
     """Represents a single media item in the library for Firestore storage and retrieval."""
@@ -159,9 +184,20 @@ class MediaItemModel(BaseDocument):
     # Image specific
     seed: Optional[int] = None
     critique: Optional[str] = None
+    google_search: Optional[bool] = None
+    resolution: Optional[str] = None
+    grounding_metadata: Optional[Dict] = None
 
     # Music specific
     audio_analysis: Optional[Dict] = None
+    voice_name: Optional[VoiceEnum] = Field(
+        default=None,
+        description="The specific voice ID used (e.g., 'Puck', 'Fenrir').",
+    )
+    language_code: Optional[LanguageEnum] = Field(
+        default=None,
+        description="The BCP-47 language code used (e.g., 'en-US').",
+    )
 
     # Debugging field
     raw_data: Optional[Dict] = Field(default_factory=dict)

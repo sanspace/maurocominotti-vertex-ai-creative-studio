@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # --- Shared Platform Resources ---
 
 resource "google_storage_bucket" "genmedia" {
@@ -24,7 +38,6 @@ data "google_project" "project" {
 # --- Predictable URLs & Environment Variables ---
 locals {
   region_code  = join("", [for s in split("-", var.gcp_region) : substr(s, 0, 1)])
-  # backend_url  = "https://${var.backend_service_name}--${var.gcp_project_id}-${local.region_code}.run.app"
   backend_url = "https://${var.backend_service_name}-${data.google_project.project.number}.${var.gcp_region}.run.app"
 
   frontend_url = "https://${var.gcp_project_id}.web.app" # Predictable Firebase URL
@@ -44,13 +57,29 @@ resource "google_firestore_database" "default" {
   project       = var.gcp_project_id
   name          = "${var.firebase_db_name}-${var.environment}"
   location_id   = var.gcp_region
-  
+
   # IMPORTANT: This choice is permanent for the project.
   # Choose FIRESTORE_NATIVE for modern applications.
-  type          = "FIRESTORE_NATIVE" 
+  type          = "FIRESTORE_NATIVE"
 }
 
 # --- Firestore Indexes ---
+
+# Index for: media_library by user_email, created_at
+resource "google_firestore_index" "media_library_user_email" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "media_library"
+
+  fields {
+    field_path = "user_email"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
 
 # Index for: media_library by mime_type, created_at
 resource "google_firestore_index" "media_library_mime_type" {
@@ -64,7 +93,7 @@ resource "google_firestore_index" "media_library_mime_type" {
   }
   fields {
     field_path = "created_at"
-    order      = "DESCENDING" # <-- CORRECTED
+    order      = "DESCENDING"
   }
 }
 
@@ -80,27 +109,10 @@ resource "google_firestore_index" "media_library_model" {
   }
   fields {
     field_path = "created_at"
-    order      = "DESCENDING" # <-- CORRECTED
+    order      = "DESCENDING"
   }
 }
 
-# Index for: media_library by user_email, created_at
-resource "google_firestore_index" "media_library_user_email" {
-  project    = var.gcp_project_id
-  database   = google_firestore_database.default.name
-  collection = "media_library"
-
-  fields {
-    field_path = "user_email"
-    order      = "ASCENDING"
-  }
-  fields {
-    field_path = "created_at"
-    order      = "DESCENDING" # <-- CORRECTED
-  }
-}
-
-# --- NEW INDEX ---
 # Index for: media_library by status, created_at
 resource "google_firestore_index" "media_library_status" {
   project    = var.gcp_project_id
@@ -117,7 +129,195 @@ resource "google_firestore_index" "media_library_status" {
   }
 }
 
+# Index for: media_library by workspace_id, user_email, created_at
+resource "google_firestore_index" "media_library_workspace_email_created" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "media_library"
+
+  fields {
+    field_path = "workspace_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "user_email"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: media_library by workspace_id, mime_type, created_at
+resource "google_firestore_index" "media_library_workspace_mime_created" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "media_library"
+
+  fields {
+    field_path = "workspace_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "mime_type"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: media_library by workspace_id, model, created_at
+resource "google_firestore_index" "media_library_workspace_model_created" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "media_library"
+
+  fields {
+    field_path = "workspace_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "model"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: media_library by workspace_id, status, created_at
+resource "google_firestore_index" "media_library_workspace_status_created" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "media_library"
+
+  fields {
+    field_path = "workspace_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "status"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: media_library by workspace_id, created_at, __name__
+resource "google_firestore_index" "media_library_workspace_created___name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "media_library"
+
+  fields {
+    field_path = "workspace_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
+
+# For Users
+
+# Index for: users by role, created_at
+resource "google_firestore_index" "users_role" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "users"
+
+  fields {
+    field_path = "role"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: users by email, created_at
+resource "google_firestore_index" "users_email" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "users"
+
+  fields {
+    field_path = "email"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+
 # --- NEW INDEXES FOR source_assets ---
+
+# Index for: source_assets by user_id, file_hash
+resource "google_firestore_index" "source_assets_user_hash" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "file_hash"
+    order      = "ASCENDING"
+  }
+}
+
+# Index for: source_assets by user_id, created_at
+resource "google_firestore_index" "source_assets_user_created" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: source_assets by user_id, mime_type, created_at
+resource "google_firestore_index" "source_assets_user_mime_created" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "mime_type"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+}
+
 # Index for: source_assets by mime_type, created_at
 resource "google_firestore_index" "source_assets_mime_type" {
   project    = var.gcp_project_id
@@ -150,57 +350,23 @@ resource "google_firestore_index" "source_assets_scope_type" {
   }
 }
 
-# Index for: source_assets by user_id, created_at
-resource "google_firestore_index" "source_assets_user_created" {
+
+# Index for: source_assets by created_at, original_filename
+resource "google_firestore_index" "source_assets_created_ogfilename" {
   project    = var.gcp_project_id
   database   = google_firestore_database.default.name
   collection = "source_assets"
 
-  fields {
-    field_path = "user_id"
-    order      = "ASCENDING"
-  }
   fields {
     field_path = "created_at"
     order      = "DESCENDING"
   }
-}
-
-# Index for: source_assets by user_id, file_hash
-resource "google_firestore_index" "source_assets_user_hash" {
-  project    = var.gcp_project_id
-  database   = google_firestore_database.default.name
-  collection = "source_assets"
-
   fields {
-    field_path = "user_id"
-    order      = "ASCENDING"
-  }
-  fields {
-    field_path = "file_hash"
-    order      = "ASCENDING"
-  }
-}
-
-# Index for: source_assets by user_id, mime_type, created_at
-resource "google_firestore_index" "source_assets_user_mime_created" {
-  project    = var.gcp_project_id
-  database   = google_firestore_database.default.name
-  collection = "source_assets"
-
-  fields {
-    field_path = "user_id"
-    order      = "ASCENDING"
-  }
-  fields {
-    field_path = "mime_type"
-    order      = "ASCENDING"
-  }
-  fields {
-    field_path = "created_at"
+    field_path = "original_filename"
     order      = "DESCENDING"
   }
 }
+
 
 # Index for: source_assets by user_id, scope, asset_type
 resource "google_firestore_index" "source_assets_user_scope_type" {
@@ -222,37 +388,154 @@ resource "google_firestore_index" "source_assets_user_scope_type" {
   }
 }
 
-# --- END OF NEW source_assets INDEXES ---
-
-# Index for: users by email, created_at
-resource "google_firestore_index" "users_email" {
+# Index for: source_assets by workspace_id, created_at, __name__
+resource "google_firestore_index" "source_assets_ws_crtd_nme" {
   project    = var.gcp_project_id
   database   = google_firestore_database.default.name
-  collection = "users"
+  collection = "source_assets"
 
   fields {
-    field_path = "email"
+    field_path = "workspace_id"
     order      = "ASCENDING"
   }
   fields {
     field_path = "created_at"
-    order      = "DESCENDING" # <-- CORRECTED
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
   }
 }
 
-# Index for: users by role, created_at
-resource "google_firestore_index" "users_role" {
+# Index for: source_assets by asset_type, user_id, created_at, __name__
+resource "google_firestore_index" "source_assets_asset_usrid_crtd_name" {
   project    = var.gcp_project_id
   database   = google_firestore_database.default.name
-  collection = "users"
+  collection = "source_assets"
 
   fields {
-    field_path = "role"
+    field_path = "asset_type"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "user_id"
     order      = "ASCENDING"
   }
   fields {
     field_path = "created_at"
-    order      = "DESCENDING" # <-- CORRECTED
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: source_assets by workspace_id, created_at, __name__
+resource "google_firestore_index" "source_assets_user_mime_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "mime_type"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "ASCENDING"
+  }
+}
+
+# Index for: source_assets by workspace_id, created_at, __name__
+resource "google_firestore_index" "source_assets_user_crtd_mime_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "mime_type"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: source_assets by scope, created_at, __name__
+resource "google_firestore_index" "source_assets_scope_crtd_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "scope"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
+
+# Index for: source_assets by asset_type, created_at, __name__
+resource "google_firestore_index" "source_assets_assettype_crtd_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "source_assets"
+
+  fields {
+    field_path = "asset_type"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
+  }
+}
+
+# --- END OF NEW source_assets INDEXES ---
+
+# BRAND GUIDELINES INDEXES
+# Index for: source_assets by workspace_id, created_at, __name__
+resource "google_firestore_index" "brand_guidelines_wrkid_created_name" {
+  project    = var.gcp_project_id
+  database   = google_firestore_database.default.name
+  collection = "brand_guidelines"
+
+  fields {
+    field_path = "workspace_id"
+    order      = "ASCENDING"
+  }
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+  fields {
+    field_path = "__name__"
+    order      = "DESCENDING"
   }
 }
 
@@ -278,8 +561,8 @@ module "backend_service" {
   github_repo_owner     = var.github_repo_owner
   github_repo_name      = var.github_repo_name
   github_branch_name    = var.github_branch_name
-  cloudbuild_yaml_path  = "backend/cloudbuild.yaml"
-  included_files_glob   = ["backend/**"]
+  cloudbuild_yaml_path  = "examples/creative-studio/backend/cloudbuild.yaml"
+  included_files_glob   = ["**/creative-studio/backend/**"]
   container_env_vars    = local.backend_env_vars
   runtime_secrets = var.backend_runtime_secrets
   custom_audiences      = var.backend_custom_audiences
@@ -307,20 +590,20 @@ module "frontend_service" {
   gcp_project_id       = var.gcp_project_id
   gcp_region            = var.gcp_region
   firebase_project_id  = google_firebase_project.default.project
-  service_name         = var.frontend_service_name
+  service_name         = var.gcp_project_id
   environment          = var.environment
   resource_prefix      = "cs-fe"
   github_branch_name   = var.github_branch_name
-  cloudbuild_yaml_path = "frontend/cloudbuild-deploy.yaml"
-  included_files_glob  = ["frontend/**"]
-  
+  cloudbuild_yaml_path = "examples/creative-studio/frontend/cloudbuild-deploy.yaml"
+  included_files_glob  = ["**/creative-studio/frontend/**"]
+
   build_substitutions = merge(
     var.fe_build_substitutions,
     {
       # This block should ONLY contain non-secret, underscore-prefixed values
-      _BACKEND_URL         = local.backend_url
+      _BACKEND_URL         = local.frontend_url # The frontend will redirect the api calls to the backend
       _FE_SERVICE_NAME     = var.frontend_service_name
-      _BACKEND_SERVICE_ID  = var.backend_service_name 
+      _BACKEND_SERVICE_ID  = var.backend_service_name
       _FIREBASE_PROJECT_ID = var.gcp_project_id
     }
   )

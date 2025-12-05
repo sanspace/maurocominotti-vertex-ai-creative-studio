@@ -25,9 +25,13 @@ from fastapi import HTTPException, UploadFile, status
 from PIL import Image as PILImage
 
 from src.auth.iam_signer_credentials_service import IamSignerCredentials
-from src.common.base_dto import GenerationModelEnum, MimeTypeEnum
+from src.common.base_dto import (
+    AspectRatioEnum,
+    GenerationModelEnum,
+    MimeTypeEnum,
+)
 from src.common.dto.pagination_response_dto import PaginationResponseDto
-from src.common.media_utils import generate_thumbnail
+from src.common.media_utils import generate_thumbnail, get_video_dimensions
 from src.common.storage_service import GcsService
 from src.images.dto.upscale_imagen_dto import UpscaleImagenDto
 from src.images.imagen_service import ImagenService
@@ -57,6 +61,71 @@ class SourceAssetService:
         self.gcs_service = GcsService()
         self.iam_signer = IamSignerCredentials()
         self.imagen_service = ImagenService()  # Service to perform the upscale
+
+    async def _get_and_validate_aspect_ratio(
+        self,
+        contents: bytes,
+        is_video: bool,
+        temp_video_path: Optional[str] = None,
+        provided_aspect_ratio: Optional[str] = None,
+    ) -> AspectRatioEnum:
+        """
+        Validates a provided aspect ratio or deduces it from the file.
+        Rejects files that do not match a supported AspectRatioEnum value.
+        """
+        # For videos, we ALWAYS deduce the aspect ratio and ignore any provided one.
+        if is_video:
+            if not temp_video_path:
+                raise Exception(
+                    "Temp video path is required to deduce video aspect ratio."
+                )
+            width, height = await asyncio.to_thread(
+                get_video_dimensions, temp_video_path
+            )
+
+        # For images, we first check if a valid ratio was provided.
+        elif provided_aspect_ratio:
+            try:
+                # If the provided string is a valid enum member, we're done.
+                return AspectRatioEnum(provided_aspect_ratio)
+            except ValueError:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Invalid aspect ratio '{provided_aspect_ratio}' provided.",
+                )
+
+        # For images without a provided ratio, we deduce it.
+        else:
+            pil_image = PILImage.open(io.BytesIO(contents))
+            width, height = pil_image.size
+
+        if height == 0:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "Media has zero height."
+            )
+
+        actual_ratio = width / height
+
+        # Find the closest supported enum by comparing float values
+        supported_ratios = {
+            e: float(e.value.split(":")[0]) / float(e.value.split(":")[1])
+            for e in AspectRatioEnum
+        }
+
+        closest_enum = min(
+            supported_ratios.keys(),
+            key=lambda e: abs(supported_ratios[e] - actual_ratio),
+        )
+
+        # Check if the closest match is within a small tolerance (e.g., 2%)
+        if abs(supported_ratios[closest_enum] - actual_ratio) > 0.02:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Uploaded file has an unsupported aspect ratio (approx. {width}x{height}). Please use a supported format.",
+            )
+
+        logger.info(f"Deduced aspect ratio as {closest_enum.value}")
+        return closest_enum
 
     async def _create_asset_response(
         self, asset: SourceAssetModel
@@ -93,6 +162,7 @@ class SourceAssetService:
         workspace_id: str,
         scope: Optional[AssetScopeEnum] = None,
         asset_type: Optional[AssetTypeEnum] = None,
+        aspect_ratio: Optional[AspectRatioEnum] = None,
     ) -> SourceAssetResponseDto:
         """
         Handles uploading, de-duplicating, upscaling, and saving a new user asset.
@@ -116,18 +186,30 @@ class SourceAssetService:
             return await self._create_asset_response(existing_asset)
 
         # 2. Handle file processing based on type (image vs. video)
-        is_video = file.content_type and "video" in file.content_type
+        is_video: bool = bool(
+            file.content_type and "video" in file.content_type
+        )
         final_gcs_uri: Optional[str] = None
         thumbnail_gcs_uri: Optional[str] = None
         temp_dir = f"temp/source_assets/{uuid.uuid4()}"
+        final_aspect_ratio: AspectRatioEnum
 
         try:
+            local_path = None
             if is_video:
                 # --- Video Upload Logic ---
                 os.makedirs(temp_dir, exist_ok=True)
                 local_path = os.path.join(temp_dir, file.filename or "asset")
                 with open(local_path, "wb") as buffer:
                     buffer.write(contents)
+
+                # Check for valid aspect ratio early in the process
+                final_aspect_ratio = await self._get_and_validate_aspect_ratio(
+                    contents=contents,
+                    is_video=is_video,
+                    temp_video_path=local_path,
+                    provided_aspect_ratio=aspect_ratio,
+                )
 
                 # Upload the original video
                 final_gcs_uri = self.gcs_service.upload_file_to_gcs(
@@ -146,6 +228,14 @@ class SourceAssetService:
                     )
             else:
                 # --- Image Upload & Upscale Logic ---
+                # Check for valid aspect ratio early in the process
+                final_aspect_ratio = await self._get_and_validate_aspect_ratio(
+                    contents=contents,
+                    is_video=is_video,
+                    temp_video_path=local_path,
+                    provided_aspect_ratio=aspect_ratio,
+                )
+
                 # Convert image to PNG for standardization before storing.
                 pil_image = PILImage.open(io.BytesIO(contents))
                 png_contents: bytes
@@ -264,6 +354,7 @@ class SourceAssetService:
         new_asset = SourceAssetModel(
             workspace_id=workspace_id,
             user_id=user.id,
+            aspect_ratio=final_aspect_ratio,
             gcs_uri=final_gcs_uri,
             thumbnail_gcs_uri=thumbnail_gcs_uri,
             original_filename=file.filename or "untitled",
@@ -275,6 +366,37 @@ class SourceAssetService:
         await asyncio.to_thread(self.repo.save, new_asset)
 
         return await self._create_asset_response(new_asset)
+
+    async def convert_to_png(self, file: UploadFile) -> bytes:
+        """
+        Converts an uploaded image file to PNG format in memory.
+        """
+        try:
+            contents = await file.read()
+            if not contents:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST, "Cannot convert an empty file."
+                )
+
+            pil_image = PILImage.open(io.BytesIO(contents))
+
+            # Convert to a standard color mode to handle various formats
+            # (e.g., GIFs with palettes, CMYK) gracefully, preserving transparency.
+            if pil_image.mode not in ["RGB", "RGBA"]:
+                pil_image = pil_image.convert(
+                    "RGBA" if "A" in pil_image.getbands() else "RGB"
+                )
+
+            # Save the converted image to an in-memory buffer
+            with io.BytesIO() as output:
+                pil_image.save(output, format="PNG")
+                return output.getvalue()
+        except Exception as e:
+            logger.error(f"Failed to convert image to PNG: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process image: {e}",
+            )
 
     async def delete_asset(self, asset_id: str) -> bool:
         """
@@ -292,18 +414,19 @@ class SourceAssetService:
             )
             return False
 
-        # TODO: Delete file from GCS
         # 2. Delete the file from GCS. We wrap this in a try/except block
         # to ensure that even if the GCS file is already gone, we still
         # attempt to delete the database record.
-        # try:
-        #     logger.info(f"Deleting asset file from GCS: {asset_to_delete.gcs_uri}")
-        #     self.gcs_service.delete_from_gcs(asset_to_delete.gcs_uri)
-        # except Exception as e:
-        #     logger.error(
-        #         f"Could not delete asset from GCS at {asset_to_delete.gcs_uri}, but proceeding to delete from database. Error: {e}",
-        #         exc_info=True,
-        #     )
+        try:
+            logger.info(
+                f"Deleting asset file from GCS: {asset_to_delete.gcs_uri}"
+            )
+            self.gcs_service.delete_blob_from_uri(asset_to_delete.gcs_uri)
+        except Exception as e:
+            logger.error(
+                f"Could not delete asset from GCS at {asset_to_delete.gcs_uri}, but proceeding to delete from database. Error: {e}",
+                exc_info=True,
+            )
 
         # 3. Delete the document from Firestore
         logger.info(

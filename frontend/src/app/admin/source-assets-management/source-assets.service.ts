@@ -1,3 +1,19 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpErrorResponse} from '@angular/common/http';
 import {Observable, throwError} from 'rxjs';
@@ -6,6 +22,7 @@ import {environment} from '../../../environments/environment';
 import {PaginatedResponse} from '../../common/models/paginated-response.model';
 import {AssetScopeEnum, AssetTypeEnum, SourceAsset} from './source-asset.model';
 import {SourceAssetResponseDto} from '../../common/services/source-asset.service';
+import {WorkspaceStateService} from '../../services/workspace/workspace-state.service';
 
 export interface SourceAssetSearch {
   originalFilename?: string;
@@ -19,7 +36,10 @@ export interface SourceAssetSearch {
 export class SourceAssetsService {
   private apiUrl = `${environment.backendURL}/source_assets`;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private workspaceStateService: WorkspaceStateService,
+  ) {}
 
   searchSourceAssets(
     filters: SourceAssetSearch,
@@ -60,7 +80,12 @@ export class SourceAssetsService {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('scope', scope);
-    formData.append('assetType', assetType); // Backend expects snake_case
+    formData.append('assetType', assetType);
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
+    }
+
     return this.http.post<SourceAssetResponseDto>(
       `${this.apiUrl}/upload`,
       formData,

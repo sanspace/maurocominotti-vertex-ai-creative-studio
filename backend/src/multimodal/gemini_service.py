@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 class PromptTargetEnum(str, Enum):
     IMAGE = "image"
     VIDEO = "video"
+    AUDIO = "audio"
 
 
 class ResponseMimeTypeEnum(str, Enum):
@@ -187,6 +188,11 @@ class GeminiService:
         json_string = dto.model_dump_json(exclude_unset=True)
         fields = json.loads(json_string)
 
+        # Ensure style parameters are included as empty strings if not provided
+        for param in ["style", "color_and_tone", "lighting", "composition"]:
+            if param not in fields:
+                fields[param] = ""
+
         # The main 'prompt' field is the base, others are attributes
         prompt_base = fields.pop("prompt", "")
 
@@ -226,7 +232,10 @@ class GeminiService:
         is_gemini_i2i = (
             isinstance(dto, CreateImagenDto)
             and dto.generation_model
-            == GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW
+            in [
+                GenerationModelEnum.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
+                GenerationModelEnum.GEMINI_3_PRO_IMAGE_PREVIEW,
+            ]
             and (dto.source_asset_ids or dto.source_media_items)
         )
 
@@ -264,7 +273,7 @@ class GeminiService:
             return dto.prompt
 
         # --- Prepend Brand Guidelines if available ---
-        if dto.workspace_id and not is_gemini_i2i:
+        if dto.use_brand_guidelines and dto.workspace_id and not is_gemini_i2i:
             search_dto = BrandGuidelineSearchDto(
                 workspace_id=dto.workspace_id, limit=1
             )

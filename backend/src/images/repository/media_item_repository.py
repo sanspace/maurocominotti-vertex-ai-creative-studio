@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import List, Optional
 
 from google.cloud import firestore
@@ -31,16 +45,20 @@ class MediaRepository(BaseRepository[MediaItemModel]):
 
         if search_dto.user_email:
             base_query = base_query.where(
-                "user_email", "==", search_dto.user_email
+                filter=FieldFilter("user_email", "==", search_dto.user_email)
             )
         if search_dto.mime_type:
             base_query = base_query.where(
-                "mime_type", "==", search_dto.mime_type
+                filter=FieldFilter("mime_type", "==", search_dto.mime_type)
             )
         if search_dto.model:
-            base_query = base_query.where("model", "==", search_dto.model)
+            base_query = base_query.where(
+                filter=FieldFilter("model", "==", search_dto.model)
+            )
         if search_dto.status:
-            base_query = base_query.where("status", "==", search_dto.status)
+            base_query = base_query.where(
+                filter=FieldFilter("status", "==", search_dto.status)
+            )
 
         # Apply any additional filters passed in
         for f in extra_filters:
@@ -62,7 +80,9 @@ class MediaRepository(BaseRepository[MediaItemModel]):
         )
 
         if search_dto.start_after:
-            last_doc_snapshot = self.collection_ref.document(search_dto.start_after).get()
+            last_doc_snapshot = self.collection_ref.document(
+                search_dto.start_after
+            ).get()
             if last_doc_snapshot.exists:
                 data_query = data_query.start_after(last_doc_snapshot)
 

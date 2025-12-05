@@ -1,8 +1,29 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {BehaviorSubject, Observable, of} from 'rxjs';
 import {tap, catchError, finalize, shareReplay} from 'rxjs/operators';
 import {environment} from '../../../environments/environment';
+import {WorkspaceStateService} from '../../services/workspace/workspace-state.service';
+import {
+  AssetScopeEnum,
+  AssetTypeEnum,
+} from '../../admin/source-assets-management/source-asset.model';
 
 export interface SourceAssetResponseDto {
   id: string;
@@ -10,6 +31,7 @@ export interface SourceAssetResponseDto {
   gcsUri: string;
   originalFilename: string;
   mimeType: string;
+  aspectRatio: string;
   fileHash: string;
   createdAt: string;
   updatedAt: string;
@@ -47,7 +69,10 @@ export class SourceAssetService {
     PaginationResponseDto<SourceAssetResponseDto>
   > | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private workspaceStateService: WorkspaceStateService,
+  ) {}
 
   get assets(): Observable<SourceAssetResponseDto[]> {
     return this.assets$.asObservable();
@@ -72,6 +97,48 @@ export class SourceAssetService {
     // When filters change, clear the cache and reset.
     this.assetsRequest$ = null;
     this.loadAssets(true);
+  }
+
+  uploadAsset(
+    file: File,
+    options: {
+      aspectRatio?: string;
+      assetType?: AssetTypeEnum;
+      scope?: AssetScopeEnum; // 1. Add scope to the options
+    } = {},
+  ): Observable<SourceAssetResponseDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const activeWorkspaceId = this.workspaceStateService.getActiveWorkspaceId();
+    if (activeWorkspaceId) {
+      formData.append('workspaceId', activeWorkspaceId);
+    }
+
+    if (options.aspectRatio) {
+      formData.append('aspectRatio', options.aspectRatio);
+    }
+    if (options.assetType) {
+      formData.append('assetType', options.assetType);
+    }
+    // 2. Add scope to the form data if it exists
+    if (options.scope) {
+      formData.append('scope', options.scope);
+    }
+
+    return this.http
+      .post<SourceAssetResponseDto>(
+        `${environment.backendURL}/source_assets/upload`,
+        formData,
+      )
+      .pipe(tap(() => this.refreshAssets()));
+  }
+
+  refreshAssets(): void {
+    this.nextPageCursor = null;
+    this.allAssetsLoaded$.next(false);
+    this.assets$.next([]);
+    this.loadAssets();
   }
 
   loadAssets(reset = false): void {
@@ -144,5 +211,20 @@ export class SourceAssetService {
     // Prepend the new asset to our local cache and notify subscribers.
     this.allFetchedAssets.unshift(asset);
     this.assets$.next(this.allFetchedAssets);
+  }
+
+  deleteAsset(assetId: string) {
+    return this.http
+      .delete(`${environment.backendURL}/source_assets/${assetId}`)
+      .pipe(
+        tap(() => {
+          // Remove the asset from the local BehaviorSubject to update the UI instantly
+          const currentAssets = this.assets$.getValue();
+          const updatedAssets = currentAssets.filter(
+            asset => asset.id !== assetId,
+          );
+          this.assets$.next(updatedAssets);
+        }),
+      );
   }
 }
