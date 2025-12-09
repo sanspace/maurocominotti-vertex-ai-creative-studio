@@ -456,7 +456,9 @@ class SourceAssetService:
 
         return PaginationResponseDto[SourceAssetResponseDto](
             count=assets_query_result.count,
-            next_page_cursor=assets_query_result.next_page_cursor,
+            page=assets_query_result.page,
+            page_size=assets_query_result.page_size,
+            total_pages=assets_query_result.total_pages,
             data=enriched_assets,
         )
 

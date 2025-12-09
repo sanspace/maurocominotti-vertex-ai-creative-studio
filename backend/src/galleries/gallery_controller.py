@@ -53,7 +53,7 @@ async def search_gallery_items(
     """
     Performs a paginated search for media items within a specific workspace.
 
-    Provide filters and a `start_after` cursor in the request body
+    Provide filters in the request body to paginate through the gallery.
     to paginate through results.
     """
     # This dependency call acts as a gatekeeper. If the user is not authorized

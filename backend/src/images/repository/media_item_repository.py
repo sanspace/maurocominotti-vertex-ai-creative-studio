@@ -45,10 +45,10 @@ class MediaRepository(BaseRepository[MediaItem, MediaItemModel]):
             query = query.where(self.model.user_email == search_dto.user_email)
         
         if search_dto.mime_type:
-            query = query.where(self.model.mime_type == search_dto.mime_type)
+            query = query.where(self.model.mime_type == search_dto.mime_type.value)
         
         if search_dto.model:
-            query = query.where(self.model.model == search_dto.model)
+            query = query.where(self.model.model == search_dto.model.value)
         
         if search_dto.status:
             query = query.where(self.model.status == search_dto.status.value)
@@ -73,12 +73,15 @@ class MediaRepository(BaseRepository[MediaItem, MediaItemModel]):
             self.schema.model_validate(item) for item in items
         ]
 
-        next_page_cursor = None
-        if len(items) == search_dto.limit:
-            next_page_cursor = str(search_dto.offset + search_dto.limit)
+        # Calculate pagination metadata
+        page = (search_dto.offset // search_dto.limit) + 1
+        page_size = search_dto.limit
+        total_pages = (total_count + page_size - 1) // page_size
 
         return PaginationResponseDto[MediaItemModel](
             count=total_count,
-            next_page_cursor=next_page_cursor,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
             data=media_item_data,
         )

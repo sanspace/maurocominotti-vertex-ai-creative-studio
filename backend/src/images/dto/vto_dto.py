@@ -22,7 +22,7 @@ from src.common.base_dto import BaseDto
 class VtoSourceMediaItemLink(BaseDto):
     """A link to a previously generated media item to be used as a VTO input."""
 
-    media_item_id: str = Field(
+    media_item_id: int = Field(
         description="The ID of the source MediaItemModel."
     )
     media_index: int = Field(

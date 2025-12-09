@@ -72,12 +72,15 @@ class BrandGuidelineRepository(BaseRepository[BrandGuideline, BrandGuidelineMode
             self.schema.model_validate(g) for g in guidelines
         ]
 
-        next_page_cursor = None
-        if len(guidelines) == search_dto.limit:
-            next_page_cursor = str(search_dto.offset + search_dto.limit)
+        # Calculate pagination metadata
+        page = (search_dto.offset // search_dto.limit) + 1
+        page_size = search_dto.limit
+        total_pages = (total_count + page_size - 1) // page_size
 
         return PaginationResponseDto[BrandGuidelineModel](
             count=total_count,
-            next_page_cursor=next_page_cursor,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
             data=guideline_data,
         )

@@ -80,13 +80,15 @@ class UserRepository(BaseRepository[User, UserModel]):
         user_data = [self.schema.model_validate(user) for user in users]
 
         # 5. Determine next cursor (offset)
-        next_page_cursor = None
-        if len(users) == search_dto.limit:
-            # The next offset is current offset + limit
-            next_page_cursor = str(search_dto.offset + search_dto.limit)
+        # Calculate pagination metadata
+        page = (search_dto.offset // search_dto.limit) + 1
+        page_size = search_dto.limit
+        total_pages = (total_count + page_size - 1) // page_size
 
         return PaginationResponseDto[UserModel](
             count=total_count,
-            next_page_cursor=next_page_cursor,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
             data=user_data,
         )

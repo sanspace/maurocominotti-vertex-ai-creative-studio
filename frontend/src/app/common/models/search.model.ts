@@ -107,6 +107,7 @@ export type ImagesData = {
 
 export interface GallerySearchDto {
   limit: number;
+  offset?: number;
   startAfter?: string;
   userEmail?: string;
   mimeType?: string;

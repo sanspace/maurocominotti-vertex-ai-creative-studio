@@ -252,7 +252,9 @@ class GalleryService:
 
         return PaginationResponseDto[MediaItemResponse](
             count=media_items_query.count,
-            next_page_cursor=media_items_query.next_page_cursor,
+            page=media_items_query.page,
+            page_size=media_items_query.page_size,
+            total_pages=media_items_query.total_pages,
             data=enriched_items,
         )
 

@@ -189,7 +189,9 @@ class MediaTemplateService:
 
         return PaginationResponseDto[MediaTemplateResponse](
             count=media_templates_query.count,
-            next_page_cursor=media_templates_query.next_page_cursor,
+            page=media_templates_query.page,
+            page_size=media_templates_query.page_size,
+            total_pages=media_templates_query.total_pages,
             data=enriched_items,
         )
 

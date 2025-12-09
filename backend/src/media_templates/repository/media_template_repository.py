@@ -72,13 +72,16 @@ class MediaTemplateRepository(BaseRepository[MediaTemplate, MediaTemplateModel])
             self.schema.model_validate(t) for t in templates
         ]
 
-        next_page_cursor = None
-        if len(templates) == search_dto.limit:
-            next_page_cursor = str(templates[-1].id)
+        # Calculate pagination metadata
+        page = (search_dto.limit > 0) and ((search_dto.offset // search_dto.limit) + 1) or 1
+        page_size = search_dto.limit
+        total_pages = (search_dto.limit > 0) and ((total_count + page_size - 1) // page_size) or 0
 
         return PaginationResponseDto[MediaTemplateModel](
             count=total_count,
-            next_page_cursor=next_page_cursor,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
             data=template_data,
         )
 
