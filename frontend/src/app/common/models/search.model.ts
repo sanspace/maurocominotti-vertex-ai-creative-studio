@@ -44,6 +44,7 @@ export interface ReferenceImage {
   previewUrl: string;
   sourceAssetId?: string;
   sourceMediaItem?: SourceMediaItemLink;
+  isNew?: boolean;
 }
 
 export interface ReferenceImageDto {
