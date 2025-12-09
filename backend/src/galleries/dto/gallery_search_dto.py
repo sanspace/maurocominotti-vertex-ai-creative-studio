@@ -27,6 +27,6 @@ class GallerySearchDto(BaseSearchDto):
     mime_type: Optional[str] = None
     model: Optional[str] = None
     status: Optional[JobStatusEnum] = None
-    workspace_id: str = Field(
-        min_length=1, description="The ID of the workspace to search within."
+    workspace_id: int = Field(
+        ge=1, description="The ID of the workspace to search within."
     )
