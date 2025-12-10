@@ -229,14 +229,26 @@ setup_repo() {
         else warn "Repository not found at that URL. Please check for typos and try again."; fi
     done
 
+    # --- Ask for Branch ---
+    prompt "Which git branch would you like to use? (default: main)"
+    read -p "   Branch Name: " SELECTED_BRANCH < /dev/tty
+    SELECTED_BRANCH=${SELECTED_BRANCH:-main}
+
+    # Update the global default so Step 5 suggests this same branch for Cloud Build
+    DEFAULT_BRANCH_NAME="$SELECTED_BRANCH"
+    # ---------------------------
+
     local REPO_CLONE_DIR=$(basename "$GITHUB_REPO_URL" .git)
 
     if [[ -d "$REPO_CLONE_DIR" ]]; then
         warn "Directory '$REPO_CLONE_DIR' already exists."; prompt "Do you want to use this existing directory? (y/n)"; read -r REPLY < /dev/tty
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then fail "Please remove the directory or run the script from a different location."; fi
     else
-        info "Performing a sparse checkout of 'examples/creative-studio' into './${REPO_CLONE_DIR}'..."
-        git clone --filter=blob:none --no-checkout --depth 1 --sparse "$GITHUB_REPO_URL" "$REPO_CLONE_DIR"
+        info "Performing a sparse checkout of 'examples/creative-studio' into './${REPO_CLONE_DIR}' (Branch: $SELECTED_BRANCH)..."
+        
+        # --- MODIFIED: Added -b "$SELECTED_BRANCH" ---
+        git clone --filter=blob:none --no-checkout --depth 1 --sparse -b "$SELECTED_BRANCH" "$GITHUB_REPO_URL" "$REPO_CLONE_DIR"
+        
         cd "$REPO_CLONE_DIR"
         git sparse-checkout set "examples/creative-studio"
         git checkout
@@ -245,7 +257,7 @@ setup_repo() {
         success "Repository cloned successfully."
     fi
 
-	# --- Automatic Project Path Detection ---
+    # --- Automatic Project Path Detection ---
     info "Automatically detecting project structure..."
     local RELATIVE_PROJECT_PATH=""
     local FALLBACK_PATH="examples/creative-studio"
