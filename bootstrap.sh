@@ -86,6 +86,69 @@ read_state() {
     fi
 }
 
+# --- Database Connectivity Helpers ---
+start_sql_proxy() {
+    info "Starting Cloud SQL Auth Proxy..."
+    
+    # 1. Get Instance Connection Name
+    # Try Terraform output first, fallback to gcloud
+    pushd "$REPO_ROOT/infra/environments/$ENV_NAME" > /dev/null
+    DB_INSTANCE_NAME=$(terraform output -raw cloud_sql_connection_name 2>/dev/null)
+    popd > /dev/null
+
+    if [ -z "$DB_INSTANCE_NAME" ]; then
+        DB_INSTANCE_NAME=$(gcloud sql instances list --format="value(connectionName)" --filter="name:creative-studio-db*" --project="$GCP_PROJECT_ID" | head -n 1)
+    fi
+
+    if [ -z "$DB_INSTANCE_NAME" ]; then
+        fail "Could not find Cloud SQL instance. Ensure Terraform ran successfully."
+    fi
+
+    # 2. Download Proxy (if missing)
+    if [ ! -f "cloud-sql-proxy" ]; then
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+    fi
+
+    # 3. Start Proxy in Background (Port 5432)
+    ./cloud-sql-proxy --address 0.0.0.0 --port 5432 "$DB_INSTANCE_NAME" > /dev/null 2>&1 &
+    PROXY_PID=$!
+    export PROXY_PID
+    
+    # 4. Wait for Readiness
+    echo -n "   Waiting for proxy connection..."
+    for i in {1..15}; do
+        if nc -z 127.0.0.1 5432 2>/dev/null; then
+            echo " Connected!"
+            return 0
+        fi
+        echo -n "."
+        sleep 1
+    done
+    echo
+    warn "Proxy connection check timed out, but proceeding..."
+}
+
+stop_sql_proxy() {
+    if [ -n "$PROXY_PID" ]; then
+        info "Stopping Cloud SQL Proxy..."
+        kill "$PROXY_PID" 2>/dev/null || true
+        unset PROXY_PID
+    fi
+}
+
+export_db_vars() {
+    # Fetch password from Secret Manager
+    local DB_PASS=$(gcloud secrets versions access latest --secret="creative-studio-db-password" --project="$GCP_PROJECT_ID")
+    
+    export DB_USER="studio_user"
+    export DB_PASSWORD="$DB_PASS"
+    export DB_NAME="creative_studio"
+    export DB_HOST="127.0.0.1" # Proxy address
+    export DB_PORT="5432"
+    export USE_CLOUD_SQL_AUTH_PROXY=true
+}
+
 # --- Script Functions ---
 check_prerequisites() {
     step 1 "Checking Prerequisites"
@@ -596,6 +659,12 @@ seed_data() {
     info "Project:      ${C_YELLOW}${GCP_PROJECT_ID}${C_RESET}"
     info "Deploying as: ${C_YELLOW}${CURRENT_USER}${C_RESET}"
 
+    # Establish Database Connectivity
+    export_db_vars
+    start_sql_proxy
+    # Ensure proxy stops even if this function fails
+    trap stop_sql_proxy EXIT
+
     # Temporarily change to the project root so Python module resolution works
     pushd "$REPO_ROOT" > /dev/null
 
@@ -642,6 +711,10 @@ seed_data() {
 
     # Return to the original directory
     popd > /dev/null
+
+    # Cleanup
+    stop_sql_proxy
+    trap - EXIT
 }
 
 
