@@ -55,6 +55,10 @@ resource "google_cloud_run_v2_service" "this" {
       }
 
       env {
+        name = "INSTANCE_CONNECTION_NAME"
+        value = var.cloud_sql_connection_name
+      }
+      env {
         name = "DB_HOST"
         value = "/cloudsql/${var.cloud_sql_connection_name}"
       }
@@ -68,7 +72,7 @@ resource "google_cloud_run_v2_service" "this" {
       }
 
       env {
-        name = "DB_PASSWORD"
+        name = "DB_PASS"
         value_source {
           secret_key_ref {
             secret = var.db_secret_id
