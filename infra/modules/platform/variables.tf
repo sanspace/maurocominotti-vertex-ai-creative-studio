@@ -85,3 +85,9 @@ variable "backend_runtime_secrets" {
   description = "Secrets to mount in the backend container at runtime."
   default     = {}
 }
+
+variable "use_sql" {
+  description = "If true, deploys Cloud SQL. If false, deploys Firestore."
+  type        = bool
+  default     = true
+}
