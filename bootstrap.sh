@@ -11,11 +11,11 @@
 set -e
 
 # --- Configuration ---
-REQUIRED_TERRAFORM_VERSION="1.13.0"
+REQUIRED_TERRAFORM_VERSION="1.14.1"
 UPSTREAM_REPO_URL="https://github.com/GoogleCloudPlatform/professional-services"
 TEMPLATE_ENV_DIR="environments/dev-infra-example"
 DEFAULT_ENV_NAME="dev-infra"
-DEFAULT_BRANCH_NAME="main"
+DEFAULT_BRANCH_NAME="pg-infra"
 GCS_BUCKET_SUFFIX_FORMAT="cstudio-%s-tfstate"
 GCS_BUCKET_PREFIX_FORMAT="infra/%s/state"
 BE_SERVICE_NAME="cstudio-be"
