@@ -73,7 +73,7 @@ data "google_secret_manager_secret_version" "db_password" {
 
 # 2. Call PostgreSQL Module
 module "postgresql" {
-  source      = "./modules/postgresql"
+  source      = "../postgresql"
   project_id  = var.gcp_project_id
   region      = var.gcp_region
   
