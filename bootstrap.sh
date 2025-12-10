@@ -105,7 +105,6 @@ start_sql_proxy() {
     fi
 
     export INSTANCE_CONNECTION_NAME="$DB_INSTANCE_NAME"
-    echo "L108: $INSTANCE_CONNECTION_NAME"
 
     # 2. Download Proxy (if missing)
     if [ ! -f "cloud-sql-proxy" ]; then
@@ -142,15 +141,14 @@ stop_sql_proxy() {
 
 export_db_vars() {
     # Fetch password from Secret Manager
-    local DB_PASS=$(gcloud secrets versions access latest --secret="creative-studio-db-password" --project="$GCP_PROJECT_ID")
+    DB_PASS=$(gcloud secrets versions access latest --secret="creative-studio-db-password" --project="$GCP_PROJECT_ID")
     
     export DB_USER="studio_user"
     export DB_PASS="$DB_PASS"
-    echo "db pass $DB_PASS"
     export DB_NAME="creative_studio"
     export DB_HOST="127.0.0.1" # Proxy address
     export DB_PORT="5432"
-    # export USE_CLOUD_SQL_AUTH_PROXY=true
+    export USE_CLOUD_SQL_AUTH_PROXY=true
 }
 
 # --- Script Functions ---
@@ -707,7 +705,6 @@ seed_data() {
     info "Executing Python bootstrap script..."
     # We `cd` into the backend directory so that relative paths to assets inside the python script resolve correctly.
     # The editable install ensures that `from src...` imports work without needing PYTHONPATH.
-    echo "L708: $INSTANCE_CONNECTION_NAME"
     if (cd backend && "$VENV_DIR/bin/python" -m bootstrap.bootstrap); then
         success "Python bootstrap script executed successfully."
     else
