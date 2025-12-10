@@ -462,6 +462,10 @@ async def seed_vto_assets(db: AsyncSession, admin_user: Optional[UserModel]):
 
 async def main():
     try:
+        # Run Database Migrations before seeding
+        from src.database_migrations import run_pending_migrations
+        await run_pending_migrations()
+
         async with AsyncSessionLocal() as db:
             admin_user = await ensure_admin_user_exists(db)
             await ensure_default_workspace_exists(db, admin_user)
