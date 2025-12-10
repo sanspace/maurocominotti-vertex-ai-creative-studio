@@ -39,12 +39,41 @@ resource "google_cloud_run_v2_service" "this" {
 
   template {
     service_account = google_service_account.run_sa.email
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [var.cloud_sql_connection_name]
+      }
+    }
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
       resources {
         limits = {
           cpu    = var.cpu
           memory = var.memory
+        }
+      }
+
+      env {
+        name = "DB_HOST"
+        value = "/cloudsql/${var.cloud_sql_connection_name}"
+      }
+      env {
+        name = "DB_NAME"
+        value = var.db_name
+      }
+      env {
+        name = "DB_USER"
+        value = var.db_user
+      }
+
+      env {
+        name = "DB_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret = var.db_secret_id
+            version = "latest"
+          }
         }
       }
 
@@ -69,6 +98,11 @@ resource "google_cloud_run_v2_service" "this" {
             }
           }
         }
+      }
+
+      volume_mounts {
+        name = "cloudsql"
+        mount_path = "/cloudsql"
       }
     }
     scaling {

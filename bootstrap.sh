@@ -451,8 +451,39 @@ populate_oauth_secrets() {
     success "Audiences updated in .tfvars file."
 }
 
+setup_db_secrets() {
+    step 9 "Configuring Database Secrets" # Renumber subsequent steps
+    
+    # 1. Enable required APIs first
+    info "Enabling Secret Manager and SQL Admin APIs..."
+    gcloud services enable secretmanager.googleapis.com sqladmin.googleapis.com --project="$GCP_PROJECT_ID"
+
+    local SECRET_NAME="creative-studio-db-password"
+    
+    # 2. Check if the secret already exists
+    if gcloud secrets describe "$SECRET_NAME" --project="$GCP_PROJECT_ID" > /dev/null 2>&1; then
+        info "Secret '$SECRET_NAME' already exists. Skipping creation."
+    else
+        info "Creating new secret '$SECRET_NAME'..."
+        
+        # 3. Generate a secure random password (alphanumeric, no special chars that break URLs)
+        # using openssl. We use base64 but strip non-alphanumeric chars to be safe for DB connection strings
+        local DB_PASSWORD=$(openssl rand -base64 20 | tr -dc 'a-zA-Z0-9' | head -c 16)
+        
+        # 4. Create the secret and add the first version
+        # We use printf to avoid trailing newlines
+        printf "%s" "$DB_PASSWORD" | gcloud secrets create "$SECRET_NAME" \
+            --data-file=- \
+            --replication-policy="automatic" \
+            --project="$GCP_PROJECT_ID" \
+            --quiet
+
+        success "Secret '$SECRET_NAME' created successfully."
+    fi
+}
+
 run_terraform() {
-    step 9 "Deploying Infrastructure with Terraform";
+    step 10 "Deploying Infrastructure with Terraform";
 	TFVARS_FILE_PATH="$REPO_ROOT/infra/environments/$ENV_NAME/$ENV_NAME.tfvars"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
     info "Initializing Terraform..."; terraform init -reconfigure
     info "Planning Terraform changes..."; terraform plan -var-file="$TFVARS_FILE_PATH"
@@ -462,7 +493,7 @@ run_terraform() {
 }
 
 update_oauth_client() {
-    step 10 "Configuring OAuth Client URIs"; cd "$REPO_ROOT"
+    step 11 "Configuring OAuth Client URIs"; cd "$REPO_ROOT"
     if [ -z "$AUTO_OAUTH_CLIENT_ID" ]; then warn "Could not find OAuth Client ID automatically. Skipping URI update."; return; fi
     info "Fetching full OAuth client name..."; local OAUTH_CLIENT_FULL_NAME=$(gcloud iap oauth-clients list "$GCP_PROJECT_ID" --format="json" | jq -r --arg clientid "$AUTO_OAUTH_CLIENT_ID" '.[] | select(.name | contains($clientid)) | .name')
     if [ -z "$OAUTH_CLIENT_FULL_NAME" ]; then warn "Could not resolve the full name for the OAuth client. Skipping URI update."; return; fi
@@ -474,7 +505,7 @@ update_oauth_client() {
 }
 
 update_secrets() {
-    step 11 "Updating Remaining Secrets"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
+    step 12 "Updating Remaining Secrets"; info "Navigating to $REPO_ROOT/infra/environments/$ENV_NAME..."; cd "$REPO_ROOT/infra/environments/$ENV_NAME"
     info "Populating values in Secret Manager..."; local TERRAFORM_OUTPUTS=$(terraform output -json)
     local FRONTEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .frontend_secrets.value[]); local BACKEND_SECRETS=$(echo "$TERRAFORM_OUTPUTS" | jq -r .backend_secrets.value[])
     local ALL_SECRETS=$(echo "${FRONTEND_SECRETS} ${BACKEND_SECRETS}" | tr ' ' '\n' | sort -u | grep .)
@@ -543,7 +574,7 @@ update_secrets() {
 }
 
 seed_data() {
-    step 12 "Seeding Initial Data (Workspaces, Templates, Assets)"
+    step 13 "Seeding Initial Data (Workspaces, Templates, Assets)"
 
     info "The user running this script will be set as the owner of initial data."
     local CURRENT_USER=$(gcloud config get-value account 2>/dev/null)
@@ -606,7 +637,7 @@ seed_data() {
 
 
 trigger_builds() {
-    step 13 "Triggering Initial Builds"; cd "$REPO_ROOT"
+    step 14 "Triggering Initial Builds"; cd "$REPO_ROOT"
     prompt "Would you like to trigger the initial builds for the frontend and backend now? (y/n)"; read -r REPLY < /dev/tty
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then info "You can trigger the builds manually later by pushing a commit or via the Cloud Build UI."; return; fi
     info "Triggering backend build..."; gcloud builds triggers run "${BE_SERVICE_NAME}-trigger" --branch="$GITHUB_BRANCH" --project="$GCP_PROJECT_ID" --region="us-central1"
@@ -630,7 +661,21 @@ main() {
     echo -e "${C_RESET}"
 
     read_state; LAST_COMPLETED_STEP=${LAST_COMPLETED_STEP:-0}
-    declare -a steps_to_run=( "check_prerequisites" "check_and_install_terraform" "setup_project" "setup_repo" "configure_environment" "handle_manual_steps" "setup_firebase_app" "run_terraform" "populate_oauth_secrets" "update_oauth_client" "update_secrets" "seed_data" "trigger_builds" )
+    declare -a steps_to_run=(
+        "check_prerequisites"
+        "check_and_install_terraform"
+        "setup_project" "setup_repo"
+        "configure_environment"
+        "handle_manual_steps"
+        "setup_firebase_app"
+        "setup_db_secrets"
+        "run_terraform"
+        "populate_oauth_secrets"
+        "update_oauth_client"
+        "update_secrets"
+        "seed_data"
+        "trigger_builds" 
+    )
     for i in "${!steps_to_run[@]}"; do
         step_num=$((i + 1))
         if (( LAST_COMPLETED_STEP < step_num )); then
