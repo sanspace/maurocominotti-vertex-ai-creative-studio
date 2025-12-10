@@ -29,5 +29,5 @@ output "backend_secrets" {
 
 output "cloud_sql_connection_name" {
   description = "The connection name of the Cloud SQL instance to be used by the bootstrap script."
-  value       = module.creative_studio_platform.connection_name
+  value       = module.creative_studio_platform.cloud_sql_connection_name
 }
