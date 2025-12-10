@@ -233,10 +233,7 @@ setup_repo() {
     prompt "Which git branch would you like to use? (default: main)"
     read -p "   Branch Name: " SELECTED_BRANCH < /dev/tty
     SELECTED_BRANCH=${SELECTED_BRANCH:-main}
-
-    # Update the global default so Step 5 suggests this same branch for Cloud Build
     DEFAULT_BRANCH_NAME="$SELECTED_BRANCH"
-    # ---------------------------
 
     local REPO_CLONE_DIR=$(basename "$GITHUB_REPO_URL" .git)
 
@@ -244,13 +241,17 @@ setup_repo() {
         warn "Directory '$REPO_CLONE_DIR' already exists."; prompt "Do you want to use this existing directory? (y/n)"; read -r REPLY < /dev/tty
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then fail "Please remove the directory or run the script from a different location."; fi
     else
-        info "Performing a sparse checkout of 'examples/creative-studio' into './${REPO_CLONE_DIR}' (Branch: $SELECTED_BRANCH)..."
+        info "Performing a sparse checkout of '$REPO_CLONE_DIR' (Branch: $SELECTED_BRANCH)..."
         
-        # --- MODIFIED: Added -b "$SELECTED_BRANCH" ---
+        # 1. Clone with -b branch_name
         git clone --filter=blob:none --no-checkout --depth 1 --sparse -b "$SELECTED_BRANCH" "$GITHUB_REPO_URL" "$REPO_CLONE_DIR"
         
         cd "$REPO_CLONE_DIR"
-        git sparse-checkout set "examples/creative-studio"
+        
+        # 2. FIXED: Sparse checkout now includes ROOT folders AND the legacy subfolder
+        # This ensures it works for both the mono-repo upstream and your flattened fork.
+        git sparse-checkout set "examples/creative-studio" "infra" "backend" "frontend" "bootstrap.sh"
+        
         git checkout
         cd ..
 
@@ -262,40 +263,37 @@ setup_repo() {
     local RELATIVE_PROJECT_PATH=""
     local FALLBACK_PATH="examples/creative-studio"
 
-    # Check if the project is at the top level
+    # Check if the project is at the top level (Flattened Fork)
     if [[ -d "$REPO_CLONE_DIR/infra" && -f "$REPO_CLONE_DIR/bootstrap.sh" ]]; then
         info "Detected top-level project structure."
         RELATIVE_PROJECT_PATH=""
-    # Check if the project is in the fallback nested path
+    # Check if the project is in the fallback nested path (Upstream Mono-repo)
     elif [[ -d "$REPO_CLONE_DIR/$FALLBACK_PATH/infra" && -f "$REPO_CLONE_DIR/$FALLBACK_PATH/bootstrap.sh" ]]; then
         info "Detected nested project structure at '$FALLBACK_PATH'."
         RELATIVE_PROJECT_PATH="$FALLBACK_PATH"
     else
-        fail "Could not find a valid project structure. The script requires an 'infra' directory and 'bootstrap.sh' file at the repository root or in '$FALLBACK_PATH'."
+        # Debugging aid if it fails again
+        warn "Directory listing of clone:"
+        ls -F "$REPO_CLONE_DIR/"
+        fail "Could not find a valid project structure. The script requires an 'infra' directory and 'bootstrap.sh' file."
     fi
-    # --- End of Detection ---
 
-    # --- This is the key logic for flexibility ---
-    # Define the final project path by combining the clone directory and the relative path
+    # Define the final project path
     local FINAL_PROJECT_PATH="$REPO_CLONE_DIR"
     if [ -n "$RELATIVE_PROJECT_PATH" ]; then
         FINAL_PROJECT_PATH="$FINAL_PROJECT_PATH/$RELATIVE_PROJECT_PATH"
     fi
 
-    # Change directory to the final, correct project root.
     if [ ! -d "$FINAL_PROJECT_PATH" ]; then
-        fail "The specified project path '$FINAL_PROJECT_PATH' does not exist in the cloned repository."
+        fail "The specified project path '$FINAL_PROJECT_PATH' does not exist."
     fi
     cd "$FINAL_PROJECT_PATH"
 
-    # Now that we are in the correct directory, set REPO_ROOT to the absolute path.
     REPO_ROOT=$(pwd)
     export REPO_ROOT
     success "Project root successfully set to: $REPO_ROOT"
 
-    # This logic now runs correctly from within the project's root directory
     GITHUB_REPO_OWNER=$(git remote get-url origin | sed -n 's/.*github.com\/\(.*\)\/.*/\1/p')
-    # Use the name of the top-level cloned directory as the repo name
     GITHUB_REPO_NAME=$REPO_CLONE_DIR
 
     info "Detected GitHub owner: $GITHUB_REPO_OWNER"
