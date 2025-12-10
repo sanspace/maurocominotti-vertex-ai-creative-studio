@@ -96,6 +96,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize Firebase: {e}")
 
+    # Run Database Migrations
+    try:
+        from src.database_migrations import run_pending_migrations
+        await run_pending_migrations()
+    except Exception as e:
+        logger.error(f"Failed to run database migrations: {e}")
+        # We might want to stop startup here if migrations fail
+        raise e
+
     logger.info("Creating ThreadPoolExecutor...")
     # Create the pool and attach it to the app's state
     app.state.executor = ThreadPoolExecutor(max_workers=4)
