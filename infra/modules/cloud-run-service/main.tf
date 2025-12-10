@@ -185,3 +185,16 @@ resource "google_project_iam_member" "sa_token_creator_binding" {
   role    = "roles/iam.serviceAccountTokenCreator"
   member  = "serviceAccount:${google_service_account.run_sa.email}"
 }
+
+resource "google_secret_manager_secret_iam_member" "db_password_access" {
+  secret_id = var.db_secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.run_sa.email}"
+}
+
+# This is required for the Cloud Run instance to talk to the Cloud SQL Auth Proxy
+resource "google_project_iam_member" "cloudsql_client" {
+  project = var.gcp_project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.run_sa.email}"
+}
