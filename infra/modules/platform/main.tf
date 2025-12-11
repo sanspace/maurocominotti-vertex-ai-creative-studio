@@ -177,4 +177,7 @@ resource "google_cloud_run_v2_service_iam_member" "fe_trigger_can_view_backend" 
   location = module.backend_service.location
   role     = "roles/run.viewer"
   member   = "serviceAccount:${module.frontend_service.trigger_sa_email}"
+  depends_on = [
+    module.backend_service
+  ]
 }
